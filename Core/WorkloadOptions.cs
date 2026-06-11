@@ -9,7 +9,7 @@ public sealed class WorkloadOptions
 	public bool EnableCpuWorkload { get; set; }
 	public bool EnableMemoryWorkload { get; set; }
 	public bool EnableGpuWorkload { get; set; }
-
 	public int CpuThreads { get; set; }
 	public int MemoryGb { get; set; }
+	public int GpuLoadPercent { get; set; }
 }
