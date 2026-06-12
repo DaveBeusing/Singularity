@@ -24,6 +24,7 @@ public sealed class MainForm : Form
 
 	private readonly Button startButton = new();
 	private readonly Button stopButton = new();
+	private readonly Label countdownLabel = new();
 
 	private readonly Label statusBadge = new();
 	private readonly Label cpuMetricValue = new();
@@ -39,8 +40,8 @@ public sealed class MainForm : Form
 	public MainForm()
 	{
 		Text = "Singularity";
-		ClientSize = new Size(900, 640);
-		MinimumSize = new Size(900, 640);
+		ClientSize = new Size(900, 650);
+		MinimumSize = new Size(900, 650);
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
 		MaximizeBox = false;
@@ -157,7 +158,7 @@ public sealed class MainForm : Form
 			gpuLoadInput
 		]);
 
-		//
+		//Fill workloadsPanel
 		workloadsPanel.Controls.AddRange([
 			workloadsIcon,
 			workloadsTitle,
@@ -191,40 +192,43 @@ public sealed class MainForm : Form
 		]);
 
 		//Control Section
-		Panel controlPanel = CreatePanel(30, 530, 810, 75);
+		Panel controlPanel = CreatePanel(30, 535, 840, 80);
 
 		startButton.Text = "START TEST";
 		startButton.Left = 20;
-		startButton.Top = 17;
+		startButton.Top = 18;
 		startButton.Width = 230;
-		startButton.Height = 42;
+		startButton.Height = 44;
 		StyleButton(startButton, Theme.Success, Color.Black);
 		startButton.Click += (_, _) => StartWorkload();
 
 		stopButton.Text = "STOP TEST";
 		stopButton.Left = 270;
-		stopButton.Top = 17;
+		stopButton.Top = 18;
 		stopButton.Width = 230;
-		stopButton.Height = 42;
-		StyleButton(stopButton, Theme.Danger, Color.White);
+		stopButton.Height = 44;
+		StyleButton(stopButton, Theme.Danger, Color.Black);
 		stopButton.Enabled = false;
 		stopButton.Click += (_, _) => StopWorkload();
 
-		Label hint = new()
-		{
-			Text = "00:00:00 / 00:00:00",
-			Left = 530,
-			Top = 25,
-			Width = 260,
-			Height = 28,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Panel
-		};
+		countdownLabel.Text = "00:00:00 / 00:00:00";
+		countdownLabel.Left = 510;
+		countdownLabel.Top = 22;
+		countdownLabel.Width = 300;
+		countdownLabel.Height = 36;
+		countdownLabel.Font = new Font("Consolas", 13F, FontStyle.Bold);
+		countdownLabel.ForeColor = Theme.TextMuted;
+		countdownLabel.BackColor = Theme.Panel;
+		countdownLabel.TextAlign = ContentAlignment.MiddleRight;
 
-		controlPanel.Controls.Add(startButton);
-		controlPanel.Controls.Add(stopButton);
-		controlPanel.Controls.Add(hint);
+		//Fill controlPanel
+		controlPanel.Controls.AddRange([
+			startButton,
+			stopButton,
+			countdownLabel
+		]);
 
+		//Fill 
 		Controls.Add(title);
 		Controls.Add(subtitle);
 		Controls.Add(statusBadge);
