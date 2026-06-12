@@ -14,9 +14,9 @@ public sealed class MainForm : Form
 	private readonly WorkloadController workloadController = new();
 	private readonly SystemMonitor systemMonitor = new();
 
-	private readonly CheckBox cpuCheck = new();
-	private readonly CheckBox memoryCheck = new();
-	private readonly CheckBox gpuCheck = new();
+	private readonly SingularityCheckBox cpuCheck = new();
+	private readonly SingularityCheckBox memoryCheck = new();
+	private readonly SingularityCheckBox gpuCheck = new();
 
 	private readonly SingularityNumeric cpuThreadsInput = new();
 	private readonly SingularityNumeric memoryGbInput = new();
@@ -114,7 +114,7 @@ public sealed class MainForm : Form
 
 		//CPU Workload
 		Panel cpuCard = CreateCard(20, 60, 365, 78);
-		ConfigureCheckBox(cpuCheck, "", 20, 24, true);
+		ConfigureCheckBox(cpuCheck, 22, 25, true);
 		SingularityIcon cpuIcon = CreateIcon(SingularityIconType.Cpu, 60, 24, Theme.TextMuted);
 		Label cpuNameLabel = CreateValueLabel("CPU", 105, 23, 75);
 		Label cpuThreadsLabel = CreateMutedLabel("Threads", 190, 27, 75);
@@ -129,7 +129,7 @@ public sealed class MainForm : Form
 
 		//RAM Workload
 		Panel ramCard = CreateCard(20, 150, 365, 78);
-		ConfigureCheckBox(memoryCheck, "", 20, 24, true);
+		ConfigureCheckBox(memoryCheck, 22, 25, true);
 		SingularityIcon memoryIcon = CreateIcon(SingularityIconType.Memory, 60, 24, Theme.TextMuted);
 		Label ramNameLabel = CreateValueLabel("RAM", 105, 23, 75);
 		Label ramGbLabel = CreateMutedLabel("GB", 190, 27, 75);
@@ -144,7 +144,7 @@ public sealed class MainForm : Form
 
 		//GPU Workload
 		Panel gpuCard = CreateCard(20, 240, 365, 78);
-		ConfigureCheckBox(gpuCheck, "", 20, 24, false);
+		ConfigureCheckBox(gpuCheck, 22, 25, false);
 		SingularityIcon gpuIcon = CreateIcon(SingularityIconType.Gpu, 60, 24, Theme.TextMuted);
 		Label gpuNameLabel = CreateValueLabel("GPU", 105, 23, 75);
 		Label gpuLoadLabel = CreateMutedLabel("Load %", 190, 27, 75);
@@ -286,22 +286,14 @@ public sealed class MainForm : Form
 		};
 	}
 
-	private static void ConfigureCheckBox(
-		CheckBox checkBox,
-		string text,
-		int left,
-		int top,
-		bool isChecked)
+	private static void ConfigureCheckBox(SingularityCheckBox  checkBox, int left, int top, bool isChecked)
 	{
-		checkBox.Text = text;
 		checkBox.Left = left;
 		checkBox.Top = top;
-		checkBox.Width = 24;
-		checkBox.Height = 24;
+		checkBox.Width = 28;
+		checkBox.Height = 28;
 		checkBox.Checked = isChecked;
-		checkBox.ForeColor = Theme.TextMain;
 		checkBox.BackColor = Theme.PanelLight;
-		checkBox.FlatStyle = FlatStyle.Flat;
 	}
 
 	private static void ConfigureNumeric(SingularityNumeric  numeric, int left, int top, int value, int minimum, int maximum)
