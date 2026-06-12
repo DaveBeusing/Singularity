@@ -13,4 +13,10 @@
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="System.Management" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PackageReference Include="System.Management" Version="10.0.9" />
+	</ItemGroup>
 </Project>

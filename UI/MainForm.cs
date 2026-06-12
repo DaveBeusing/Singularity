@@ -37,11 +37,18 @@ public sealed class MainForm : Form
 	private readonly MetricBar appRamBar = new();
 	private readonly MetricBar systemRamBar = new();
 
+	private readonly HardwareInfoReader hardwareInfoReader = new();
+	private readonly Label boardInfoValue = new();
+	private readonly Label cpuInfoValue = new();
+	private readonly Label gpuInfoValue = new();
+
+	private const int CardHeight = 78;
+
 	public MainForm()
 	{
 		Text = "Singularity";
-		ClientSize = new Size(900, 650);
-		MinimumSize = new Size(900, 650);
+		ClientSize = new Size(900, 920);
+		MinimumSize = new Size(900, 920);
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
 		MaximizeBox = false;
@@ -86,7 +93,8 @@ public sealed class MainForm : Form
 			TextAlign = ContentAlignment.MiddleLeft
 		};
 
-		statusBadge.Left = 680;
+		//Status Badge
+		statusBadge.Left = 740;
 		statusBadge.Top = 32;
 		statusBadge.Width = 130;
 		statusBadge.Height = 32;
@@ -100,22 +108,28 @@ public sealed class MainForm : Form
 		appRamBar.FillColor = Theme.Accent;
 		systemRamBar.FillColor = Theme.Danger;
 
-		//Workloads Section
-		Panel workloadsPanel = CreatePanel(30, 150, 405, 365);
-		SingularityIcon workloadsIcon = new()
-		{
-			IconType = SingularityIconType.Cpu,
-			IconColor = Theme.Accent,
-			Left = 20,
-			Top = 14,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.Panel
-		};
-		Label workloadsTitle = CreateSectionTitle("WORKLOADS", 60, 16);
+		//Hardware Panel
+		HardwareInfo hardware = hardwareInfoReader.Read();
+		Panel hardwarePanel = CreatePanel(30, 150, 840, 250);
+		//Label hardwareTitle = CreateSectionTitle("SYSTEM HARDWARE", 20, 16);
+
+		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, 20, 55, 800);
+		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, 20, 115, 800);
+		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, 20, 175, 800);
+
+		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "SYSTEM HARDWARE");
+		hardwarePanel.Controls.AddRange([
+			boardCardInfo,
+			cpuCardInfo,
+			gpuCardInfo
+		]);
+
+		//Workloads Panel
+		Panel workloadsPanel = CreatePanel(30, 420, 405, 365);
+		AddSectionHeader(workloadsPanel, SingularityIconType.Cpu, "WORKLOADS");
 
 		//CPU Workload
-		Panel cpuCard = CreateCard(20, 60, 365, 78);
+		Panel cpuCard = CreateCard(20, 60, 365, CardHeight);
 		ConfigureCheckBox(cpuCheck, 22, 25, true);
 		SingularityIcon cpuIcon = CreateIcon(SingularityIconType.Cpu, 60, 24, Theme.TextMuted);
 		Label cpuNameLabel = CreateValueLabel("CPU", 105, 23, 75);
@@ -130,7 +144,7 @@ public sealed class MainForm : Form
 		]);
 
 		//RAM Workload
-		Panel ramCard = CreateCard(20, 150, 365, 78);
+		Panel ramCard = CreateCard(20, 150, 365, CardHeight);
 		ConfigureCheckBox(memoryCheck, 22, 25, true);
 		SingularityIcon memoryIcon = CreateIcon(SingularityIconType.Memory, 60, 24, Theme.TextMuted);
 		Label ramNameLabel = CreateValueLabel("RAM", 105, 23, 75);
@@ -145,7 +159,7 @@ public sealed class MainForm : Form
 		]);
 
 		//GPU Workload
-		Panel gpuCard = CreateCard(20, 240, 365, 78);
+		Panel gpuCard = CreateCard(20, 240, 365, CardHeight);
 		ConfigureCheckBox(gpuCheck, 22, 25, false);
 		SingularityIcon gpuIcon = CreateIcon(SingularityIconType.Gpu, 60, 24, Theme.TextMuted);
 		Label gpuNameLabel = CreateValueLabel("GPU", 105, 23, 75);
@@ -161,39 +175,26 @@ public sealed class MainForm : Form
 
 		//Fill workloadsPanel
 		workloadsPanel.Controls.AddRange([
-			workloadsIcon,
-			workloadsTitle,
 			cpuCard,
 			ramCard,
 			gpuCard
 		]);
 
-		//Metrics Section
-		Panel metricsPanel = CreatePanel(465, 150, 405, 365);
-		SingularityIcon metricsIcon = new()
-		{
-			IconType = SingularityIconType.Metrics,
-			IconColor = Theme.Accent,
-			Left = 20,
-			Top = 14,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.Panel
-		};
-		Label metricsTitle = CreateSectionTitle("LIVE METRICS", 60, 16);
+		//Metrics Panel
+		Panel metricsPanel = CreatePanel(465, 420, 405, 365);
+		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
+
 		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
 		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, appRamBar, 20, 150);
 		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, systemRamBar, 20, 240);
 		metricsPanel.Controls.AddRange([
-			metricsIcon,
-			metricsTitle,
 			cpuMetric,
 			appRamMetric,
 			systemRamMetric
 		]);
 
-		//Control Section
-		Panel controlPanel = CreatePanel(30, 535, 840, 80);
+		//Control Panel
+		Panel controlPanel = CreatePanel(30, 805, 840, 80);
 
 		startButton.Text = "START TEST";
 		startButton.Left = 20;
@@ -213,9 +214,9 @@ public sealed class MainForm : Form
 		stopButton.Click += (_, _) => StopWorkload();
 
 		countdownLabel.Text = "00:00:00 / 00:00:00";
-		countdownLabel.Left = 510;
+		countdownLabel.Left = 540;
 		countdownLabel.Top = 22;
-		countdownLabel.Width = 300;
+		countdownLabel.Width = 280;
 		countdownLabel.Height = 36;
 		countdownLabel.Font = new Font("Consolas", 13F, FontStyle.Bold);
 		countdownLabel.ForeColor = Theme.TextMuted;
@@ -229,13 +230,19 @@ public sealed class MainForm : Form
 			countdownLabel
 		]);
 
+
+
 		//Fill 
-		Controls.Add(title);
-		Controls.Add(subtitle);
-		Controls.Add(statusBadge);
-		Controls.Add(workloadsPanel);
-		Controls.Add(metricsPanel);
-		Controls.Add(controlPanel);
+		Controls.AddRange([
+			title,
+			subtitle,
+			statusBadge,
+			hardwarePanel,
+			workloadsPanel,
+			metricsPanel,
+			controlPanel
+		]);
+
 	}
 
 	private static Panel CreatePanel(int left, int top, int width, int height)
@@ -277,6 +284,25 @@ public sealed class MainForm : Form
 		};
 	}
 
+	private static void AddSectionHeader(Panel parent, SingularityIconType iconType, string title)
+	{
+		SingularityIcon icon = new()
+		{
+			IconType = iconType,
+			IconColor = Theme.Accent,
+			Left = 20,
+			Top = 14,
+			Width = 32,
+			Height = 32,
+			BackColor = Theme.Panel
+		};
+		Label label = CreateSectionTitle(title, 60, 14);
+		parent.Controls.AddRange([
+			icon,
+			label
+		]);
+	}
+
 	private static Label CreateMutedLabel(string text, int left, int top, int width)
 	{
 		return new Label
@@ -315,7 +341,7 @@ public sealed class MainForm : Form
 
 	private static Panel CreateMetricCard(string title, Label valueLabel, MetricBar bar, int left, int top)
 	{
-		Panel card = CreateCard(left, top, 350, 90);//350
+		Panel card = CreateCard(left, top, 360, CardHeight);
 		Label titleLabel = new()
 		{
 			Text = title,
@@ -329,28 +355,73 @@ public sealed class MainForm : Form
 		};
 
 		valueLabel.Left = 18;
-		valueLabel.Top = 35;
+		valueLabel.Top = 32;
 		valueLabel.Width = 315;
 		valueLabel.Height = 30;
-		valueLabel.Font = new Font("Segoe UI", 13.5F, FontStyle.Bold);
+		valueLabel.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
 		valueLabel.ForeColor = Theme.TextMain;
 		valueLabel.BackColor = Theme.PanelLight;
 		valueLabel.Text = "-";
 		valueLabel.AutoEllipsis = true;
 
 		bar.Left = 18;
-		bar.Top = 72;
-		bar.Width = 315;
-		bar.Height = 8;
+		bar.Top = 64;
+		bar.Width = 329;
+		bar.Height = 7;
 		bar.BackColor = Theme.PanelLight;
 
-		card.Controls.Add(titleLabel);
-		card.Controls.Add(valueLabel);
-		card.Controls.Add(bar);
-
+		card.Controls.AddRange([
+			titleLabel,
+			valueLabel,
+			bar
+		]);
 		return card;
 	}
 
+	private static Panel CreateHardwareInfoCard(SingularityIconType iconType, string title, string value, int left, int top, int width)
+	{
+		Panel card = CreateCard(left, top, width, 50);
+		SingularityIcon icon = new()
+		{
+			IconType = iconType,
+			IconColor = Theme.Accent,
+			Left = 12,
+			Top = 9,
+			Width = 32,
+			Height = 32,
+			BackColor = Theme.PanelLight
+		};
+		Label titleLabel = new()
+		{
+			Text = title,
+			Left = 60,
+			Top = 8,
+			Width = 80,
+			Height = 20,
+			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight
+		};
+		Label valueLabel = new()
+		{
+			Text = value,
+			Left = 60,
+			Top = 25,
+			Width = width - 80,
+			Height = 20,
+			Font = new Font("Consolas", 8.5F, FontStyle.Regular),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		card.Controls.AddRange([
+			icon,
+			titleLabel,
+			valueLabel
+		]);
+		return card;
+	}
 	private static void StyleButton(Button button, Color background, Color foreground)
 	{
 		button.BackColor = background;

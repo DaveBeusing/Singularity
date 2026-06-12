@@ -8,6 +8,7 @@ namespace Singularity.UI.Controls;
 /// </summary>
 public enum SingularityIconType
 {
+	Motherboard,
 	Cpu,
 	Memory,
 	Gpu,
@@ -30,11 +31,9 @@ public sealed class SingularityIcon : Control
 	{
 		Width = 32;
 		Height = 32;
-
 		// Verhindert Flackern beim Neuzeichnen.
 		SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
 		DoubleBuffered = true;
-
 		// Das Control soll keinen sichtbaren Hintergrund erzwingen.
 		//BackColor = Color.FromArgb(38, 46, 64);
 		BackColor = Theme.PanelLight;
@@ -43,17 +42,16 @@ public sealed class SingularityIcon : Control
 	protected override void OnPaint(PaintEventArgs e)
 	{
 		base.OnPaint(e);
-
 		Graphics g = e.Graphics;
 		g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
 		using Pen pen = new(IconColor, 2);
 		using SolidBrush brush = new(IconColor);
-
 		Rectangle area = new(4, 4, Width - 8, Height - 8);
-
 		switch (IconType)
 		{
+			case SingularityIconType.Motherboard:
+				DrawMotherboard(g, pen);
+				break;
 			case SingularityIconType.Cpu:
 				DrawCpu(g, pen);
 				break;
@@ -78,6 +76,28 @@ public sealed class SingularityIcon : Control
 				g.FillRectangle(brush, area);
 				break;
 		}
+	}
+
+	private static void DrawMotherboard( Graphics g, Pen pen)
+	{
+		g.DrawRectangle(pen, 6, 6, 20, 20);
+
+		g.DrawRectangle(pen, 10, 10, 8, 8);
+
+		g.DrawRectangle(pen, 20, 10, 3, 3);
+		g.DrawRectangle(pen, 20, 16, 3, 3);
+
+		g.DrawLine(pen, 6, 14, 2, 14);
+		g.DrawLine(pen, 6, 20, 2, 20);
+
+		g.DrawLine(pen, 26, 12, 30, 12);
+		g.DrawLine(pen, 26, 18, 30, 18);
+
+		g.DrawLine(pen, 12, 2, 12, 6);
+		g.DrawLine(pen, 18, 2, 18, 6);
+
+		g.DrawLine(pen, 12, 26, 12, 30);
+		g.DrawLine(pen, 18, 26, 18, 30);
 	}
 
 	private static void DrawCpu(Graphics g, Pen pen)
