@@ -120,13 +120,10 @@ public sealed class SingularityIcon : Control
 	{
 		Rectangle card = new(5, 9, 22, 14);
 		g.DrawRectangle(pen, card);
-
 		g.DrawEllipse(pen, 9, 12, 7, 7);
 		g.DrawEllipse(pen, 16, 12, 7, 7);
-
 		g.DrawLine(pen, 6, 24, 12, 24);
 		g.DrawLine(pen, 20, 24, 26, 24);
-
 		g.DrawLine(pen, 27, 13, 30, 13);
 		g.DrawLine(pen, 27, 17, 30, 17);
 	}

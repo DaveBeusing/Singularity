@@ -28,11 +28,15 @@ public sealed class MainForm : Form
 	private readonly Label systemRamMetricValue = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
+	private readonly MetricBar cpuBar = new();
+	private readonly MetricBar appRamBar = new();
+	private readonly MetricBar systemRamBar = new();
+
 	public MainForm()
 	{
 		Text = "Singularity";
-		ClientSize = new Size(900, 600);
-		MinimumSize = new Size(900, 600);
+		ClientSize = new Size(900, 640);
+		MinimumSize = new Size(900, 640);
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
 		MaximizeBox = false;
@@ -86,8 +90,12 @@ public sealed class MainForm : Form
 		statusBadge.BackColor = Theme.PanelLight;
 		statusBadge.ForeColor = Theme.TextMain;
 
+		cpuBar.FillColor = Theme.Success;
+		appRamBar.FillColor = Theme.Accent;
+		systemRamBar.FillColor = Theme.Danger;
+
 		//Workloads Section
-		Panel workloadsPanel = CreatePanel(30, 135, 390, 330);
+		Panel workloadsPanel = CreatePanel(30, 135, 420, 365);
 		SingularityIcon workloadsIcon = new()
 		{
 			IconType = SingularityIconType.Cpu,
@@ -101,48 +109,61 @@ public sealed class MainForm : Form
 		Label workloadsTitle = CreateSectionTitle("WORKLOADS", 60, 16);
 
 		//CPU Workload
-		Panel cpuCard = CreateCard(20, 60, 350, 72);
-		ConfigureCheckBox(cpuCheck, "CPU", 80, 20, true);
-		SingularityIcon cpuIcon = CreateIcon(SingularityIconType.Cpu, 20, 20, Theme.TextMuted);
-		Label cpuThreadsLabel = CreateMutedLabel("Threads", 160, 22, 75);
-		ConfigureNumeric(cpuThreadsInput, 250, 20, Environment.ProcessorCount, 1, Environment.ProcessorCount * 4);
-		cpuCard.Controls.Add(cpuCheck);
-		cpuCard.Controls.Add(cpuIcon);
-		cpuCard.Controls.Add(cpuThreadsLabel);
-		cpuCard.Controls.Add(cpuThreadsInput);
+		Panel cpuCard = CreateCard(20, 60, 380, 78);
+		ConfigureCheckBox(cpuCheck, "", 20, 24, true);
+		SingularityIcon cpuIcon = CreateIcon(SingularityIconType.Cpu, 60, 24, Theme.TextMuted);
+		Label cpuNameLabel = CreateValueLabel("CPU", 105, 23, 75);
+		Label cpuThreadsLabel = CreateMutedLabel("Threads", 190, 25, 80);
+		ConfigureNumeric(cpuThreadsInput, 295, 21, Environment.ProcessorCount, 1, Environment.ProcessorCount * 4);
+		cpuCard.Controls.AddRange([
+			cpuCheck,
+			cpuIcon,
+			cpuNameLabel,
+			cpuThreadsLabel,
+			cpuThreadsInput
+		]);
 
 		//RAM Workload
-		Panel ramCard = CreateCard(20, 145, 350, 72);
-		ConfigureCheckBox(memoryCheck, "RAM", 80, 20, true);
-		SingularityIcon memoryIcon = CreateIcon(SingularityIconType.Memory, 20, 20, Theme.TextMuted);
-		Label ramGbLabel = CreateMutedLabel("GB", 160, 22, 40);
-		ConfigureNumeric(memoryGbInput, 250, 20, 8, 1, 1024);
-		ramCard.Controls.Add(memoryCheck);
-		ramCard.Controls.Add(memoryIcon);
-		ramCard.Controls.Add(ramGbLabel);
-		ramCard.Controls.Add(memoryGbInput);
+		Panel ramCard = CreateCard(20, 150, 380, 78);
+		ConfigureCheckBox(memoryCheck, "", 20, 24, true);
+		SingularityIcon memoryIcon = CreateIcon(SingularityIconType.Memory, 60, 24, Theme.TextMuted);
+		Label ramNameLabel = CreateValueLabel("RAM", 105, 23, 75);
+		Label ramGbLabel = CreateMutedLabel("GB", 190, 25, 80);
+		ConfigureNumeric(memoryGbInput, 295, 21, 8, 1, 1024);
+		ramCard.Controls.AddRange([
+			memoryCheck,
+			memoryIcon,
+			ramNameLabel,
+			ramGbLabel,
+			memoryGbInput
+		]);
 
 		//GPU Workload
-		Panel gpuCard = CreateCard(20, 230, 350, 72);
-		ConfigureCheckBox(gpuCheck, "GPU", 80, 20, false);
-		SingularityIcon gpuIcon = CreateIcon(SingularityIconType.Gpu, 20, 20, Theme.TextMuted);
-		Label gpuLoadLabel = CreateMutedLabel("Load %", 160, 22, 75);
-		ConfigureNumeric( gpuLoadInput, 250, 20, 100, 1, 100);
-		gpuCard.Controls.Add(gpuCheck);
-		gpuCard.Controls.Add(gpuIcon);
-		gpuCard.Controls.Add(gpuLoadLabel);
-		gpuCard.Controls.Add(gpuLoadInput);
+		Panel gpuCard = CreateCard(20, 240, 380, 78);
+		ConfigureCheckBox(gpuCheck, "", 20, 24, false);
+		SingularityIcon gpuIcon = CreateIcon(SingularityIconType.Gpu, 60, 24, Theme.TextMuted);
+		Label gpuNameLabel = CreateValueLabel("GPU", 105, 23, 75);
+		Label gpuLoadLabel = CreateMutedLabel("Load %", 190, 25, 80);
+		ConfigureNumeric(gpuLoadInput, 295, 21, 100, 1, 100);
+		gpuCard.Controls.AddRange([
+			gpuCheck,
+			gpuIcon,
+			gpuNameLabel,
+			gpuLoadLabel,
+			gpuLoadInput
+		]);
 
-
-		workloadsPanel.Controls.Add(workloadsIcon);
-		workloadsPanel.Controls.Add(workloadsTitle);
-		workloadsPanel.Controls.Add(cpuCard);
-		workloadsPanel.Controls.Add(ramCard);
-		workloadsPanel.Controls.Add(gpuCard);
-
+		//
+		workloadsPanel.Controls.AddRange([
+			workloadsIcon,
+			workloadsTitle,
+			cpuCard,
+			ramCard,
+			gpuCard
+		]);
 
 		//Metrics Section
-		Panel metricsPanel = CreatePanel(450, 135, 390, 330);
+		Panel metricsPanel = CreatePanel(450, 135, 390, 365);
 		SingularityIcon metricsIcon = new()
 		{
 			IconType = SingularityIconType.Metrics,
@@ -154,9 +175,9 @@ public sealed class MainForm : Form
 			BackColor = Theme.Panel
 		};
 		Label metricsTitle = CreateSectionTitle("LIVE METRICS", 60, 16);
-		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, 20, 60);
-		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, 20, 145);
-		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, 20, 230);
+		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
+		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, appRamBar, 20, 155);
+		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, systemRamBar, 20, 250);
 		metricsPanel.Controls.Add(metricsIcon);
 		metricsPanel.Controls.Add(metricsTitle);
 		metricsPanel.Controls.Add(cpuMetric);
@@ -164,14 +185,14 @@ public sealed class MainForm : Form
 		metricsPanel.Controls.Add(systemRamMetric);
 
 		//Control Section
-		Panel controlPanel = CreatePanel(30, 495, 810, 75);
+		Panel controlPanel = CreatePanel(30, 530, 810, 75);
 
 		startButton.Text = "START TEST";
 		startButton.Left = 20;
 		startButton.Top = 17;
 		startButton.Width = 230;
 		startButton.Height = 42;
-		StyleButton(startButton, Theme.Accent, Color.Black);
+		StyleButton(startButton, Theme.Success, Color.Black);
 		startButton.Click += (_, _) => StartWorkload();
 
 		stopButton.Text = "STOP TEST";
@@ -185,7 +206,7 @@ public sealed class MainForm : Form
 
 		Label hint = new()
 		{
-			Text = "Tip: Start with moderate RAM values before running full burn-in.",
+			Text = "00:00:00 / 00:00:00",
 			Left = 530,
 			Top = 25,
 			Width = 260,
@@ -198,7 +219,7 @@ public sealed class MainForm : Form
 		controlPanel.Controls.Add(stopButton);
 		controlPanel.Controls.Add(hint);
 
-		//Controls.Add(title);
+		Controls.Add(title);
 		Controls.Add(subtitle);
 		Controls.Add(statusBadge);
 		Controls.Add(workloadsPanel);
@@ -269,8 +290,8 @@ public sealed class MainForm : Form
 		checkBox.Text = text;
 		checkBox.Left = left;
 		checkBox.Top = top;
-		checkBox.Width = 80;
-		checkBox.Height = 30;
+		checkBox.Width = 24;
+		checkBox.Height = 24;
 		checkBox.Checked = isChecked;
 		checkBox.ForeColor = Theme.TextMain;
 		checkBox.BackColor = Theme.PanelLight;
@@ -287,7 +308,7 @@ public sealed class MainForm : Form
 	{
 		numeric.Left = left;
 		numeric.Top = top;
-		numeric.Width = 75;
+		numeric.Width = 72;
 		numeric.Height = 28;
 		numeric.Minimum = minimum;
 		numeric.Maximum = maximum;
@@ -298,10 +319,9 @@ public sealed class MainForm : Form
 		numeric.Font = new Font("Segoe UI", 9.5F);
 	}
 
-	private static Panel CreateMetricCard(string title, Label valueLabel, int left, int top)
+	private static Panel CreateMetricCard(string title, Label valueLabel, MetricBar bar, int left, int top)
 	{
-		Panel card = CreateCard(left, top, 350, 72);
-
+		Panel card = CreateCard(left, top, 350, 90);//350
 		Label titleLabel = new()
 		{
 			Text = title,
@@ -315,7 +335,7 @@ public sealed class MainForm : Form
 		};
 
 		valueLabel.Left = 18;
-		valueLabel.Top = 34;
+		valueLabel.Top = 35;
 		valueLabel.Width = 315;
 		valueLabel.Height = 30;
 		valueLabel.Font = new Font("Segoe UI", 13.5F, FontStyle.Bold);
@@ -324,8 +344,15 @@ public sealed class MainForm : Form
 		valueLabel.Text = "-";
 		valueLabel.AutoEllipsis = true;
 
+		bar.Left = 18;
+		bar.Top = 72;
+		bar.Width = 315;
+		bar.Height = 8;
+		bar.BackColor = Theme.PanelLight;
+
 		card.Controls.Add(titleLabel);
 		card.Controls.Add(valueLabel);
+		card.Controls.Add(bar);
 
 		return card;
 	}
@@ -351,6 +378,22 @@ public sealed class MainForm : Form
 			Width = 32,
 			Height = 32,
 			BackColor = Theme.PanelLight
+		};
+	}
+
+	private static Label CreateValueLabel(string text, int left, int top, int width)
+	{
+		return new Label
+		{
+			Text = text,
+			Left = left,
+			Top = top,
+			Width = width,
+			Height = 28,
+			Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			TextAlign = ContentAlignment.MiddleLeft
 		};
 	}
 
@@ -402,6 +445,12 @@ public sealed class MainForm : Form
 		cpuMetricValue.Text = $"{snapshot.ProcessCpuPercent:F1} %";
 		appRamMetricValue.Text = $"{snapshot.ProcessMemoryMb:N0} MB";
 		systemRamMetricValue.Text =	$"{snapshot.UsedPhysicalMemoryPercent:F1} % | {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB";
+
+		cpuBar.Value = (int)Math.Clamp(snapshot.ProcessCpuPercent, 0, 100);
+		double appRamPercent = snapshot.ProcessMemoryMb / 32000.0 * 100.0;
+		appRamBar.Value = (int)Math.Clamp(appRamPercent, 0, 100);
+
+		systemRamBar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
 	}
 
 	protected override void OnFormClosing(FormClosingEventArgs e)
