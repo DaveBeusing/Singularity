@@ -63,26 +63,27 @@ public sealed class MainForm : Form
 
 		Label title = new()
 		{
-			Text = "SINGULARITY",
+			Text = "//SINGULARITY◉",
 			Left = 30,
-			Top = 30,
-			Width = 420,
-			Height = 42,
-			Font = new Font("Segoe UI", 24F, FontStyle.Bold),
+			Top = 24,
+			Width = 490,
+			Height = 56,
+			Font = new Font("Cascadia Mono", 24F, FontStyle.Bold),
 			ForeColor = Theme.TextMain,
 			BackColor = Theme.Background
 		};
 
 		Label subtitle = new()
 		{
-			Text = "Lightweight Stresstest and Burn-In Tool",
+			Text = "Platform Qualification Suite",
 			Left = 32,
-			Top = 76,
+			Top = 78,
 			Width = 520,
-			Height = 26,
+			Height = 28,
 			Font = new Font("Segoe UI", 10F),
 			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Background
+			BackColor = Theme.Background,
+			TextAlign = ContentAlignment.MiddleLeft
 		};
 
 		statusBadge.Left = 680;
