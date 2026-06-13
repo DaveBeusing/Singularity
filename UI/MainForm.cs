@@ -50,6 +50,10 @@ public sealed class MainForm : Form
 	private const int HardwareCardHeight = 78;
 	private const int HardwareCardGap = 10;
 
+	private readonly OsInfoReader osInfoReader = new();
+
+	private const string VersionString = "v0.1.2-alpha";
+
 
 	public MainForm()
 	{
@@ -75,11 +79,11 @@ public sealed class MainForm : Form
 
 		Label title = new()
 		{
-			Text = "//SINGULARITY✦",
+			Text = "//Singularity✦",
 			Left = 30,
 			Top = 24,
 			Width = 490,
-			Height = 56,
+			Height = 64,
 			Font = new Font("Cascadia Mono", 24F, FontStyle.Bold),
 			ForeColor = Theme.TextMain,
 			BackColor = Theme.Background
@@ -89,7 +93,7 @@ public sealed class MainForm : Form
 		{
 			Text = "Platform Qualification Suite",
 			Left = 32,
-			Top = 78,
+			Top = 80,
 			Width = 520,
 			Height = 28,
 			Font = new Font("Segoe UI", 10F),
@@ -98,9 +102,22 @@ public sealed class MainForm : Form
 			TextAlign = ContentAlignment.MiddleLeft
 		};
 
+		Label versionLabel = new()
+		{
+			Text = VersionString,
+			Left = 740,
+			Top = 32,//78
+			Width = 130,
+			Height = 24,
+			Font = new Font("Consolas", 9F, FontStyle.Bold),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.Background,
+			TextAlign = ContentAlignment.MiddleRight
+		};
+
 		//Status Badge
 		statusBadge.Left = 740;
-		statusBadge.Top = 32;
+		statusBadge.Top = 78;//32
 		statusBadge.Width = 130;
 		statusBadge.Height = 32;
 		statusBadge.Text = "READY";
@@ -113,12 +130,21 @@ public sealed class MainForm : Form
 		appRamBar.FillColor = Theme.Accent;
 		systemRamBar.FillColor = Theme.Danger;
 
+
+		//OS panel
+		OsInfo osInfo = osInfoReader.Read();
+		Panel osPanel = CreatePanel(30, 150, 840, 150);
+		AddSectionHeader(osPanel, SingularityIconType.Metrics, "SYSTEM OS");
+		Panel osCard = CreateOsInfoCard(osInfo, 20, 55, 800);
+		osPanel.Controls.Add(osCard);
+
+
 		//Hardware Panel
 		HardwareInfo hardware = hardwareInfoReader.Read();
+		int hardwarePanelTop = osPanel.Top + osPanel.Height + 20;
 		int hardwareCardCount = 3 + hardware.MemoryModules.Count;
 		int hardwarePanelHeight = 65 + hardwareCardCount * (HardwareCardHeight + HardwareCardGap);
-
-		Panel hardwarePanel = CreatePanel(30, 170, 840, hardwarePanelHeight);
+		Panel hardwarePanel = CreatePanel(30, hardwarePanelTop, 840, hardwarePanelHeight);
 		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "SYSTEM HARDWARE");
 		int hardwareTop = 55;
 		int hardwareCardWidth = 800;
@@ -129,7 +155,7 @@ public sealed class MainForm : Form
 		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
-		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "placeholder for NVML implementation", 20, hardwareTop, hardwareCardWidth);
+		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "VRAM/PCIe placeholder for NVML implementation", 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
 
@@ -262,7 +288,9 @@ public sealed class MainForm : Form
 		Controls.AddRange([
 			title,
 			subtitle,
+			versionLabel,
 			statusBadge,
+			osPanel,
 			hardwarePanel,
 			workloadsPanel,
 			metricsPanel,
@@ -408,6 +436,58 @@ public sealed class MainForm : Form
 		]);
 		return card;
 	}
+
+	private static Panel CreateOsInfoCard(OsInfo osInfo, int left, int top, int width)
+	{
+		Panel card = CreateCard(left, top, width, 78);
+		Label line1 = new()
+		{
+			Text = osInfo.Name,
+			Left = 18,
+			Top = 10,
+			Width = width - 36,
+			Height = 20,
+			Font = new Font("Consolas", 9.5F),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label line2 = new()
+		{
+			Text = $"Version {osInfo.Version} | {osInfo.Architecture} | Build {osInfo.BuildNumber}",
+			Left = 18,
+			Top = 32,
+			Width = width - 36,
+			Height = 18,
+			Font = new Font("Consolas", 8.5F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label line3 = new()
+		{
+			Text = $"Installed {osInfo.InstallDate} | Boot {osInfo.LastBootTime}",//{osInfo.User}
+			Left = 18,
+			Top = 52,
+			Width = width - 36,
+			Height = 18,
+			Font = new Font("Consolas", 8.5F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		card.Controls.AddRange([
+			line1,
+			line2,
+			line3
+		]);
+		return card;
+	}
+
+
 
 	private static Panel CreateHardwareInfoCard(SingularityIconType iconType, string title, string line1, string line2, int left, int top, int width)
 	{
