@@ -126,10 +126,10 @@ public sealed class MainForm : Form
 		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, "", 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
-		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, "", 20, hardwareTop, hardwareCardWidth);
+		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
-		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "", 20, hardwareTop, hardwareCardWidth);
+		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "placeholder for NVML implementation", 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
 

@@ -10,7 +10,17 @@ public sealed class HardwareInfoReader
 {
 	public HardwareInfo Read()
 	{
-		return new HardwareInfo{Mainboard = ReadMainboard(), Cpu = ReadCpu(), Gpu = ReadGpu(), MemoryModules = ReadMemoryModules()};
+		CpuInfo cpuInfo = ReadCpuInfo();
+		GpuInfo gpuInfo = ReadGpuInfo();
+		return new HardwareInfo
+		{
+			Mainboard = ReadMainboard(), 
+			Cpu = cpuInfo.Name,
+			CpuDetails = cpuInfo.Details,
+			Gpu = gpuInfo.Name,
+			GpuDetails = gpuInfo.Details,
+			MemoryModules = ReadMemoryModules()
+		};
 	}
 
 	private static string ReadMainboard()
@@ -20,14 +30,72 @@ public sealed class HardwareInfoReader
 		return $"{manufacturer} {product}".Trim();
 	}
 
+	private sealed class CpuInfo
+	{
+		public string Name { get; set; } = "Unknown";
+		public string Details { get; set; } = "Unknown";
+	}
+
+	private sealed class GpuInfo
+	{
+		public string Name { get; set; } = "Unknown";
+		public string Details { get; set; } = "Unknown";
+	}
+
 	private static string ReadCpu()
 	{
 		return ReadWmiValue("Win32_Processor", "Name");
 	}
 
+	private static CpuInfo ReadCpuInfo()
+	{
+		try
+		{
+			using ManagementObjectSearcher searcher = new("SELECT Name, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor");
+			foreach (ManagementObject obj in searcher.Get())
+			{
+				string name = obj["Name"]?.ToString()?.Trim() ?? "Unknown";
+				string cores = obj["NumberOfCores"]?.ToString() ?? "?";
+				string threads = obj["NumberOfLogicalProcessors"]?.ToString() ?? "?";
+				return new CpuInfo
+				{
+					Name = name,
+					Details = $"{cores} Cores / {threads} Threads"
+				};
+			}
+		}
+		catch
+		{
+		}
+		return new CpuInfo();
+	}
+
 	private static string ReadGpu()
 	{
 		return ReadWmiValue("Win32_VideoController", "Name");
+	}
+
+	private static GpuInfo ReadGpuInfo()
+	{
+		try
+		{
+			using ManagementObjectSearcher searcher = new("SELECT Name, AdapterRAM FROM Win32_VideoController");
+			foreach (ManagementObject obj in searcher.Get())
+			{
+				string name = obj["Name"]?.ToString()?.Trim() ?? "Unknown";
+				ulong adapterRam = Convert.ToUInt64(obj["AdapterRAM"] ?? 0);
+				string vram = FormatBytes(adapterRam);
+				return new GpuInfo
+				{
+					Name = name,
+					Details = $"VRAM {vram}"
+				};
+			}
+		}
+		catch
+		{
+		}
+		return new GpuInfo();
 	}
 
 	private static List<MemoryModuleInfo> ReadMemoryModules()
@@ -215,6 +283,18 @@ public sealed class HardwareInfoReader
 			16 => "Die",
 			_  => $"Unknown ({formFactor})"
 		};
+	}
+
+
+	private static string FormatBytes(ulong bytes)
+	{
+		if (bytes == 0)
+			return "Unknown";
+		double gb = bytes / 1024d / 1024d / 1024d;
+		if (gb >= 1)
+			return $"{gb:0.#} GB";
+		double mb = bytes / 1024d / 1024d;
+		return $"{mb:0} MB";
 	}
 
 

@@ -7,6 +7,8 @@ public sealed class HardwareInfo
 {
 	public string Mainboard { get; set; } = "Unknown";
 	public string Cpu { get; set; } = "Unknown";
+	public string CpuDetails { get; set; } = "Unknown";
 	public string Gpu { get; set; } = "Unknown";
+	public string GpuDetails { get; set; } = "Unknown";
 	public List<MemoryModuleInfo> MemoryModules { get; set; } = new();
 }
