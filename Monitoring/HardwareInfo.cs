@@ -10,6 +10,9 @@ public sealed class HardwareInfo
 	public string Cpu { get; set; } = "Unknown";
 	public string CpuDetails { get; set; } = "Unknown";
 	public string Gpu { get; set; } = "Unknown";
-	public string GpuDetails { get; set; } = "Unknown";
+	public string GpuVram { get; set; } = "Unknown";
+	public string GpuTemperature { get; set; } = "Unknown";
+	public string GpuPcieCurrent { get; set; } = "Unknown";
+	public string GpuPcieMax { get; set; } = "Unknown";
 	public List<MemoryModuleInfo> MemoryModules { get; set; } = new();
 }

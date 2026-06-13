@@ -17,7 +17,6 @@ public sealed class MainForm : Form
 {
 	private readonly WorkloadController workloadController = new();
 	private readonly SystemMonitor systemMonitor = new();
-
 	private readonly SingularityCheckBox cpuCheck = new();
 	private readonly SingularityCheckBox memoryCheck = new();
 	private readonly SingularityCheckBox gpuCheck = new();
@@ -155,9 +154,9 @@ public sealed class MainForm : Form
 		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
-		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "VRAM/PCIe placeholder for NVML implementation", 20, hardwareTop, hardwareCardWidth);
-
-		hardwareTop += HardwareCardHeight + HardwareCardGap;
+		//Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, hardware.GpuDetails, 20, hardwareTop, hardwareCardWidth);
+		Panel gpuCardInfo = CreateGpuInfoCard( hardware, 20, hardwareTop, hardwareCardWidth);
+		hardwareTop += 90 + HardwareCardGap;//90 => GpuCardInfo != HardwareCardHeight 
 
 		hardwarePanel.Controls.AddRange([
 			boardCardInfo,
@@ -547,6 +546,115 @@ public sealed class MainForm : Form
 		]);
 		return card;
 	}
+
+
+
+	private static Panel CreateGpuInfoCard(HardwareInfo hardware, int left, int top, int width)
+	{
+		const int height = 90;
+		Panel card = CreateCard(left, top, width, height);
+		SingularityIcon icon = new()
+		{
+			IconType = SingularityIconType.Gpu,
+			IconColor = Theme.Accent,
+			Left = 14,
+			Top = 29,
+			Width = 32,
+			Height = 32,
+			BackColor = Theme.PanelLight
+		};
+
+		Label titleLabel = new()
+		{
+			Text = "GPU",
+			Left = 64,
+			Top = 8,
+			Width = 250,
+			Height = 20,
+			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight
+		};
+
+		Label nameLabel = new()
+		{
+			Text = hardware.Gpu,
+			Left = 64,
+			Top = 29,
+			Width = width - 260,
+			Height = 20,
+			Font = new Font("Consolas", 8.8F),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label pcieCurrentLabel = new()
+		{
+			Text = hardware.GpuPcieCurrent,
+			Left = 64,
+			Top = 50,
+			Width = width - 260,
+			Height = 18,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label pcieMaxLabel = new()
+		{
+			Text = hardware.GpuPcieMax,
+			Left = 64,
+			Top = 68,
+			Width = width - 260,
+			Height = 18,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label vramLabel = new()
+		{
+			Text = hardware.GpuVram,
+			Left = width - 185,
+			Top = 29,
+			Width = 165,
+			Height = 20,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			TextAlign = ContentAlignment.MiddleRight
+		};
+
+		Label tempLabel = new()
+		{
+			Text = hardware.GpuTemperature,
+			Left = width - 185,
+			Top = 50,
+			Width = 165,
+			Height = 20,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			TextAlign = ContentAlignment.MiddleRight
+		};
+
+		card.Controls.AddRange([
+			icon,
+			titleLabel,
+			nameLabel,
+			pcieCurrentLabel,
+			pcieMaxLabel,
+			vramLabel,
+			tempLabel
+		]);
+		return card;
+	}
+
+
+
 	private static void StyleButton(Button button, Color background, Color foreground)
 	{
 		button.BackColor = background;
@@ -556,6 +664,7 @@ public sealed class MainForm : Form
 		button.Font = new Font("Segoe UI", 10, FontStyle.Bold);
 		button.Cursor = Cursors.Hand;
 	}
+
 
 	private static SingularityIcon CreateIcon(SingularityIconType type, int left, int top, Color color)
 	{

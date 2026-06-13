@@ -8,10 +8,12 @@ namespace Singularity.Monitoring;
 
 public sealed class HardwareInfoReader
 {
+	private readonly NvmlGpuInfoReader nvmlGpuInfoReader = new();
 	public HardwareInfo Read()
 	{
 		CpuInfo cpuInfo = ReadCpuInfo();
-		GpuInfo gpuInfo = ReadGpuInfo();
+		//GpuInfo gpuInfo = ReadGpuInfo();
+		GpuInfo gpuInfo = nvmlGpuInfoReader.ReadPrimaryGpu();
 		return new HardwareInfo
 		{
 			Mainboard = ReadMainboard(), 
@@ -19,7 +21,10 @@ public sealed class HardwareInfoReader
 			Cpu = cpuInfo.Name,
 			CpuDetails = cpuInfo.Details,
 			Gpu = gpuInfo.Name,
-			GpuDetails = gpuInfo.Details,
+			GpuVram = gpuInfo.Vram,
+			GpuTemperature = gpuInfo.Temperature,
+			GpuPcieCurrent = $"Gen{gpuInfo.PcieGenerationCurrent}x{gpuInfo.PcieWidthCurrent}",
+			GpuPcieMax = $"Gen{gpuInfo.PcieGenerationMax}x{gpuInfo.PcieWidthMax}",
 			MemoryModules = ReadMemoryModules()
 		};
 	}
@@ -43,19 +48,6 @@ public sealed class HardwareInfoReader
 		string biosDateRaw = ReadWmiValue("Win32_BIOS", "ReleaseDate");
 		string biosDate = FormatWmiDate(biosDateRaw);
 		return $"BIOS: {biosVersion} ({biosDate})";//{boardVersion} {boardSerial} {biosManufacturer}
-	}
-
-
-	private sealed class CpuInfo
-	{
-		public string Name { get; set; } = "Unknown";
-		public string Details { get; set; } = "Unknown";
-	}
-
-	private sealed class GpuInfo
-	{
-		public string Name { get; set; } = "Unknown";
-		public string Details { get; set; } = "Unknown";
 	}
 
 	private static string ReadCpu()
