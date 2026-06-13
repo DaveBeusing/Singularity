@@ -15,6 +15,7 @@ public sealed class HardwareInfoReader
 		return new HardwareInfo
 		{
 			Mainboard = ReadMainboard(), 
+			MainboardDetails = ReadMainboardDetails(),
 			Cpu = cpuInfo.Name,
 			CpuDetails = cpuInfo.Details,
 			Gpu = gpuInfo.Name,
@@ -29,6 +30,21 @@ public sealed class HardwareInfoReader
 		string product = ReadWmiValue("Win32_BaseBoard", "Product");
 		return $"{manufacturer} {product}".Trim();
 	}
+
+	//via WMI können wir nicht zuverlässig die PCIe Generation auslesen
+	//wir müssten anhand des Product das Chipset auslesen und ggü. PCIe Gen mappen
+	//das lassen wir uns holen uns später uas NVML die Anbindung der GPU
+	private static string ReadMainboardDetails()
+	{
+		string boardVersion = ReadWmiValue("Win32_BaseBoard", "Version");
+		string boardSerial = ReadWmiValue("Win32_BaseBoard", "SerialNumber");
+		string biosManufacturer = ReadWmiValue("Win32_BIOS", "Manufacturer");
+		string biosVersion = ReadWmiValue("Win32_BIOS", "SMBIOSBIOSVersion");
+		string biosDateRaw = ReadWmiValue("Win32_BIOS", "ReleaseDate");
+		string biosDate = FormatWmiDate(biosDateRaw);
+		return $"BIOS: {biosVersion} ({biosDate})";//{boardVersion} {boardSerial} {biosManufacturer}
+	}
+
 
 	private sealed class CpuInfo
 	{
@@ -297,6 +313,15 @@ public sealed class HardwareInfoReader
 		return $"{mb:0} MB";
 	}
 
+	private static string FormatWmiDate(string raw)
+	{
+		if (string.IsNullOrWhiteSpace(raw) || raw.Length < 8)
+			return "Unknown";
+		string year = raw[..4];
+		string month = raw.Substring(4, 2);
+		string day = raw.Substring(6, 2);
+		return $"{year}-{month}-{day}";
+	}
 
 	private static string ReadWmiValue(string className, string propertyName)
 	{

@@ -123,7 +123,7 @@ public sealed class MainForm : Form
 		int hardwareTop = 55;
 		int hardwareCardWidth = 800;
 
-		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, "", 20, hardwareTop, hardwareCardWidth);
+		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, hardware.MainboardDetails, 20, hardwareTop, hardwareCardWidth);
 
 		hardwareTop += HardwareCardHeight + HardwareCardGap;
 		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, 20, hardwareTop, hardwareCardWidth);
