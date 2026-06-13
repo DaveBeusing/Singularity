@@ -1,3 +1,7 @@
+// Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
+// Licensed under the MIT License.
+// See LICENSE file in the project root for full license information.
+
 using Singularity.Core;
 using Singularity.Monitoring;
 using Singularity.UI.Controls;
@@ -43,12 +47,13 @@ public sealed class MainForm : Form
 	private readonly Label gpuInfoValue = new();
 
 	private const int CardHeight = 78;
+	private const int HardwareCardHeight = 78;
+	private const int HardwareCardGap = 10;
+
 
 	public MainForm()
 	{
-		Text = "Singularity";
-		ClientSize = new Size(900, 920);
-		MinimumSize = new Size(900, 920);
+		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
 		MaximizeBox = false;
@@ -70,7 +75,7 @@ public sealed class MainForm : Form
 
 		Label title = new()
 		{
-			Text = "//SINGULARITY◉",
+			Text = "//SINGULARITY✦",
 			Left = 30,
 			Top = 24,
 			Width = 490,
@@ -110,22 +115,44 @@ public sealed class MainForm : Form
 
 		//Hardware Panel
 		HardwareInfo hardware = hardwareInfoReader.Read();
-		Panel hardwarePanel = CreatePanel(30, 150, 840, 250);
-		//Label hardwareTitle = CreateSectionTitle("SYSTEM HARDWARE", 20, 16);
+		int hardwareCardCount = 3 + hardware.MemoryModules.Count;
+		int hardwarePanelHeight = 65 + hardwareCardCount * (HardwareCardHeight + HardwareCardGap);
 
-		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, 20, 55, 800);
-		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, 20, 115, 800);
-		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, 20, 175, 800);
-
+		Panel hardwarePanel = CreatePanel(30, 170, 840, hardwarePanelHeight);
 		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "SYSTEM HARDWARE");
+		int hardwareTop = 55;
+		int hardwareCardWidth = 800;
+
+		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, "", 20, hardwareTop, hardwareCardWidth);
+
+		hardwareTop += HardwareCardHeight + HardwareCardGap;
+		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, "", 20, hardwareTop, hardwareCardWidth);
+
+		hardwareTop += HardwareCardHeight + HardwareCardGap;
+		Panel gpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Gpu, "GPU", hardware.Gpu, "", 20, hardwareTop, hardwareCardWidth);
+
+		hardwareTop += HardwareCardHeight + HardwareCardGap;
+
 		hardwarePanel.Controls.AddRange([
 			boardCardInfo,
 			cpuCardInfo,
 			gpuCardInfo
 		]);
 
+		foreach (MemoryModuleInfo module in hardware.MemoryModules)
+		{
+			string line1 = module.Slot;
+			string line2 = $"{module.Capacity} {module.MemoryType} {module.DimmType} {module.EccType} {module.Speed} :: {module.Manufacturer} :: {module.PartNumber}";
+			Panel memoryCard = CreateHardwareInfoCard(SingularityIconType.Memory, "MEMORY", line1, line2, 20, hardwareTop, hardwareCardWidth);
+			hardwarePanel.Controls.Add(memoryCard);
+			hardwareTop += HardwareCardHeight + HardwareCardGap;
+		}
+
+		//dynamische höhe je nach RAM count für darunter liegende panels
+		int lowerPanelsTop = hardwarePanel.Top + hardwarePanel.Height + 20;
+
 		//Workloads Panel
-		Panel workloadsPanel = CreatePanel(30, 420, 405, 365);
+		Panel workloadsPanel = CreatePanel(30, lowerPanelsTop, 405, 365);
 		AddSectionHeader(workloadsPanel, SingularityIconType.Cpu, "WORKLOADS");
 
 		//CPU Workload
@@ -181,7 +208,7 @@ public sealed class MainForm : Form
 		]);
 
 		//Metrics Panel
-		Panel metricsPanel = CreatePanel(465, 420, 405, 365);
+		Panel metricsPanel = CreatePanel(465, lowerPanelsTop, 405, 365);
 		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
 
 		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
@@ -194,7 +221,8 @@ public sealed class MainForm : Form
 		]);
 
 		//Control Panel
-		Panel controlPanel = CreatePanel(30, 805, 840, 80);
+		int controlPanelTop = lowerPanelsTop + 385;
+		Panel controlPanel = CreatePanel(30, controlPanelTop, 840, 80);
 
 		startButton.Text = "START TEST";
 		startButton.Left = 20;
@@ -230,8 +258,6 @@ public sealed class MainForm : Form
 			countdownLabel
 		]);
 
-
-
 		//Fill 
 		Controls.AddRange([
 			title,
@@ -242,6 +268,11 @@ public sealed class MainForm : Form
 			metricsPanel,
 			controlPanel
 		]);
+
+		//Dynamic window sizing
+		Size windowSize = new(900, controlPanelTop + 115);
+		ClientSize = windowSize;
+		MinimumSize = windowSize;
 
 	}
 
@@ -378,15 +409,15 @@ public sealed class MainForm : Form
 		return card;
 	}
 
-	private static Panel CreateHardwareInfoCard(SingularityIconType iconType, string title, string value, int left, int top, int width)
+	private static Panel CreateHardwareInfoCard(SingularityIconType iconType, string title, string line1, string line2, int left, int top, int width)
 	{
-		Panel card = CreateCard(left, top, width, 50);
+		Panel card = CreateCard(left, top, width, HardwareCardHeight);
 		SingularityIcon icon = new()
 		{
 			IconType = iconType,
 			IconColor = Theme.Accent,
-			Left = 12,
-			Top = 9,
+			Left = 14,
+			Top = 20,
 			Width = 32,
 			Height = 32,
 			BackColor = Theme.PanelLight
@@ -394,9 +425,9 @@ public sealed class MainForm : Form
 		Label titleLabel = new()
 		{
 			Text = title,
-			Left = 60,
-			Top = 8,
-			Width = 80,
+			Left = 64,
+			Top = 10,
+			Width = width - 84,
 			Height = 20,
 			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
 			ForeColor = Theme.TextMuted,
@@ -404,13 +435,26 @@ public sealed class MainForm : Form
 		};
 		Label valueLabel = new()
 		{
-			Text = value,
-			Left = 60,
-			Top = 25,
-			Width = width - 80,
-			Height = 20,
+			Text = line1,
+			Left = 64,
+			Top = 31,
+			Width = width - 84,
+			Height = 18,
 			Font = new Font("Consolas", 8.5F, FontStyle.Regular),
 			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		Label detailLabel = new()
+		{
+			Text = line2,
+			Left = 64,
+			Top = 50,
+			Width = width - 84,
+			Height = 18,
+			Font = new Font("Consolas", 8.5F),
+			ForeColor = Theme.TextMuted,
 			BackColor = Theme.PanelLight,
 			AutoEllipsis = true
 		};
@@ -418,7 +462,8 @@ public sealed class MainForm : Form
 		card.Controls.AddRange([
 			icon,
 			titleLabel,
-			valueLabel
+			valueLabel,
+			detailLabel
 		]);
 		return card;
 	}
@@ -510,11 +555,9 @@ public sealed class MainForm : Form
 		cpuMetricValue.Text = $"{snapshot.ProcessCpuPercent:F1} %";
 		appRamMetricValue.Text = $"{snapshot.ProcessMemoryMb:N0} MB";
 		systemRamMetricValue.Text =	$"{snapshot.UsedPhysicalMemoryPercent:F1} % | {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB";
-
 		cpuBar.Value = (int)Math.Clamp(snapshot.ProcessCpuPercent, 0, 100);
 		double appRamPercent = snapshot.ProcessMemoryMb / 32000.0 * 100.0;
 		appRamBar.Value = (int)Math.Clamp(appRamPercent, 0, 100);
-
 		systemRamBar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
 	}
 

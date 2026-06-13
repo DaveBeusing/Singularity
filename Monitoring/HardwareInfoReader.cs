@@ -1,3 +1,7 @@
+// Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
+// Licensed under the MIT License.
+// See LICENSE file in the project root for full license information.
+
 using System.Management;
 
 namespace Singularity.Monitoring;
@@ -6,7 +10,7 @@ public sealed class HardwareInfoReader
 {
 	public HardwareInfo Read()
 	{
-		return new HardwareInfo{Mainboard = ReadMainboard(), Cpu = ReadCpu(), Gpu = ReadGpu()};
+		return new HardwareInfo{Mainboard = ReadMainboard(), Cpu = ReadCpu(), Gpu = ReadGpu(), MemoryModules = ReadMemoryModules()};
 	}
 
 	private static string ReadMainboard()
@@ -25,6 +29,194 @@ public sealed class HardwareInfoReader
 	{
 		return ReadWmiValue("Win32_VideoController", "Name");
 	}
+
+	private static List<MemoryModuleInfo> ReadMemoryModules()
+	{
+		List<MemoryModuleInfo> modules = new();
+		try
+		{
+			using ManagementObjectSearcher searcher = new(
+				@"SELECT
+					BankLabel,
+					DeviceLocator,
+					Manufacturer,
+					PartNumber,
+					Capacity,
+					Speed,
+					SMBIOSMemoryType,
+					FormFactor,
+					TotalWidth,
+					DataWidth
+				FROM Win32_PhysicalMemory");
+			foreach (ManagementObject obj in searcher.Get())
+			{
+				ushort memoryType = Convert.ToUInt16(obj["SMBIOSMemoryType"] ?? 0);
+				ushort dataWidth = Convert.ToUInt16(obj["DataWidth"] ?? 0);
+				ushort totalWidth = Convert.ToUInt16(obj["TotalWidth"] ?? 0);
+				ushort formFactor = Convert.ToUInt16(obj["FormFactor"] ?? 0);
+				string partNumber = obj["PartNumber"]?.ToString()?.Trim() ?? "Unknown";
+				ulong bytes = Convert.ToUInt64(obj["Capacity"]);
+				double gb = bytes / 1024d / 1024d / 1024d;
+				modules.Add(new MemoryModuleInfo
+				{
+					Slot = $"{obj["BankLabel"]} {obj["DeviceLocator"]}".Trim(),
+					Manufacturer = DecodeMemoryManufacturer(obj["Manufacturer"]?.ToString() ?? "Unknown"),
+					PartNumber = obj["PartNumber"]?.ToString()?.Trim() ?? "Unknown",
+					Capacity = $"{Math.Round(gb)}GB",
+					Speed = $"{obj["Speed"]}MT/s",
+					MemoryType = DecodeMemoryType(memoryType),
+					FormFactor = DecodeFormFactor(formFactor),
+					EccType = DecodeEccType(dataWidth, totalWidth),
+					DimmType = DecodeDimmType(partNumber)
+				});
+			}
+		}
+		catch
+		{
+			modules.Add(new MemoryModuleInfo
+			{
+				Slot = "Unknown",
+				Capacity = "Unknown"
+			});
+		}
+
+		return modules;
+	}
+
+	//map SMBIOSMemoryType to readable name
+	private static string DecodeMemoryType(ushort type)
+	{
+		return type switch
+		{
+			20 => "DDR",
+			21 => "DDR2",
+			24 => "DDR3",
+			26 => "DDR4",
+			34 => "DDR5",
+			_ => $"Unknown ({type})"
+		};
+	}
+
+	//map JEDEC-Manufacturer-ID (hexcode) to readable (04CD->G.Skill)
+	//TODO extend mappings
+	//TODO move to its own place to make it more maintainable -> Monitoring/JedecManufacturerDecoder.cs
+	private static string DecodeMemoryManufacturer(string rawManufacturer)
+	{
+		string value = rawManufacturer.Trim().Replace("-", "").Replace(" ", "").ToUpperInvariant();
+		return value switch
+		{
+			// Samsung
+			"CE00" => "Samsung",
+			"00CE" => "Samsung",
+			"CE00000000000000" => "Samsung",
+
+			// SK hynix
+			"80AD" => "SK hynix",
+			"AD80" => "SK hynix",
+
+			// Micron
+			"2C00" => "Micron",
+			"002C" => "Micron",
+
+			// Crucial (Micron Consumer)
+			"2C80" => "Crucial",
+			"802C" => "Crucial",
+
+			// Kingston
+			"9801" => "Kingston",
+			"0198" => "Kingston",
+
+			// Corsair
+			"9E7F7F" => "Corsair",
+			"7F7F9E" => "Corsair",
+
+			// A-DATA
+			"04CB" => "A-DATA",
+			"CB04" => "A-DATA",
+
+			// G.Skill
+			"CD04" => "G.Skill",
+			"04CD" => "G.Skill",
+
+			// TeamGroup
+			"EF00" => "TeamGroup",
+			"00EF" => "TeamGroup",
+
+			// Patriot
+			"7F7F7F" => "Patriot",
+
+			// Nanya
+			"0B00" => "Nanya",
+			"000B" => "Nanya",
+
+			// Winbond
+			"DA00" => "Winbond",
+			"00DA" => "Winbond",
+
+			// Transcend
+			"4F01" => "Transcend",
+			"014F" => "Transcend",
+
+			// Apacer
+			"7A7A" => "Apacer",
+
+			// Innodisk
+			"86F1" => "Innodisk",
+
+			// Smart Modular
+			"9401" => "SMART Modular",
+
+			// Super Talent
+			"CB7F" => "Super Talent",
+
+			//default einfach den Hexcode zürück geben
+			//TODO abfangen und melden damit wir erweitern können
+			_ => value
+		};
+	}
+
+	//ECC hat 8bits mehr ;)
+	private static string DecodeEccType(ushort dataWidth, ushort totalWidth)
+	{
+		if (totalWidth > dataWidth)
+		{
+			return "ECC";
+		}
+		return "Non-ECC";
+		//ternary??
+	}
+
+	//WMI liefert keine Daten dazu, workaround ist die P/N nach angaben zu filtern
+	//TODO alternativen?
+	private static string DecodeDimmType(string partNumber)
+	{
+		string pn =	partNumber.ToUpperInvariant().Replace(" ", "");
+		if (pn.Contains("LRDIMM"))
+			return "LRDIMM";
+		if (pn.Contains("RDIMM"))
+			return "RDIMM";
+		if (pn.Contains("UDIMM"))
+			return "UDIMM";
+		if (pn.Contains("SODIMM"))
+			return "SO-DIMM";
+		return "DIMM";
+	}
+
+	//Module formfactor
+	private static string DecodeFormFactor(ushort formFactor)
+	{
+		return formFactor switch
+		{
+			8  => "DIMM",
+			9  => "TSOP",
+			12 => "SO-DIMM",
+			13 => "Micro-DIMM",
+			15 => "FB-DIMM",
+			16 => "Die",
+			_  => $"Unknown ({formFactor})"
+		};
+	}
+
 
 	private static string ReadWmiValue(string className, string propertyName)
 	{
