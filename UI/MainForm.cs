@@ -63,6 +63,23 @@ public sealed class MainForm : Form
 	private const int SectionHeaderHeight = 55;
 
 
+	//tabs
+	private readonly Button hardwareTabButton = new();
+	private readonly Button workloadsTabButton = new();
+	private readonly Panel tabBarPanel = new();
+	private readonly Panel tabHostPanel = new();
+	private readonly Panel hardwareTabPanel = new();
+	private readonly Panel workloadsTabPanel = new();
+	private enum ActiveTab
+	{
+		Hardware,
+		Workloads
+	}
+
+
+
+private ActiveTab activeTab = ActiveTab.Hardware;
+
 
 	public MainForm()
 	{
@@ -114,7 +131,7 @@ public sealed class MainForm : Form
 		Label versionLabel = new()
 		{
 			Text = VersionString,
-			Left = 740,
+			Left = 750,
 			Top = 32,//78
 			Width = 130,
 			Height = 24,
@@ -125,7 +142,7 @@ public sealed class MainForm : Form
 		};
 
 		//Status Badge
-		statusBadge.Left = 740;
+		statusBadge.Left = 750;
 		statusBadge.Top = 78;//32
 		statusBadge.Width = 130;
 		statusBadge.Height = 32;
@@ -135,18 +152,70 @@ public sealed class MainForm : Form
 		statusBadge.BackColor = Theme.PanelLight;
 		statusBadge.ForeColor = Theme.TextMain;
 
-		//OS panel
+
+		//tabs - ospanel bleibt noch stehen, mal gucken wie wir das später besser integrieren können
+		//Panel tabBarPanel = CreatePanel(40, osPanel.Bottom + 20, 840, 54);
+		//tab bar
+		tabBarPanel.Left = 40;
+		tabBarPanel.Top = 140;
+		tabBarPanel.Width = 840;
+		tabBarPanel.Height = 54;
+		tabBarPanel.BackColor = Theme.Panel;
+
+		hardwareTabButton.Text = "HARDWARE INFO";
+		hardwareTabButton.Left = 20;
+		hardwareTabButton.Top = 10;
+		hardwareTabButton.Width = 220;
+		hardwareTabButton.Height = 34;
+		hardwareTabButton.Click += (_, _) => SwitchTab(ActiveTab.Hardware);
+
+		workloadsTabButton.Text = "WORKLOADS";
+		workloadsTabButton.Left = 250;
+		workloadsTabButton.Top = 10;
+		workloadsTabButton.Width = 240;
+		workloadsTabButton.Height = 34;
+		workloadsTabButton.Click += (_, _) => SwitchTab(ActiveTab.Workloads);
+
+		tabBarPanel.Controls.Add(hardwareTabButton);
+		tabBarPanel.Controls.Add(workloadsTabButton);
+
+		//tab panels
+		tabHostPanel.Left = 40;
+		tabHostPanel.Top = tabBarPanel.Bottom + 20;
+		tabHostPanel.Width = 840;
+		tabHostPanel.BackColor = Theme.Background;
+
+		hardwareTabPanel.Left = 0;
+		hardwareTabPanel.Top = 0;
+		hardwareTabPanel.Width = tabHostPanel.Width;
+		hardwareTabPanel.Height = tabHostPanel.Height;
+		hardwareTabPanel.BackColor = Theme.Background;
+
+		workloadsTabPanel.Left = 0;
+		workloadsTabPanel.Top = 0;
+		workloadsTabPanel.Width = tabHostPanel.Width;
+		workloadsTabPanel.Height = tabHostPanel.Height;
+		workloadsTabPanel.BackColor = Theme.Background;
+
+
+		//
+		// HARDWRAE TAB
+		//
+		
 		OsInfo osInfo = osInfoReader.Read();
-		Panel osPanel = CreatePanel(MainLeft, 150, MainWidth, 150);
+		HardwareInfo hardware = hardwareInfoReader.Read();
+
+		int hardwareContentTop = 0;
+
+		Panel osPanel = CreatePanel(0, hardwareContentTop, MainWidth, 150);
 		AddSectionHeader(osPanel, SingularityIconType.Metrics, "SYSTEM OS");
 		Panel osCard = CreateOsInfoCard(osInfo, 20, 55, 800);
 		osPanel.Controls.Add(osCard);
+		//hardwareTabPanel.Controls.Add(osPanel);
 
+		hardwareContentTop = osPanel.Bottom + 20;
 
 		//Hardware Panel
-		HardwareInfo hardware = hardwareInfoReader.Read();
-		int hardwarePanelTop = osPanel.Top + osPanel.Height + 20;
-		int hardwareCardCount = 3 + hardware.MemoryModules.Count;
 		int memoryCount = hardware.MemoryModules.Count;
 
 		int hardwarePanelHeight =
@@ -157,22 +226,18 @@ public sealed class MainForm : Form
 			memoryCount * (LargeHardwareCardHeight + HardwareCardGap) +
 			10;
 
-		Panel hardwarePanel = CreatePanel(MainLeft, hardwarePanelTop, MainWidth, hardwarePanelHeight);
-
+		Panel hardwarePanel = CreatePanel(0, hardwareContentTop, MainWidth, hardwarePanelHeight);
 		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "SYSTEM HARDWARE");
 
 		int hardwareTop = SectionHeaderHeight;
 		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, hardware.MainboardDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
 
-		//hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
-		//Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
-		hardwareTop += 92 + HardwareCardGap;
 		Panel cpuCardInfo = CreateCpuInfoCard(hardware, HardwareCardLeft, hardwareTop, HardwareCardWidth);
-
 		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
-		Panel gpuCardInfo = CreateGpuInfoCard( hardware, 20, hardwareTop, HardwareCardWidth);
 
-		hardwareTop += LargeHardwareCardHeight  + HardwareCardGap;
+		Panel gpuCardInfo = CreateGpuInfoCard( hardware, 20, hardwareTop, HardwareCardWidth);
+		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 
 		hardwarePanel.Controls.AddRange([
 			boardCardInfo,
@@ -184,14 +249,23 @@ public sealed class MainForm : Form
 		{
 			Panel memoryCard = CreateMemoryInfoCard(module, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 			hardwarePanel.Controls.Add(memoryCard);
-			hardwareTop += LargeHardwareCardHeight  + HardwareCardGap;
+			hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 		}
 
+		hardwarePanel.Height = hardwareTop + 10;
 		//dynamische höhe je nach RAM count für darunter liegende panels
-		int lowerPanelsTop = hardwarePanel.Top + hardwarePanel.Height + 20;
+		//int lowerPanelsTop = hardwarePanel.Top + hardwarePanel.Height + 20;
+
+
+		//
+		//WORKLOADS TAB
+		//
+
 
 		//Workloads Panel
-		Panel workloadsPanel = CreatePanel(MainLeft, lowerPanelsTop, 405, 365);
+		//Panel workloadsPanel = CreatePanel(MainLeft, lowerPanelsTop, 405, 365);
+		//tabs -> lebt jetzt in hardwareTabPanel.Controls 
+		Panel workloadsPanel = CreatePanel(0, 0, 405, 365);
 		AddSectionHeader(workloadsPanel, SingularityIconType.Cpu, "WORKLOADS");
 
 		//CPU Workload
@@ -246,13 +320,15 @@ public sealed class MainForm : Form
 			gpuCard
 		]);
 
-		//Metrics Panel
+		// Metrics Panel
+		//
+		//Panel metricsPanel = CreatePanel(475, lowerPanelsTop, 405, 365);
+		//tabs hardwareTabPanel.Controls
+		Panel metricsPanel = CreatePanel(435, 0, 405, 365);
+		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
 		cpuBar.FillColor = Theme.Success;
 		appRamBar.FillColor = Theme.Accent;
 		systemRamBar.FillColor = Theme.Danger;
-
-		Panel metricsPanel = CreatePanel(475, lowerPanelsTop, 405, 365);
-		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
 		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
 		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, appRamBar, 20, 150);
 		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, systemRamBar, 20, 240);
@@ -262,9 +338,15 @@ public sealed class MainForm : Form
 			systemRamMetric
 		]);
 
+
+
+
+
+		//
 		//Control Panel
-		int controlPanelTop = lowerPanelsTop + 365 + SectionGap;
-		Panel controlPanel = CreatePanel(MainLeft, controlPanelTop, MainWidth, 80);
+		//int controlPanelTop = lowerPanelsTop + 365 + SectionGap;
+		//Panel controlPanel = CreatePanel(MainLeft, controlPanelTop, MainWidth, 80);
+		Panel controlPanel = CreatePanel(0, metricsPanel.Bottom + 20, MainWidth, 80);
 
 		startButton.Text = "START TEST";
 		startButton.Left = 20;
@@ -300,21 +382,52 @@ public sealed class MainForm : Form
 			countdownLabel
 		]);
 
-		//Fill 
-		Controls.AddRange([
-			title,
-			subtitle,
-			versionLabel,
-			statusBadge,
+
+
+		//tabhost dynamic height
+		int hardwareTabHeight = Math.Max(osPanel.Bottom, hardwarePanel.Bottom) + 20;
+		int workloadsTabHeight = controlPanel.Bottom + 20;//365
+		int tabHostHeight = Math.Max(hardwareTabHeight, workloadsTabHeight);
+		tabHostPanel.Height = tabHostHeight;
+		hardwareTabPanel.Height = tabHostHeight;
+		workloadsTabPanel.Height = tabHostHeight;
+
+		tabHostPanel.Controls.AddRange([
+			hardwareTabPanel,
+			workloadsTabPanel
+		]);
+
+		//tabHostPanel.Controls.Add(hardwareTabPanel);
+		//tabHostPanel.Controls.Add(workloadsTabPanel);
+
+
+		//Tabs
+		hardwareTabPanel.Controls.AddRange([
 			osPanel,
-			hardwarePanel,
+			hardwarePanel
+		]);
+		workloadsTabPanel.Controls.AddRange([
 			workloadsPanel,
 			metricsPanel,
 			controlPanel
 		]);
 
+		//Root controls
+		Controls.AddRange([
+			title,
+			subtitle,
+			versionLabel,
+			statusBadge,
+			tabBarPanel,
+			tabHostPanel
+		]);
+
+		SwitchTab(ActiveTab.Hardware);
+
 		//Dynamic window sizing
-		Size windowSize = new(920, controlPanelTop + 115);
+		//Size windowSize = new(920, controlPanelTop + 115);
+		//tabs
+		Size windowSize = new(920, tabHostPanel.Bottom + 40);
 		ClientSize = windowSize;
 		MinimumSize = windowSize;
 
@@ -967,6 +1080,34 @@ public sealed class MainForm : Form
 		appRamBar.Value = (int)Math.Clamp(appRamPercent, 0, 100);
 		systemRamBar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
 	}
+
+	private void SwitchTab(ActiveTab tab)
+	{
+		activeTab = tab;
+		hardwareTabPanel.Visible = activeTab == ActiveTab.Hardware;
+		workloadsTabPanel.Visible = activeTab == ActiveTab.Workloads;
+		if (activeTab == ActiveTab.Hardware)
+		{
+			hardwareTabPanel.BringToFront();
+		}
+		else
+		{
+			workloadsTabPanel.BringToFront();
+		}
+		StyleTabButton(hardwareTabButton, activeTab == ActiveTab.Hardware);
+		StyleTabButton(workloadsTabButton, activeTab == ActiveTab.Workloads);
+	}
+
+	private static void StyleTabButton(Button button, bool isActive)
+	{
+		button.BackColor = isActive ? Theme.Accent : Theme.PanelLight;
+		button.ForeColor = isActive ? Color.Black : Theme.TextMain;
+		button.FlatStyle = FlatStyle.Flat;
+		button.FlatAppearance.BorderSize = 0;
+		button.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+		button.Cursor = Cursors.Hand;
+	}
+
 
 	protected override void OnFormClosing(FormClosingEventArgs e)
 	{
