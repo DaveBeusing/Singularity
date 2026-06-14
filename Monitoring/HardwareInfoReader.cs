@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using System.Management;
+using System.Runtime.InteropServices;
 
 namespace Singularity.Monitoring;
 
@@ -59,16 +60,36 @@ public sealed class HardwareInfoReader
 	{
 		try
 		{
-			using ManagementObjectSearcher searcher = new("SELECT Name, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor");
+			using ManagementObjectSearcher searcher = new(
+				@"SELECT
+					Name,
+					NumberOfCores,
+					NumberOfLogicalProcessors,
+					MaxClockSpeed,
+					L2CacheSize,
+					L3CacheSize,
+					SocketDesignation,
+					VirtualizationFirmwareEnabled
+				FROM Win32_Processor");
 			foreach (ManagementObject obj in searcher.Get())
 			{
-				string name = obj["Name"]?.ToString()?.Trim() ?? "Unknown";
-				string cores = obj["NumberOfCores"]?.ToString() ?? "?";
-				string threads = obj["NumberOfLogicalProcessors"]?.ToString() ?? "?";
+				string name = CleanWmiValue(obj["Name"]?.ToString() ?? "Unknown");
+				uint cores = ConvertToUInt32(obj["NumberOfCores"]);
+				uint threads = ConvertToUInt32(obj["NumberOfLogicalProcessors"]);
+				uint maxClockMhz = ConvertToUInt32(obj["MaxClockSpeed"]);
+				uint l2CacheKb = ConvertToUInt32(obj["L2CacheSize"]);
+				uint l3CacheKb = ConvertToUInt32(obj["L3CacheSize"]);
+				string socket = CleanWmiValue(obj["SocketDesignation"]?.ToString() ?? "Unknown");
+				bool virtualization = ConvertToBool(obj["VirtualizationFirmwareEnabled"]);
+				string architecture = RuntimeInformation.ProcessArchitecture.ToString();
+
 				return new CpuInfo
 				{
 					Name = name,
-					Details = $"{cores} Cores / {threads} Threads"
+					CoreThreadInfo = $"{cores} Cores / {threads} Threads",
+					ClockInfo = maxClockMhz > 0 ? $"{maxClockMhz / 1000d:0.00} GHz Max" : "Clock Unknown",
+					CacheInfo = $"L2 {FormatKilobytes(l2CacheKb)} / L3 {FormatKilobytes(l3CacheKb)}",
+					PlatformInfo = $"{socket} | {architecture} | VT {(virtualization ? "Enabled" : "Disabled")}"
 				};
 			}
 		}
@@ -332,6 +353,68 @@ public sealed class HardwareInfoReader
 			return "Unknown";
 		}
 		return "Unknown";
+	}
+
+	private static string CleanWmiValue(string value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+			return "Unknown";
+		string cleaned = value.Trim();
+		string normalized = cleaned.ToUpperInvariant();
+		string[] invalidValues =
+		{
+			"DEFAULT STRING",
+			"TO BE FILLED BY O.E.M.",
+			"TO BE FILLED BY OEM",
+			"SYSTEM SERIAL NUMBER",
+			"NONE",
+			"NULL",
+			"N/A",
+			"NA",
+			"0",
+			"UNKNOWN"
+		};
+		if (invalidValues.Contains(normalized))
+			return "Unknown";
+		return cleaned;
+	}
+
+	private static uint ConvertToUInt32(object? value)
+	{
+		if (value == null)
+			return 0;
+		try
+		{
+			return Convert.ToUInt32(value);
+		}
+		catch
+		{
+			return 0;
+		}
+	}
+
+	private static bool ConvertToBool(object? value)
+	{
+		if (value == null)
+			return false;
+		try
+		{
+			return Convert.ToBoolean(value);
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
+	private static string FormatKilobytes(uint kilobytes)
+	{
+		if (kilobytes == 0)
+			return "Unknown";
+		double megabytes = kilobytes / 1024d;
+		if (megabytes >= 1)
+			return $"{megabytes:0.#} MB";
+		return $"{kilobytes} KB";
 	}
 
 }

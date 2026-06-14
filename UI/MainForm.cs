@@ -59,7 +59,7 @@ public sealed class MainForm : Form
 	private const int HardwareCardLeft = 20;
 	private const int HardwareCardGap = 10;
 	private const int StandardHardwareCardHeight = 78;
-	private const int LargeHardwareCardHeight = 92;
+	private const int LargeHardwareCardHeight = 110;//92
 	private const int SectionHeaderHeight = 55;
 
 
@@ -135,11 +135,6 @@ public sealed class MainForm : Form
 		statusBadge.BackColor = Theme.PanelLight;
 		statusBadge.ForeColor = Theme.TextMain;
 
-		cpuBar.FillColor = Theme.Success;
-		appRamBar.FillColor = Theme.Accent;
-		systemRamBar.FillColor = Theme.Danger;
-
-
 		//OS panel
 		OsInfo osInfo = osInfoReader.Read();
 		Panel osPanel = CreatePanel(MainLeft, 150, MainWidth, 150);
@@ -169,10 +164,12 @@ public sealed class MainForm : Form
 		int hardwareTop = SectionHeaderHeight;
 		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, hardware.MainboardDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 
-		hardwareTop += StandardHardwareCardHeight  + HardwareCardGap;
-		Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		//hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
+		//Panel cpuCardInfo = CreateHardwareInfoCard(SingularityIconType.Cpu, "CPU", hardware.Cpu, hardware.CpuDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		hardwareTop += 92 + HardwareCardGap;
+		Panel cpuCardInfo = CreateCpuInfoCard(hardware, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 
-		hardwareTop += HardwareCardHeight + HardwareCardGap;
+		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 		Panel gpuCardInfo = CreateGpuInfoCard( hardware, 20, hardwareTop, HardwareCardWidth);
 
 		hardwareTop += LargeHardwareCardHeight  + HardwareCardGap;
@@ -250,9 +247,12 @@ public sealed class MainForm : Form
 		]);
 
 		//Metrics Panel
+		cpuBar.FillColor = Theme.Success;
+		appRamBar.FillColor = Theme.Accent;
+		systemRamBar.FillColor = Theme.Danger;
+
 		Panel metricsPanel = CreatePanel(475, lowerPanelsTop, 405, 365);
 		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
-
 		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
 		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, appRamBar, 20, 150);
 		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, systemRamBar, 20, 240);
@@ -564,7 +564,95 @@ public sealed class MainForm : Form
 		return card;
 	}
 
+	private static Panel CreateCpuInfoCard(HardwareInfo hardware, int left, int top, int width)
+	{
+		const int height = LargeHardwareCardHeight;
+		Panel card = CreateCard(left, top, width, height);
+		SingularityIcon icon = new()
+		{
+			IconType = SingularityIconType.Cpu,
+			IconColor = Theme.Accent,
+			Left = 14,
+			Top = 29,
+			Width = 32,
+			Height = 32,
+			BackColor = Theme.PanelLight
+		};
 
+		Label titleLabel = new()
+		{
+			Text = "CPU",
+			Left = 64,
+			Top = 8,
+			Width = 200,
+			Height = 18,
+			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight
+		};
+
+		Label nameLabel = new()
+		{
+			Text = hardware.Cpu,
+			Left = 64,
+			Top = 28,
+			Width = width - 84,
+			Height = 18,
+			Font = new Font("Consolas", 8.8F),
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		string[] parts = hardware.CpuDetails.Split('|');
+
+		Label line2 = new()
+		{
+			Text = parts.Length > 0 ? parts[0].Trim() : "",
+			Left = 64,
+			Top = 48,
+			Width = width - 84,
+			Height = 18,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight
+		};
+
+		Label line3 = new()
+		{
+			Text = parts.Length > 1 ? parts[1].Trim() : "",
+			Left = 64,
+			Top = 66,
+			Width = width - 84,
+			Height = 18,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight
+		};
+
+		Label line4 = new()
+		{
+			Text = parts.Length > 2 ? string.Join(" | ", parts.Skip(2)).Trim() : "",
+			Left = 64,
+			Top = 84,
+			Width = width - 84,
+			Height = 18,
+			Font = new Font("Consolas", 8.2F),
+			ForeColor = Theme.TextMuted,
+			BackColor = Theme.PanelLight,
+			AutoEllipsis = true
+		};
+
+		card.Controls.AddRange([
+			icon,
+			titleLabel,
+			nameLabel,
+			line2,
+			line3,
+			line4
+		]);
+		return card;
+	}
 
 	private static Panel CreateGpuInfoCard(HardwareInfo hardware, int left, int top, int width)
 	{
@@ -608,7 +696,7 @@ public sealed class MainForm : Form
 
 		Label pcieCurrentLabel = new()
 		{
-			Text = $"Link PCIe {hardware.GpuPcieCurrent}",
+			Text = $"Link ⇄ PCIe {hardware.GpuPcieCurrent}",
 			Left = 64,
 			Top = 50,
 			Width = width - 260,
@@ -621,7 +709,7 @@ public sealed class MainForm : Form
 
 		Label pcieMaxLabel = new()
 		{
-			Text = $"Host PCIe {hardware.GpuPcieMax}",
+			Text = $"Host ⇄ PCIe {hardware.GpuPcieMax}",
 			Left = 64,
 			Top = 68,
 			Width = width - 260,

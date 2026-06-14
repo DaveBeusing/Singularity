@@ -7,5 +7,9 @@ namespace Singularity.Monitoring;
 public sealed class CpuInfo
 {
 	public string Name { get; set; } = "Unknown";
-	public string Details { get; set; } = "Unknown";
+	public string CoreThreadInfo { get; set; } = "Unknown";
+	public string ClockInfo { get; set; } = "Unknown";
+	public string CacheInfo { get; set; } = "Unknown";
+	public string PlatformInfo { get; set; } = "Unknown";
+	public string Details => $"{CoreThreadInfo} | {ClockInfo} | {CacheInfo} | {PlatformInfo}";
 }
