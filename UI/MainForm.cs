@@ -15,7 +15,7 @@ namespace Singularity.UI;
 /// </summary>
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.1.3-alpha";
+	private const string VersionString = "v0.1.4-alpha";
 
 	private readonly WorkloadController workloadController = new();
 	private readonly SystemMonitor systemMonitor = new();
@@ -162,7 +162,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		tabBarPanel.Height = 54;
 		tabBarPanel.BackColor = Theme.Panel;
 
-		hardwareTabButton.Text = "HARDWARE INFO";
+		hardwareTabButton.Text = "PLATFORM";
 		hardwareTabButton.Left = 20;
 		hardwareTabButton.Top = 10;
 		hardwareTabButton.Width = 220;
@@ -208,7 +208,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		int hardwareContentTop = 0;
 
 		Panel osPanel = CreatePanel(0, hardwareContentTop, MainWidth, 150);
-		AddSectionHeader(osPanel, SingularityIconType.Metrics, "SYSTEM OS");
+		AddSectionHeader(osPanel, SingularityIconType.Metrics, "OS");
 		Panel osCard = CreateOsInfoCard(osInfo, 20, 55, 800);
 		osPanel.Controls.Add(osCard);
 		//hardwareTabPanel.Controls.Add(osPanel);
@@ -227,7 +227,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 			10;
 
 		Panel hardwarePanel = CreatePanel(0, hardwareContentTop, MainWidth, hardwarePanelHeight);
-		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "SYSTEM HARDWARE");
+		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "HARDWARE");
 
 		int hardwareTop = SectionHeaderHeight;
 		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, hardware.MainboardDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);

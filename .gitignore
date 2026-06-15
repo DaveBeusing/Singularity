@@ -21,3 +21,7 @@ _ReSharper*/
 
 Thumbs.db
 .DS_Store
+
+
+.TODO
+repo_scan.txt

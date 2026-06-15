@@ -9,9 +9,7 @@ namespace Singularity.Workloads;
 public sealed class GpuWorkload : IWorkload
 {
 	public string Name => "GPU";
-
 	public bool IsRunning { get; private set; }
-
 	public void Start(CancellationToken token)
 	{
 		IsRunning = true;
@@ -24,7 +22,6 @@ public sealed class GpuWorkload : IWorkload
 			}
 		}, token);
 	}
-
 	public void Stop()
 	{
 		IsRunning = false;
