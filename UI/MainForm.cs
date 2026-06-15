@@ -4,7 +4,11 @@
 
 using Singularity.Core;
 using Singularity.Monitoring;
+using Singularity.Hardware.Providers;
+using Singularity.Hardware.Models;
+
 using Singularity.UI.Controls;
+
 
 namespace Singularity.UI;
 
@@ -42,8 +46,8 @@ public sealed class MainForm : Form
 	private readonly MetricBar appRamBar = new();
 	private readonly MetricBar systemRamBar = new();
 
-	private readonly HardwareInfoReader hardwareInfoReader = new();
-	private readonly OsInfoReader osInfoReader = new();
+	private readonly HardwareProvider hardwareProvider = new();
+	//private readonly OsProvider osProvider = new();
 
 	private readonly Label boardInfoValue = new();
 	private readonly Label cpuInfoValue = new();
@@ -202,21 +206,23 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		// HARDWRAE TAB
 		//
 		
-		OsInfo osInfo = osInfoReader.Read();
-		HardwareInfo hardware = hardwareInfoReader.Read();
+		//OsInfo osInfo = osInfoReader.Read();
+		//HardwareInfo hardware = hardwareInfoReader.Read();
+		HardwareInventory inventory = hardwareProvider.Read();
+		OsInventory osInventory = inventory.Os;
 
 		int hardwareContentTop = 0;
 
 		Panel osPanel = CreatePanel(0, hardwareContentTop, MainWidth, 150);
 		AddSectionHeader(osPanel, SingularityIconType.Metrics, "OS");
-		Panel osCard = CreateOsInfoCard(osInfo, 20, 55, 800);
+		Panel osCard = CreateOsInfoCard(osInventory, 20, 55, 800);
 		osPanel.Controls.Add(osCard);
 		//hardwareTabPanel.Controls.Add(osPanel);
 
 		hardwareContentTop = osPanel.Bottom + 20;
 
 		//Hardware Panel
-		int memoryCount = hardware.MemoryModules.Count;
+		int memoryCount = inventory.MemoryModules.Count;
 
 		int hardwarePanelHeight =
 			SectionHeaderHeight +
@@ -230,13 +236,13 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "HARDWARE");
 
 		int hardwareTop = SectionHeaderHeight;
-		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", hardware.Mainboard, hardware.MainboardDetails, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", inventory.Mainboard.Name, "BIOS " + inventory.Mainboard.BiosVersion, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 		hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
 
-		Panel cpuCardInfo = CreateCpuInfoCard(hardware, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		Panel cpuCardInfo = CreateCpuInfoCard(inventory.Cpu, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 
-		Panel gpuCardInfo = CreateGpuInfoCard( hardware, 20, hardwareTop, HardwareCardWidth);
+		Panel gpuCardInfo = CreateGpuInfoCard(inventory.Gpu, 20, hardwareTop, HardwareCardWidth);
 		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 
 		hardwarePanel.Controls.AddRange([
@@ -245,7 +251,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 			gpuCardInfo
 		]);
 
-		foreach (MemoryModuleInfo module in hardware.MemoryModules)
+		foreach (MemoryInventory module in inventory.MemoryModules)
 		{
 			Panel memoryCard = CreateMemoryInfoCard(module, HardwareCardLeft, hardwareTop, HardwareCardWidth);
 			hardwarePanel.Controls.Add(memoryCard);
@@ -566,12 +572,12 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		return card;
 	}
 
-	private static Panel CreateOsInfoCard(OsInfo osInfo, int left, int top, int width)
+	private static Panel CreateOsInfoCard(OsInventory os, int left, int top, int width)
 	{
 		Panel card = CreateCard(left, top, width, 78);
 		Label line1 = new()
 		{
-			Text = osInfo.Name,
+			Text = os.Name,
 			Left = 18,
 			Top = 10,
 			Width = width - 36,
@@ -584,7 +590,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label line2 = new()
 		{
-			Text = $"Version {osInfo.Version} | {osInfo.Architecture} | Build {osInfo.BuildNumber}",
+			Text = $"Version {os.Version} | {os.Architecture} | Build {os.Build}",
 			Left = 18,
 			Top = 32,
 			Width = width - 36,
@@ -597,7 +603,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label line3 = new()
 		{
-			Text = $"Installed {osInfo.InstallDate} | Boot {osInfo.LastBootTime}",//{osInfo.User}
+			Text = $"Installed {os.InstallDate} | Boot {os.BootTime}",
 			Left = 18,
 			Top = 52,
 			Width = width - 36,
@@ -677,7 +683,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		return card;
 	}
 
-	private static Panel CreateCpuInfoCard(HardwareInfo hardware, int left, int top, int width)
+	private static Panel CreateCpuInfoCard(CpuInventory cpu, int left, int top, int width)
 	{
 		const int height = LargeHardwareCardHeight;
 		Panel card = CreateCard(left, top, width, height);
@@ -706,7 +712,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label nameLabel = new()
 		{
-			Text = hardware.Cpu,
+			Text = cpu.Name,
 			Left = 64,
 			Top = 28,
 			Width = width - 84,
@@ -717,11 +723,11 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 			AutoEllipsis = true
 		};
 
-		string[] parts = hardware.CpuDetails.Split('|');
+		//string[] parts = hardware.CpuDetails.Split('|');
 
 		Label line2 = new()
 		{
-			Text = parts.Length > 0 ? parts[0].Trim() : "",
+			Text = cpu.CoreThreadInfo,//parts.Length > 0 ? parts[0].Trim() : "",
 			Left = 64,
 			Top = 48,
 			Width = width - 84,
@@ -733,7 +739,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label line3 = new()
 		{
-			Text = parts.Length > 1 ? parts[1].Trim() : "",
+			Text = cpu.CacheInfo,//parts.Length > 1 ? parts[1].Trim() : "",
 			Left = 64,
 			Top = 66,
 			Width = width - 84,
@@ -745,7 +751,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label line4 = new()
 		{
-			Text = parts.Length > 2 ? string.Join(" | ", parts.Skip(2)).Trim() : "",
+			Text = cpu.PlatformInfo,//parts.Length > 2 ? string.Join(" | ", parts.Skip(2)).Trim() : "",
 			Left = 64,
 			Top = 84,
 			Width = width - 84,
@@ -767,7 +773,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		return card;
 	}
 
-	private static Panel CreateGpuInfoCard(HardwareInfo hardware, int left, int top, int width)
+	private static Panel CreateGpuInfoCard(GpuInventory gpu, int left, int top, int width)
 	{
 		const int height = LargeHardwareCardHeight;
 		Panel card = CreateCard(left, top, width, height);
@@ -796,7 +802,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label nameLabel = new()
 		{
-			Text = hardware.Gpu,
+			Text = gpu.Name,
 			Left = 64,
 			Top = 29,
 			Width = width - 260,
@@ -809,7 +815,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label pcieCurrentLabel = new()
 		{
-			Text = $"Link ⇄ PCIe {hardware.GpuPcieCurrent}",
+			Text = $"Link ⇄ PCIe {gpu.PcieGenerationCurrent}x{gpu.PcieWidthCurrent}",
 			Left = 64,
 			Top = 50,
 			Width = width - 260,
@@ -822,7 +828,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label pcieMaxLabel = new()
 		{
-			Text = $"Host ⇄ PCIe {hardware.GpuPcieMax}",
+			Text = $"Host ⇄ PCIe {gpu.PcieGenerationMax}x{gpu.PcieWidthMax}",
 			Left = 64,
 			Top = 68,
 			Width = width - 260,
@@ -835,7 +841,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label vramLabel = new()
 		{
-			Text = hardware.GpuVram,
+			Text = gpu.Vram,
 			Left = width - 185,
 			Top = 29,
 			Width = 165,
@@ -848,7 +854,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Label tempLabel = new()
 		{
-			Text = hardware.GpuTemperature,
+			Text = gpu.Temperature,
 			Left = width - 185,
 			Top = 50,
 			Width = 165,
@@ -872,7 +878,7 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 	}
 
 
-	private static Panel CreateMemoryInfoCard(MemoryModuleInfo module,int left,int top,int width)
+	private static Panel CreateMemoryInfoCard(MemoryInventory module,int left,int top,int width)
 	{
 		const int height = LargeHardwareCardHeight;
 		Panel card = CreateCard(left, top, width, height);
