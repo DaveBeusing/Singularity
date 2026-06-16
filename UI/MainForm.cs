@@ -6,18 +6,13 @@ using Singularity.Core;
 using Singularity.Monitoring;
 using Singularity.Hardware.Providers;
 using Singularity.Hardware.Models;
+using Singularity.UI;
 using Singularity.UI.Controls;
 using Singularity.UI.Panels;
 using Singularity.UI.Cards;
 
-
 namespace Singularity.UI;
 
-/// <summary>
-/// Hauptfenster der Anwendung.
-/// Diese Version nutzt ein dunkles Dashboard-Layout
-/// mit klar getrennten Bereichen für Workloads und Live-Metriken.
-/// </summary>
 public sealed class MainForm : Form
 {
 	private const string VersionString = "v0.1.5-alpha";
@@ -37,9 +32,6 @@ public sealed class MainForm : Form
 	private readonly Label countdownLabel = new();
 
 	private readonly Label statusBadge = new();
-	//private readonly Label cpuMetricValue = new();
-	//private readonly Label appRamMetricValue = new();
-	//private readonly Label systemRamMetricValue = new();
 
 	private MetricsPanel cpuMetricCard = null!;
 	private MetricsPanel appRamMetricCard = null!;
@@ -48,12 +40,7 @@ public sealed class MainForm : Form
 
 	private readonly System.Windows.Forms.Timer timer = new();
 
-	//private readonly MetricBar cpuBar = new();
-	//private readonly MetricBar appRamBar = new();
-	//private readonly MetricBar systemRamBar = new();
-
 	private readonly HardwareProvider hardwareProvider = new();
-	//private readonly OsProvider osProvider = new();
 
 	private readonly Label boardInfoValue = new();
 	private readonly Label cpuInfoValue = new();
@@ -99,7 +86,7 @@ public sealed class MainForm : Form
 		MaximizeBox = false;
 		BackColor = Theme.Background;
 		ForeColor = Theme.TextMain;
-		Font = new Font("Segoe UI", 9F);
+		Font = ThemeFonts.Title;
 		AutoScaleMode = AutoScaleMode.Dpi;
 
 		BuildUi();
@@ -120,7 +107,7 @@ public sealed class MainForm : Form
 			Top = 24,
 			Width = 490,
 			Height = 64,
-			Font = new Font("Cascadia Mono", 24F, FontStyle.Bold),
+			Font = ThemeFonts.Title,
 			ForeColor = Theme.TextMain,
 			BackColor = Theme.Background
 		};
@@ -132,7 +119,7 @@ public sealed class MainForm : Form
 			Top = 80,
 			Width = 520,
 			Height = 28,
-			Font = new Font("Segoe UI", 10F),
+			Font = ThemeFonts.Subtitle,
 			ForeColor = Theme.TextMuted,
 			BackColor = Theme.Background,
 			TextAlign = ContentAlignment.MiddleLeft
@@ -145,7 +132,7 @@ public sealed class MainForm : Form
 			Top = 32,//78
 			Width = 130,
 			Height = 24,
-			Font = new Font("Consolas", 9F, FontStyle.Bold),
+			Font = ThemeFonts.SectionHeader,
 			ForeColor = Theme.TextMuted,
 			BackColor = Theme.Background,
 			TextAlign = ContentAlignment.MiddleRight
@@ -576,7 +563,7 @@ public sealed class MainForm : Form
 		button.ForeColor = foreground;
 		button.FlatStyle = FlatStyle.Flat;
 		button.FlatAppearance.BorderSize = 0;
-		button.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+		button.Font = ThemeFonts.Button;
 		button.Cursor = Cursors.Hand;
 	}
 

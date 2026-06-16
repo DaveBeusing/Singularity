@@ -43,7 +43,7 @@ public sealed class GpuInfoPanel : Panel
 			Top = top,
 			Width = width,
 			Height = 18,
-			Font = new Font("Consolas", size, bold ? FontStyle.Bold : FontStyle.Regular),
+			Font = bold ? ThemeFonts.CardTitle : ThemeFonts.CardText,
 			ForeColor = color,
 			BackColor = Theme.PanelLight,
 			TextAlign = alignment,

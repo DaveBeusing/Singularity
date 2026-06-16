@@ -24,7 +24,7 @@ public sealed class MetricsPanel : Panel
 			Top = 12,
 			Width = width - 36,
 			Height = 20,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+			Font = ThemeFonts.CardTitle,
 			ForeColor = Theme.TextMuted,
 			BackColor = Theme.PanelLight
 		};
@@ -33,7 +33,7 @@ public sealed class MetricsPanel : Panel
 		ValueLabel.Top = 32;
 		ValueLabel.Width = width - 45;
 		ValueLabel.Height = 30;
-		ValueLabel.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
+		ValueLabel.Font =  ThemeFonts.MetricValue;
 		ValueLabel.ForeColor = Theme.TextMain;
 		ValueLabel.BackColor = Theme.PanelLight;
 		ValueLabel.Text = "-";
