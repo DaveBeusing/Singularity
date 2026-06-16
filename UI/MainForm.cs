@@ -6,8 +6,9 @@ using Singularity.Core;
 using Singularity.Monitoring;
 using Singularity.Hardware.Providers;
 using Singularity.Hardware.Models;
-
 using Singularity.UI.Controls;
+using Singularity.UI.Panels;
+using Singularity.UI.Cards;
 
 
 namespace Singularity.UI;
@@ -19,7 +20,7 @@ namespace Singularity.UI;
 /// </summary>
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.1.4-alpha";
+	private const string VersionString = "v0.1.5-alpha";
 
 	private readonly WorkloadController workloadController = new();
 	private readonly SystemMonitor systemMonitor = new();
@@ -36,15 +37,20 @@ public sealed class MainForm : Form
 	private readonly Label countdownLabel = new();
 
 	private readonly Label statusBadge = new();
-	private readonly Label cpuMetricValue = new();
-	private readonly Label appRamMetricValue = new();
-	private readonly Label systemRamMetricValue = new();
+	//private readonly Label cpuMetricValue = new();
+	//private readonly Label appRamMetricValue = new();
+	//private readonly Label systemRamMetricValue = new();
+
+	private MetricsPanel cpuMetricCard = null!;
+	private MetricsPanel appRamMetricCard = null!;
+	private MetricsPanel systemRamMetricCard = null!;
+
 
 	private readonly System.Windows.Forms.Timer timer = new();
 
-	private readonly MetricBar cpuBar = new();
-	private readonly MetricBar appRamBar = new();
-	private readonly MetricBar systemRamBar = new();
+	//private readonly MetricBar cpuBar = new();
+	//private readonly MetricBar appRamBar = new();
+	//private readonly MetricBar systemRamBar = new();
 
 	private readonly HardwareProvider hardwareProvider = new();
 	//private readonly OsProvider osProvider = new();
@@ -82,7 +88,7 @@ public sealed class MainForm : Form
 
 
 
-private ActiveTab activeTab = ActiveTab.Hardware;
+	private ActiveTab activeTab = ActiveTab.Hardware;
 
 
 	public MainForm()
@@ -215,8 +221,12 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		Panel osPanel = CreatePanel(0, hardwareContentTop, MainWidth, 150);
 		AddSectionHeader(osPanel, SingularityIconType.Metrics, "OS");
-		Panel osCard = CreateOsInfoCard(osInventory, 20, 55, 800);
-		osPanel.Controls.Add(osCard);
+		OsInfoPanel osInfoPanel = new(osInventory, 800, 78)
+		{
+			Left = 20,
+			Top = 55
+		};
+		osPanel.Controls.Add(osInfoPanel);
 		//hardwareTabPanel.Controls.Add(osPanel);
 
 		hardwareContentTop = osPanel.Bottom + 20;
@@ -236,25 +246,43 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "HARDWARE");
 
 		int hardwareTop = SectionHeaderHeight;
-		Panel boardCardInfo = CreateHardwareInfoCard(SingularityIconType.Motherboard, "BOARD", inventory.Mainboard.Name, "BIOS " + inventory.Mainboard.BiosVersion, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		MainboardInfoPanel mainboardInfoPanel = new(inventory.Mainboard, HardwareCardWidth, StandardHardwareCardHeight)
+		{
+			Left = HardwareCardLeft,
+			Top = hardwareTop
+		};
 		hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
 
-		Panel cpuCardInfo = CreateCpuInfoCard(inventory.Cpu, HardwareCardLeft, hardwareTop, HardwareCardWidth);
+		CpuInfoPanel cpuInfoPanel = new(inventory.Cpu, HardwareCardWidth, LargeHardwareCardHeight)
+		{
+			Left = HardwareCardLeft,
+			Top = hardwareTop
+		};
 		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 
-		Panel gpuCardInfo = CreateGpuInfoCard(inventory.Gpu, 20, hardwareTop, HardwareCardWidth);
+
+
+		GpuInfoPanel gpuInfoPanel = new(inventory.Gpu, HardwareCardWidth, LargeHardwareCardHeight)
+		{
+			Left = HardwareCardLeft,
+			Top = hardwareTop
+		};
 		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 
 		hardwarePanel.Controls.AddRange([
-			boardCardInfo,
-			cpuCardInfo,
-			gpuCardInfo
+			mainboardInfoPanel,
+			cpuInfoPanel,
+			gpuInfoPanel
 		]);
 
 		foreach (MemoryInventory module in inventory.MemoryModules)
 		{
-			Panel memoryCard = CreateMemoryInfoCard(module, HardwareCardLeft, hardwareTop, HardwareCardWidth);
-			hardwarePanel.Controls.Add(memoryCard);
+			MemoryInfoPanel memoryInfoPanel = new(module, HardwareCardWidth, LargeHardwareCardHeight)
+			{
+				Left = HardwareCardLeft,
+				Top = hardwareTop
+			};
+			hardwarePanel.Controls.Add(memoryInfoPanel);
 			hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
 		}
 
@@ -328,20 +356,29 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 
 		// Metrics Panel
 		//
-		//Panel metricsPanel = CreatePanel(475, lowerPanelsTop, 405, 365);
-		//tabs hardwareTabPanel.Controls
 		Panel metricsPanel = CreatePanel(435, 0, 405, 365);
 		AddSectionHeader(metricsPanel, SingularityIconType.Metrics, "LIVE METRICS");
-		cpuBar.FillColor = Theme.Success;
-		appRamBar.FillColor = Theme.Accent;
-		systemRamBar.FillColor = Theme.Danger;
-		Panel cpuMetric = CreateMetricCard("APP CPU", cpuMetricValue, cpuBar, 20, 60);
-		Panel appRamMetric = CreateMetricCard("APP RAM", appRamMetricValue, appRamBar, 20, 150);
-		Panel systemRamMetric = CreateMetricCard("SYSTEM RAM", systemRamMetricValue, systemRamBar, 20, 240);
+
+		cpuMetricCard = new MetricsPanel("APP CPU", Theme.Success, 360, CardHeight)
+		{
+			Left = 20,
+			Top = 60
+		};
+		appRamMetricCard = new MetricsPanel("APP RAM", Theme.Accent, 360, CardHeight)
+		{
+			Left = 20,
+			Top = 150
+		};
+		systemRamMetricCard = new MetricsPanel("SYSTEM RAM", Theme.Danger, 360, CardHeight)
+		{
+			Left = 20,
+			Top = 240
+		};
+
 		metricsPanel.Controls.AddRange([
-			cpuMetric,
-			appRamMetric,
-			systemRamMetric
+			cpuMetricCard,
+			appRamMetricCard,
+			systemRamMetricCard
 		]);
 
 
@@ -533,465 +570,6 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 		numeric.BackColor = Theme.Background;
 	}
 
-	private static Panel CreateMetricCard(string title, Label valueLabel, MetricBar bar, int left, int top)
-	{
-		Panel card = CreateCard(left, top, 360, CardHeight);
-		Label titleLabel = new()
-		{
-			Text = title,
-			Left = 18,
-			Top = 12,
-			Width = 300,
-			Height = 20,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		valueLabel.Left = 18;
-		valueLabel.Top = 32;
-		valueLabel.Width = 315;
-		valueLabel.Height = 30;
-		valueLabel.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
-		valueLabel.ForeColor = Theme.TextMain;
-		valueLabel.BackColor = Theme.PanelLight;
-		valueLabel.Text = "-";
-		valueLabel.AutoEllipsis = true;
-
-		bar.Left = 18;
-		bar.Top = 64;
-		bar.Width = 329;
-		bar.Height = 7;
-		bar.BackColor = Theme.PanelLight;
-
-		card.Controls.AddRange([
-			titleLabel,
-			valueLabel,
-			bar
-		]);
-		return card;
-	}
-
-	private static Panel CreateOsInfoCard(OsInventory os, int left, int top, int width)
-	{
-		Panel card = CreateCard(left, top, width, 78);
-		Label line1 = new()
-		{
-			Text = os.Name,
-			Left = 18,
-			Top = 10,
-			Width = width - 36,
-			Height = 20,
-			Font = new Font("Consolas", 9.5F),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label line2 = new()
-		{
-			Text = $"Version {os.Version} | {os.Architecture} | Build {os.Build}",
-			Left = 18,
-			Top = 32,
-			Width = width - 36,
-			Height = 18,
-			Font = new Font("Consolas", 8.5F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label line3 = new()
-		{
-			Text = $"Installed {os.InstallDate} | Boot {os.BootTime}",
-			Left = 18,
-			Top = 52,
-			Width = width - 36,
-			Height = 18,
-			Font = new Font("Consolas", 8.5F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		card.Controls.AddRange([
-			line1,
-			line2,
-			line3
-		]);
-		return card;
-	}
-
-
-
-	private static Panel CreateHardwareInfoCard(SingularityIconType iconType, string title, string line1, string line2, int left, int top, int width)
-	{
-		Panel card = CreateCard(left, top, width, StandardHardwareCardHeight);
-		SingularityIcon icon = new()
-		{
-			IconType = iconType,
-			IconColor = Theme.Accent,
-			Left = 14,
-			Top = 23,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.PanelLight
-		};
-		Label titleLabel = new()
-		{
-			Text = title,
-			Left = 64,
-			Top = 10,
-			Width = width - 84,
-			Height = 20,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-		Label valueLabel = new()
-		{
-			Text = line1,
-			Left = 64,
-			Top = 30,
-			Width = width - 84,
-			Height = 20,
-			Font = new Font("Consolas", 8.5F, FontStyle.Regular),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label detailLabel = new()
-		{
-			Text = line2,
-			Left = 64,
-			Top = 50,
-			Width = width - 84,
-			Height = 20,
-			Font = new Font("Consolas", 8.5F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		card.Controls.AddRange([
-			icon,
-			titleLabel,
-			valueLabel,
-			detailLabel
-		]);
-		return card;
-	}
-
-	private static Panel CreateCpuInfoCard(CpuInventory cpu, int left, int top, int width)
-	{
-		const int height = LargeHardwareCardHeight;
-		Panel card = CreateCard(left, top, width, height);
-		SingularityIcon icon = new()
-		{
-			IconType = SingularityIconType.Cpu,
-			IconColor = Theme.Accent,
-			Left = 14,
-			Top = 29,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.PanelLight
-		};
-
-		Label titleLabel = new()
-		{
-			Text = "CPU",
-			Left = 64,
-			Top = 8,
-			Width = 200,
-			Height = 18,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label nameLabel = new()
-		{
-			Text = cpu.Name,
-			Left = 64,
-			Top = 28,
-			Width = width - 84,
-			Height = 18,
-			Font = new Font("Consolas", 8.8F),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		//string[] parts = hardware.CpuDetails.Split('|');
-
-		Label line2 = new()
-		{
-			Text = cpu.CoreThreadInfo,//parts.Length > 0 ? parts[0].Trim() : "",
-			Left = 64,
-			Top = 48,
-			Width = width - 84,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label line3 = new()
-		{
-			Text = cpu.CacheInfo,//parts.Length > 1 ? parts[1].Trim() : "",
-			Left = 64,
-			Top = 66,
-			Width = width - 84,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label line4 = new()
-		{
-			Text = cpu.PlatformInfo,//parts.Length > 2 ? string.Join(" | ", parts.Skip(2)).Trim() : "",
-			Left = 64,
-			Top = 84,
-			Width = width - 84,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		card.Controls.AddRange([
-			icon,
-			titleLabel,
-			nameLabel,
-			line2,
-			line3,
-			line4
-		]);
-		return card;
-	}
-
-	private static Panel CreateGpuInfoCard(GpuInventory gpu, int left, int top, int width)
-	{
-		const int height = LargeHardwareCardHeight;
-		Panel card = CreateCard(left, top, width, height);
-		SingularityIcon icon = new()
-		{
-			IconType = SingularityIconType.Gpu,
-			IconColor = Theme.Accent,
-			Left = 14,
-			Top = 29,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.PanelLight
-		};
-
-		Label titleLabel = new()
-		{
-			Text = "GPU",
-			Left = 64,
-			Top = 8,
-			Width = 250,
-			Height = 20,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label nameLabel = new()
-		{
-			Text = gpu.Name,
-			Left = 64,
-			Top = 29,
-			Width = width - 260,
-			Height = 20,
-			Font = new Font("Consolas", 8.8F),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label pcieCurrentLabel = new()
-		{
-			Text = $"Link ⇄ PCIe {gpu.PcieGenerationCurrent}x{gpu.PcieWidthCurrent}",
-			Left = 64,
-			Top = 50,
-			Width = width - 260,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label pcieMaxLabel = new()
-		{
-			Text = $"Host ⇄ PCIe {gpu.PcieGenerationMax}x{gpu.PcieWidthMax}",
-			Left = 64,
-			Top = 68,
-			Width = width - 260,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label vramLabel = new()
-		{
-			Text = gpu.Vram,
-			Left = width - 185,
-			Top = 29,
-			Width = 165,
-			Height = 20,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			TextAlign = ContentAlignment.MiddleRight
-		};
-
-		Label tempLabel = new()
-		{
-			Text = gpu.Temperature,
-			Left = width - 185,
-			Top = 50,
-			Width = 165,
-			Height = 20,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			TextAlign = ContentAlignment.MiddleRight
-		};
-
-		card.Controls.AddRange([
-			icon,
-			titleLabel,
-			nameLabel,
-			pcieCurrentLabel,
-			pcieMaxLabel,
-			vramLabel,
-			tempLabel
-		]);
-		return card;
-	}
-
-
-	private static Panel CreateMemoryInfoCard(MemoryInventory module,int left,int top,int width)
-	{
-		const int height = LargeHardwareCardHeight;
-		Panel card = CreateCard(left, top, width, height);
-		SingularityIcon icon = new()
-		{
-			IconType = SingularityIconType.Memory,
-			IconColor = Theme.Accent,
-			Left = 14,
-			Top = 29,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.PanelLight
-		};
-
-		Label titleLabel = new()
-		{
-			Text = "MEMORY",
-			Left = 64,
-			Top = 8,
-			Width = 200,
-			Height = 20,
-			Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label slotLabel = new()
-		{
-			Text = module.Slot,
-			Left = 64,
-			Top = 28,
-			Width = width - 280,
-			Height = 18,
-			Font = new Font("Consolas", 8.8F),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label specLabel = new()
-		{
-			Text =
-				$"{module.Capacity} " +
-				$"{module.MemoryType} " +
-				$"{module.DimmType} " +
-				$"{module.EccType}",
-			Left = 64,
-			Top = 48,
-			Width = width - 280,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			AutoEllipsis = true
-		};
-
-		Label speedLabel = new()
-		{
-			Text = module.Speed,
-			Left = 64,
-			Top = 66,
-			Width = width - 280,
-			Height = 16,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight
-		};
-
-		Label manufacturerLabel = new()
-		{
-			Text = module.Manufacturer,
-			Left = width - 220,
-			Top = 28,
-			Width = 200,
-			Height = 18,
-			Font = new Font("Consolas", 8.8F, FontStyle.Bold),
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.PanelLight,
-			TextAlign = ContentAlignment.MiddleRight
-		};
-
-		Label partNumberLabel = new()
-		{
-			Text = module.PartNumber,
-			Left = width - 220,
-			Top = 48,
-			Width = 200,
-			Height = 18,
-			Font = new Font("Consolas", 8.2F),
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.PanelLight,
-			TextAlign = ContentAlignment.MiddleRight,
-			AutoEllipsis = true
-		};
-
-		card.Controls.AddRange([
-			icon,
-			titleLabel,
-			slotLabel,
-			specLabel,
-			speedLabel,
-			manufacturerLabel,
-			partNumberLabel
-		]);
-		return card;
-	}
-
-
-
-
-
-
-
 	private static void StyleButton(Button button, Color background, Color foreground)
 	{
 		button.BackColor = background;
@@ -1078,13 +656,16 @@ private ActiveTab activeTab = ActiveTab.Hardware;
 	private void UpdateMonitoring()
 	{
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
-		cpuMetricValue.Text = $"{snapshot.ProcessCpuPercent:F1} %";
-		appRamMetricValue.Text = $"{snapshot.ProcessMemoryMb:N0} MB";
-		systemRamMetricValue.Text =	$"{snapshot.UsedPhysicalMemoryPercent:F1} % | {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB";
-		cpuBar.Value = (int)Math.Clamp(snapshot.ProcessCpuPercent, 0, 100);
 		double appRamPercent = snapshot.ProcessMemoryMb / 32000.0 * 100.0;
-		appRamBar.Value = (int)Math.Clamp(appRamPercent, 0, 100);
-		systemRamBar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
+
+		cpuMetricCard.ValueLabel.Text = $"{snapshot.ProcessCpuPercent:F1} %";
+		appRamMetricCard.ValueLabel.Text = $"{snapshot.ProcessMemoryMb:N0} MB";
+		systemRamMetricCard.ValueLabel.Text = $"{snapshot.UsedPhysicalMemoryPercent:F1} % | {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB";
+
+		cpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.ProcessCpuPercent, 0, 100);
+		appRamMetricCard.Bar.Value = (int)Math.Clamp(appRamPercent, 0, 100);
+		systemRamMetricCard.Bar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
+
 	}
 
 	private void SwitchTab(ActiveTab tab)
