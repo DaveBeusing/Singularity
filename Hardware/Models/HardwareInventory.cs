@@ -11,4 +11,6 @@ public sealed class HardwareInventory
 	public GpuInventory Gpu { get; init; } = new();
 	public OsInventory Os { get; init; } = new();
 	public IReadOnlyList<MemoryInventory> MemoryModules { get; init; } = Array.Empty<MemoryInventory>();
+	public IReadOnlyList<StorageInventory> StorageDrives { get; init; } = Array.Empty<StorageInventory>();
+
 }

@@ -14,6 +14,8 @@ public sealed class HardwareProvider
 	private readonly MemoryProvider memoryProvider = new();
 	private readonly OsProvider osProvider = new();
 	private readonly NvmlGpuProvider gpuProvider = new();
+	private readonly StorageProvider storageProvider = new();
+
 	public HardwareInventory Read()
 	{
 		return new HardwareInventory
@@ -22,7 +24,8 @@ public sealed class HardwareProvider
 			Cpu = cpuProvider.Read(),
 			MemoryModules = memoryProvider.Read(),
 			Os = osProvider.Read(),
-			Gpu = gpuProvider.Read()
+			Gpu = gpuProvider.Read(),
+			StorageDrives = storageProvider.Read()
 		};
 	}
 

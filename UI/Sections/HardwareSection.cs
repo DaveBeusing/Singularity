@@ -1,6 +1,5 @@
 // Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
 // Licensed under the MIT License.
-// See LICENSE file in the project root for full license information.
 
 using Singularity.Hardware.Models;
 using Singularity.UI.Controls;
@@ -31,35 +30,35 @@ public sealed class HardwareSection : Panel
 
 		FlowLayoutPanel flow = CreateFlowPanel();
 
-		AddHardwareCard(
-			flow,
-			new MainboardInfoPanel(
-				inventory.Mainboard,
-				LayoutConstants.HardwareCardWidth,
-				LayoutConstants.CardHeight));
+		AddHardwareCard(flow, new MainboardInfoPanel(
+			inventory.Mainboard,
+			LayoutConstants.HardwareCardWidth,
+			LayoutConstants.CardHeight));
 
-		AddHardwareCard(
-			flow,
-			new CpuInfoPanel(
-				inventory.Cpu,
-				LayoutConstants.HardwareCardWidth,
-				LayoutConstants.LargeCardHeight));
+		AddHardwareCard(flow, new CpuInfoPanel(
+			inventory.Cpu,
+			LayoutConstants.HardwareCardWidth,
+			LayoutConstants.LargeCardHeight));
 
-		AddHardwareCard(
-			flow,
-			new GpuInfoPanel(
-				inventory.Gpu,
-				LayoutConstants.HardwareCardWidth,
-				LayoutConstants.LargeCardHeight));
+		AddHardwareCard(flow, new GpuInfoPanel(
+			inventory.Gpu,
+			LayoutConstants.HardwareCardWidth,
+			LayoutConstants.LargeCardHeight));
 
 		foreach (MemoryInventory module in inventory.MemoryModules)
 		{
-			AddHardwareCard(
-				flow,
-				new MemoryInfoPanel(
-					module,
-					LayoutConstants.HardwareCardWidth,
-					LayoutConstants.LargeCardHeight));
+			AddHardwareCard(flow, new MemoryInfoPanel(
+				module,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.LargeCardHeight));
+		}
+
+		foreach (StorageInventory drive in inventory.StorageDrives)
+		{
+			AddHardwareCard(flow, new StorageInfoPanel(
+				drive,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.LargeCardHeight));
 		}
 
 		Controls.Add(flow);
