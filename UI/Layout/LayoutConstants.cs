@@ -8,6 +8,7 @@ public static class LayoutConstants
 {
 	public const int MainWidth = 840;
 	public const int WindowWidth = 920;
+	public const int WindowHeight = 900;
 
 	public const int HeaderLeft = 30;
 	public const int HeaderTop = 24;

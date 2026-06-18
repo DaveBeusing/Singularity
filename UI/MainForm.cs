@@ -4,6 +4,7 @@
 
 using Singularity.Core;
 using Singularity.Monitoring;
+using Singularity.UI.Layout;
 using Singularity.UI.Views;
 
 namespace Singularity.UI;
@@ -14,7 +15,6 @@ public sealed class MainForm : Form
 
 	private readonly WorkloadController workloadController = new();
 	private readonly SystemMonitor systemMonitor = new();
-
 	private readonly System.Windows.Forms.Timer timer = new();
 
 	private readonly Button hardwareTabButton = new();
@@ -61,8 +61,8 @@ public sealed class MainForm : Form
 		Label title = new()
 		{
 			Text = "//Singularity✦",
-			Left = 30,
-			Top = 24,
+			Left = LayoutConstants.HeaderLeft,
+			Top = LayoutConstants.HeaderTop,
 			Width = 490,
 			Height = 64,
 			Font = ThemeFonts.Title,
@@ -73,7 +73,7 @@ public sealed class MainForm : Form
 		Label subtitle = new()
 		{
 			Text = "Platform Qualification Suite",
-			Left = 32,
+			Left = LayoutConstants.HeaderLeft + 2,
 			Top = 80,
 			Width = 520,
 			Height = 28,
@@ -96,16 +96,7 @@ public sealed class MainForm : Form
 			TextAlign = ContentAlignment.MiddleRight
 		};
 
-		statusBadge.Left = 750;
-		statusBadge.Top = 78;
-		statusBadge.Width = 130;
-		statusBadge.Height = 32;
-		statusBadge.Text = "READY";
-		statusBadge.TextAlign = ContentAlignment.MiddleCenter;
-		statusBadge.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-		statusBadge.BackColor = Theme.PanelLight;
-		statusBadge.ForeColor = Theme.TextMain;
-
+		ConfigureStatusBadge();
 		BuildTabs();
 		BuildViews();
 
@@ -123,17 +114,33 @@ public sealed class MainForm : Form
 
 		SwitchTab(ActiveTab.Hardware);
 
-		Size windowSize = new(920, tabHostPanel.Bottom + 40);
-		ClientSize = windowSize;
-		MinimumSize = windowSize;
+		ClientSize = new Size(
+			LayoutConstants.WindowWidth,
+			tabHostPanel.Bottom + LayoutConstants.SectionGap);
+
+		MinimumSize = Size;
+		MaximumSize = Size;
+	}
+
+	private void ConfigureStatusBadge()
+	{
+		statusBadge.Left = 750;
+		statusBadge.Top = 78;
+		statusBadge.Width = 130;
+		statusBadge.Height = 32;
+		statusBadge.Text = "READY";
+		statusBadge.TextAlign = ContentAlignment.MiddleCenter;
+		statusBadge.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+		statusBadge.BackColor = Theme.PanelLight;
+		statusBadge.ForeColor = Theme.TextMain;
 	}
 
 	private void BuildTabs()
 	{
-		tabBarPanel.Left = 40;
+		tabBarPanel.Left = LayoutConstants.MainLeft;
 		tabBarPanel.Top = 140;
-		tabBarPanel.Width = 840;
-		tabBarPanel.Height = 54;
+		tabBarPanel.Width = LayoutConstants.MainWidth;
+		tabBarPanel.Height = LayoutConstants.TabBarHeight;
 		tabBarPanel.BackColor = Theme.Panel;
 
 		ConfigureTabButton(hardwareTabButton, "PLATFORM", 20, ActiveTab.Hardware);
@@ -147,21 +154,28 @@ public sealed class MainForm : Form
 
 	private void BuildViews()
 	{
-		tabHostPanel.Left = 40;
-		tabHostPanel.Top = tabBarPanel.Bottom + 20;
-		tabHostPanel.Width = 840;
+		hardwareView = new HardwareView
+		{
+			Left = 0,
+			Top = 0
+		};
+
+		workloadsView = new WorkloadsView
+		{
+			Left = 0,
+			Top = 0
+		};
+
+		int contentHeight = Math.Max(
+			hardwareView.Height,
+			workloadsView.Height);
+
+		tabHostPanel.Left = LayoutConstants.MainLeft;
+		tabHostPanel.Top = tabBarPanel.Bottom + LayoutConstants.SectionGap;
+		tabHostPanel.Width = LayoutConstants.MainWidth;
+		tabHostPanel.Height = contentHeight;
+		tabHostPanel.AutoScroll = true;
 		tabHostPanel.BackColor = Theme.Background;
-
-		hardwareView = new HardwareView();
-		workloadsView = new WorkloadsView();
-
-		tabHostPanel.Height = Math.Max(hardwareView.Height, workloadsView.Height);
-
-		hardwareView.Left = 0;
-		hardwareView.Top = 0;
-
-		workloadsView.Left = 0;
-		workloadsView.Top = 0;
 
 		tabHostPanel.Controls.AddRange([
 			hardwareView,
@@ -228,5 +242,4 @@ public sealed class MainForm : Form
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 		workloadsView.UpdateMetrics(snapshot);
 	}
-
 }

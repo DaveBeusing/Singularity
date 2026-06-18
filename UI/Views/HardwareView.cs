@@ -20,7 +20,6 @@ public sealed class HardwareView : Panel
 		Top = 0;
 		Width = LayoutConstants.MainWidth;
 		BackColor = Theme.Background;
-		AutoScroll = true;
 
 		BuildUi();
 	}
@@ -31,15 +30,10 @@ public sealed class HardwareView : Panel
 
 		HardwareInventory inventory = hardwareProvider.Read();
 
-		int contentTop = 0;
-
 		Panel osPanel = CreateOsPanel(inventory.Os);
 
-		contentTop = osPanel.Bottom + LayoutConstants.SectionGap;
-
 		Panel hardwarePanel = CreateHardwarePanel(inventory);
-
-		hardwarePanel.Top = contentTop;
+		hardwarePanel.Top = osPanel.Bottom + LayoutConstants.SectionGap;
 
 		Controls.Add(osPanel);
 		Controls.Add(hardwarePanel);
@@ -63,7 +57,7 @@ public sealed class HardwareView : Panel
 		OsInfoPanel osInfoPanel = new(
 			osInventory,
 			LayoutConstants.HardwareCardWidth,
-			78)
+			LayoutConstants.CardHeight)
 		{
 			Left = LayoutConstants.HardwareCardLeft,
 			Top = LayoutConstants.SectionHeaderHeight
@@ -92,7 +86,9 @@ public sealed class HardwareView : Panel
 			Left = LayoutConstants.HardwareCardLeft,
 			Top = LayoutConstants.SectionHeaderHeight,
 			Width = LayoutConstants.HardwareCardWidth,
+			Height = 1,
 			AutoSize = true,
+			AutoSizeMode = AutoSizeMode.GrowAndShrink,
 			FlowDirection = FlowDirection.TopDown,
 			WrapContents = false,
 			BackColor = Theme.Panel,
@@ -100,19 +96,22 @@ public sealed class HardwareView : Panel
 			Padding = Padding.Empty
 		};
 
-		flow.Controls.Add(
+		AddHardwareCard(
+			flow,
 			new MainboardInfoPanel(
 				inventory.Mainboard,
 				LayoutConstants.HardwareCardWidth,
 				LayoutConstants.CardHeight));
 
-		flow.Controls.Add(
+		AddHardwareCard(
+			flow,
 			new CpuInfoPanel(
 				inventory.Cpu,
 				LayoutConstants.HardwareCardWidth,
 				LayoutConstants.LargeCardHeight));
 
-		flow.Controls.Add(
+		AddHardwareCard(
+			flow,
 			new GpuInfoPanel(
 				inventory.Gpu,
 				LayoutConstants.HardwareCardWidth,
@@ -120,7 +119,8 @@ public sealed class HardwareView : Panel
 
 		foreach (MemoryInventory module in inventory.MemoryModules)
 		{
-			flow.Controls.Add(
+			AddHardwareCard(
+				flow,
 				new MemoryInfoPanel(
 					module,
 					LayoutConstants.HardwareCardWidth,
@@ -129,12 +129,33 @@ public sealed class HardwareView : Panel
 
 		panel.Controls.Add(flow);
 
+		int flowHeight = CalculateFlowHeight(flow);
+
 		panel.Height =
 			LayoutConstants.SectionHeaderHeight +
-			flow.PreferredSize.Height +
+			flowHeight +
 			10;
 
 		return panel;
 	}
 
+	private static void AddHardwareCard(FlowLayoutPanel flow, Control card)
+	{
+		card.Margin = new Padding(0, 0, 0, LayoutConstants.CardGap);
+		flow.Controls.Add(card);
+	}
+
+	private static int CalculateFlowHeight(FlowLayoutPanel flow)
+	{
+		int height = 0;
+
+		foreach (Control control in flow.Controls)
+		{
+			height += control.Height;
+			height += control.Margin.Top;
+			height += control.Margin.Bottom;
+		}
+
+		return height;
+	}
 }
