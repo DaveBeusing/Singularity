@@ -4,7 +4,7 @@
 
 using Singularity.Hardware.Models;
 
-namespace Singularity.UI.Cards;
+namespace Singularity.UI.Panels;
 
 public sealed class OsInfoPanel : Panel
 {

@@ -5,7 +5,7 @@
 using Singularity.Hardware.Models;
 using Singularity.UI.Controls;
 
-namespace Singularity.UI.Cards;
+namespace Singularity.UI.Panels;
 
 public sealed class GpuInfoPanel : Panel
 {

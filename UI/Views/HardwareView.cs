@@ -6,7 +6,6 @@ using Singularity.Hardware.Models;
 using Singularity.Hardware.Providers;
 using Singularity.UI.Controls;
 using Singularity.UI.Panels;
-using Singularity.UI.Cards;
 
 namespace Singularity.UI.Views;
 
