@@ -5,28 +5,22 @@
 using Singularity.Hardware.Models;
 using Singularity.Hardware.Providers;
 using Singularity.UI.Controls;
+using Singularity.UI.Layout;
 using Singularity.UI.Panels;
 
 namespace Singularity.UI.Views;
 
 public sealed class HardwareView : Panel
 {
-	private const int MainWidth = 840;
-	private const int HardwareCardWidth = 800;
-	private const int HardwareCardLeft = 20;
-	private const int HardwareCardGap = 10;
-	private const int SectionHeaderHeight = 55;
-	private const int StandardHardwareCardHeight = 78;
-	private const int LargeHardwareCardHeight = 110;
-
 	private readonly HardwareProvider hardwareProvider = new();
 
 	public HardwareView()
 	{
 		Left = 0;
 		Top = 0;
-		Width = MainWidth;
+		Width = LayoutConstants.MainWidth;
 		BackColor = Theme.Background;
+		AutoScroll = true;
 
 		BuildUi();
 	}
@@ -39,90 +33,108 @@ public sealed class HardwareView : Panel
 
 		int contentTop = 0;
 
-		Panel osPanel = UiFactory.CreatePanel(0, contentTop, MainWidth, 150);
-		UiFactory.AddSectionHeader(osPanel, SingularityIconType.Metrics, "OS");
+		Panel osPanel = CreateOsPanel(inventory.Os);
 
-		OsInfoPanel osInfoPanel = new(inventory.Os, 800, 78)
-		{
-			Left = 20,
-			Top = 55
-		};
+		contentTop = osPanel.Bottom + LayoutConstants.SectionGap;
 
-		osPanel.Controls.Add(osInfoPanel);
-		contentTop = osPanel.Bottom + 20;
+		Panel hardwarePanel = CreateHardwarePanel(inventory);
 
-		Panel hardwarePanel = BuildHardwarePanel(inventory, contentTop);
+		hardwarePanel.Top = contentTop;
 
-		Controls.AddRange([
-			osPanel,
-			hardwarePanel
-		]);
+		Controls.Add(osPanel);
+		Controls.Add(hardwarePanel);
 
 		Height = hardwarePanel.Bottom;
 	}
 
-	private static Panel BuildHardwarePanel(HardwareInventory inventory, int top)
+	private static Panel CreateOsPanel(OsInventory osInventory)
 	{
-		int memoryCount = inventory.MemoryModules.Count;
+		Panel panel = UiFactory.CreatePanel(
+			0,
+			0,
+			LayoutConstants.MainWidth,
+			150);
 
-		int hardwarePanelHeight =
-			SectionHeaderHeight +
-			StandardHardwareCardHeight + HardwareCardGap +
-			LargeHardwareCardHeight + HardwareCardGap +
-			LargeHardwareCardHeight + HardwareCardGap +
-			memoryCount * (LargeHardwareCardHeight + HardwareCardGap) +
-			10;
+		UiFactory.AddSectionHeader(
+			panel,
+			SingularityIconType.Metrics,
+			"OS");
 
-		Panel hardwarePanel = UiFactory.CreatePanel(0, top, MainWidth, hardwarePanelHeight);
-		UiFactory.AddSectionHeader(hardwarePanel, SingularityIconType.Motherboard, "HARDWARE");
-
-		int hardwareTop = SectionHeaderHeight;
-
-		MainboardInfoPanel mainboardInfoPanel = new(inventory.Mainboard, HardwareCardWidth, StandardHardwareCardHeight)
+		OsInfoPanel osInfoPanel = new(
+			osInventory,
+			LayoutConstants.HardwareCardWidth,
+			78)
 		{
-			Left = HardwareCardLeft,
-			Top = hardwareTop
+			Left = LayoutConstants.HardwareCardLeft,
+			Top = LayoutConstants.SectionHeaderHeight
 		};
 
-		hardwareTop += StandardHardwareCardHeight + HardwareCardGap;
+		panel.Controls.Add(osInfoPanel);
 
-		CpuInfoPanel cpuInfoPanel = new(inventory.Cpu, HardwareCardWidth, LargeHardwareCardHeight)
+		return panel;
+	}
+
+	private static Panel CreateHardwarePanel(HardwareInventory inventory)
+	{
+		Panel panel = UiFactory.CreatePanel(
+			0,
+			0,
+			LayoutConstants.MainWidth,
+			200);
+
+		UiFactory.AddSectionHeader(
+			panel,
+			SingularityIconType.Motherboard,
+			"HARDWARE");
+
+		FlowLayoutPanel flow = new()
 		{
-			Left = HardwareCardLeft,
-			Top = hardwareTop
+			Left = LayoutConstants.HardwareCardLeft,
+			Top = LayoutConstants.SectionHeaderHeight,
+			Width = LayoutConstants.HardwareCardWidth,
+			AutoSize = true,
+			FlowDirection = FlowDirection.TopDown,
+			WrapContents = false,
+			BackColor = Theme.Panel,
+			Margin = Padding.Empty,
+			Padding = Padding.Empty
 		};
 
-		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
+		flow.Controls.Add(
+			new MainboardInfoPanel(
+				inventory.Mainboard,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.CardHeight));
 
-		GpuInfoPanel gpuInfoPanel = new(inventory.Gpu, HardwareCardWidth, LargeHardwareCardHeight)
-		{
-			Left = HardwareCardLeft,
-			Top = hardwareTop
-		};
+		flow.Controls.Add(
+			new CpuInfoPanel(
+				inventory.Cpu,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.LargeCardHeight));
 
-		hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
-
-		hardwarePanel.Controls.AddRange([
-			mainboardInfoPanel,
-			cpuInfoPanel,
-			gpuInfoPanel
-		]);
+		flow.Controls.Add(
+			new GpuInfoPanel(
+				inventory.Gpu,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.LargeCardHeight));
 
 		foreach (MemoryInventory module in inventory.MemoryModules)
 		{
-			MemoryInfoPanel memoryInfoPanel = new(module, HardwareCardWidth, LargeHardwareCardHeight)
-			{
-				Left = HardwareCardLeft,
-				Top = hardwareTop
-			};
-
-			hardwarePanel.Controls.Add(memoryInfoPanel);
-			hardwareTop += LargeHardwareCardHeight + HardwareCardGap;
+			flow.Controls.Add(
+				new MemoryInfoPanel(
+					module,
+					LayoutConstants.HardwareCardWidth,
+					LayoutConstants.LargeCardHeight));
 		}
 
-		hardwarePanel.Height = hardwareTop + 10;
+		panel.Controls.Add(flow);
 
-		return hardwarePanel;
+		panel.Height =
+			LayoutConstants.SectionHeaderHeight +
+			flow.PreferredSize.Height +
+			10;
+
+		return panel;
 	}
 
 }
