@@ -17,6 +17,17 @@ internal static class WmiQuery
 		}
 	}
 
+	public static IEnumerable<ManagementObject> Execute(string scopePath, string query)
+	{
+		ManagementScope scope = new(scopePath);
+		scope.Connect();
+		using ManagementObjectSearcher searcher = new(scope, new ObjectQuery(query));
+		foreach (ManagementObject obj in searcher.Get())
+		{
+			yield return obj;
+		}
+	}
+
 	public static string GetSingleValue(string className, string propertyName)
 	{
 		try
