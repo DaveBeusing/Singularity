@@ -12,7 +12,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.1.6-alpha";
+	private const string VersionString = "v0.1.5-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly SystemMonitor systemMonitor = new();
@@ -114,8 +114,11 @@ public sealed class MainForm : Form
 		workloadsView.StopButton.Click += (_, _) => StopWorkloads();
 
 		SwitchTab(ActiveTab.Hardware);
+		UpdateWorkloadStatus();
 
-		ClientSize = new Size(LayoutConstants.WindowWidth, tabHostPanel.Bottom + LayoutConstants.SectionGap);
+		ClientSize = new Size(
+			LayoutConstants.WindowWidth,
+			tabHostPanel.Bottom + LayoutConstants.SectionGap);
 
 		MinimumSize = Size;
 		MaximumSize = Size;
@@ -142,8 +145,17 @@ public sealed class MainForm : Form
 		tabBarPanel.Height = LayoutConstants.TabBarHeight;
 		tabBarPanel.BackColor = Theme.Panel;
 
-		ConfigureTabButton(hardwareTabButton, "PLATFORM", 20, ActiveTab.Hardware);
-		ConfigureTabButton(workloadsTabButton, "WORKLOADS", 250, ActiveTab.Workloads);
+		ConfigureTabButton(
+			hardwareTabButton,
+			"PLATFORM",
+			20,
+			ActiveTab.Hardware);
+
+		ConfigureTabButton(
+			workloadsTabButton,
+			"WORKLOADS",
+			250,
+			ActiveTab.Workloads);
 
 		tabBarPanel.Controls.AddRange([
 			hardwareTabButton,
@@ -206,14 +218,34 @@ public sealed class MainForm : Form
 		hardwareView.Visible = activeTab == ActiveTab.Hardware;
 		workloadsView.Visible = activeTab == ActiveTab.Workloads;
 
-		hardwareTabButton.BackColor = activeTab == ActiveTab.Hardware ? Theme.Accent : Theme.PanelLight;
-		hardwareTabButton.ForeColor = activeTab == ActiveTab.Hardware ? Color.Black : Theme.TextMain;
-		workloadsTabButton.BackColor = activeTab == ActiveTab.Workloads ? Theme.Accent : Theme.PanelLight;
-		workloadsTabButton.ForeColor = activeTab == ActiveTab.Workloads ? Color.Black : Theme.TextMain;
+		hardwareTabButton.BackColor =
+			activeTab == ActiveTab.Hardware
+				? Theme.Accent
+				: Theme.PanelLight;
+
+		hardwareTabButton.ForeColor =
+			activeTab == ActiveTab.Hardware
+				? Color.Black
+				: Theme.TextMain;
+
+		workloadsTabButton.BackColor =
+			activeTab == ActiveTab.Workloads
+				? Theme.Accent
+				: Theme.PanelLight;
+
+		workloadsTabButton.ForeColor =
+			activeTab == ActiveTab.Workloads
+				? Color.Black
+				: Theme.TextMain;
 	}
 
 	private void StartWorkloads()
 	{
+		if (workloadManager.Status.State == WorkloadState.Failed)
+		{
+			workloadManager.ResetFailure();
+		}
+
 		if (workloadManager.IsRunning)
 			return;
 
@@ -221,23 +253,21 @@ public sealed class MainForm : Form
 
 		workloadManager.Start(options);
 
-		statusBadge.Text = "RUNNING";
-		statusBadge.BackColor = Theme.Success;
-		statusBadge.ForeColor = Color.White;
-
+		UpdateWorkloadStatus();
 		SwitchTab(ActiveTab.Workloads);
 	}
 
 	private void StopWorkloads()
 	{
-		if (!workloadManager.IsRunning)
+		if (!workloadManager.IsRunning
+			&& workloadManager.Status.State != WorkloadState.Failed)
+		{
 			return;
+		}
 
 		workloadManager.Stop();
 
-		statusBadge.Text = "READY";
-		statusBadge.BackColor = Theme.PanelLight;
-		statusBadge.ForeColor = Theme.TextMain;
+		UpdateWorkloadStatus();
 	}
 
 	private void UpdateMonitoring()
@@ -248,6 +278,40 @@ public sealed class MainForm : Form
 		{
 			workloadsView.UpdateMetrics(snapshot);
 		}
+
+		UpdateWorkloadStatus();
+	}
+
+	private void UpdateWorkloadStatus()
+	{
+		WorkloadStatus status = workloadManager.Status;
+
+		statusBadge.Text = status.State switch
+		{
+			WorkloadState.Stopped => "READY",
+			WorkloadState.Starting => "STARTING",
+			WorkloadState.Running => "RUNNING",
+			WorkloadState.Stopping => "STOPPING",
+			WorkloadState.Failed => "FAILED",
+			_ => "UNKNOWN"
+		};
+
+		statusBadge.BackColor = status.State switch
+		{
+			WorkloadState.Stopped => Theme.PanelLight,
+			WorkloadState.Starting => Theme.Accent,
+			WorkloadState.Running => Theme.Success,
+			WorkloadState.Stopping => Theme.Accent,
+			WorkloadState.Failed => Theme.Danger,
+			_ => Theme.PanelLight
+		};
+
+		statusBadge.ForeColor = status.State switch
+		{
+			WorkloadState.Starting => Color.Black,
+			WorkloadState.Stopping => Color.Black,
+			_ => Theme.TextMain
+		};
 	}
 
 	protected override void Dispose(bool disposing)
@@ -258,7 +322,6 @@ public sealed class MainForm : Form
 			workloadManager.Dispose();
 			systemMonitor.Dispose();
 		}
-
 		base.Dispose(disposing);
 	}
 
