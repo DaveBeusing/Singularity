@@ -15,6 +15,7 @@ public sealed class WorkloadsView : Panel
 	private WorkloadSection workloadSection = null!;
 	private MonitoringSection monitoringSection = null!;
 	private ControlSection controlSection = null!;
+	private SessionSection sessionSection = null!;
 	private ValidationSection validationSection = null!;
 
 	public Button StartButton => controlSection.StartButton;
@@ -58,6 +59,11 @@ public sealed class WorkloadsView : Panel
 		validationSection.Reset();
 	}
 
+	public void UpdateSession(QualificationSession session)
+	{
+		sessionSection.UpdateSession(session);
+	}
+
 	private void BuildUi()
 	{
 		Controls.Clear();
@@ -80,16 +86,23 @@ public sealed class WorkloadsView : Panel
 			Top = monitoringSection.Bottom + LayoutConstants.SectionGap
 		};
 
-		validationSection = new ValidationSection
+		sessionSection = new SessionSection
 		{
 			Left = LayoutConstants.SidePanelLeft,
 			Top = controlSection.Bottom + LayoutConstants.SectionGap
+		};
+
+		validationSection = new ValidationSection
+		{
+			Left = LayoutConstants.SidePanelLeft,
+			Top = sessionSection.Bottom + LayoutConstants.SectionGap
 		};
 
 		Controls.AddRange([
 			workloadSection,
 			monitoringSection,
 			controlSection,
+			sessionSection,
 			validationSection
 		]);
 

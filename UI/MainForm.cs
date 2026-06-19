@@ -17,6 +17,7 @@ public sealed class MainForm : Form
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();
+	private readonly QualificationSession qualificationSession = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -119,6 +120,7 @@ public sealed class MainForm : Form
 
 		SwitchTab(ActiveTab.Hardware);
 		UpdateWorkloadStatus();
+		workloadsView.UpdateSession(qualificationSession);
 
 		ClientSize = new Size(
 			LayoutConstants.WindowWidth,
@@ -255,10 +257,13 @@ public sealed class MainForm : Form
 
 		WorkloadOptions options = workloadsView.CreateOptions();
 
-		workloadManager.Start(options);
-
 		lastValidationResult = null;
 		workloadsView.ResetValidation();
+
+		qualificationSession.Start();
+		workloadsView.UpdateSession(qualificationSession);
+
+		workloadManager.Start(options);
 
 		UpdateWorkloadStatus();
 		SwitchTab(ActiveTab.Workloads);
@@ -274,8 +279,19 @@ public sealed class MainForm : Form
 
 		workloadManager.Stop();
 
-		lastValidationResult = null;
-		workloadsView.ResetValidation();
+		if (lastValidationResult is not null)
+		{
+			ValidationSummary summary = new(lastValidationResult);
+
+			qualificationSession.Complete(
+				summary.OverallStatus);
+		}
+		else
+		{
+			qualificationSession.Fail();
+		}
+
+		workloadsView.UpdateSession(qualificationSession);
 
 		UpdateWorkloadStatus();
 	}
@@ -284,19 +300,21 @@ public sealed class MainForm : Form
 	{
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
-		if (workloadsView is not null)
-		{
-			workloadsView.UpdateMetrics(snapshot);
-		}
+		workloadsView.UpdateMetrics(snapshot);
 
 		if (workloadManager.IsRunning)
 		{
-			lastValidationResult = workloadValidator.Validate(workloadManager.Status,snapshot);
-			if (workloadsView is not null)
-			{
-				workloadsView.UpdateValidation(lastValidationResult);
-			}
+			lastValidationResult =
+				workloadValidator.Validate(
+					workloadManager.Status,
+					snapshot);
+
+			workloadsView.UpdateValidation(
+				lastValidationResult);
 		}
+
+		workloadsView.UpdateSession(
+			qualificationSession);
 
 		UpdateWorkloadStatus();
 	}
@@ -369,5 +387,4 @@ public sealed class MainForm : Form
 
 		base.Dispose(disposing);
 	}
-
 }
