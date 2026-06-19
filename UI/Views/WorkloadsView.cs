@@ -17,6 +17,7 @@ public sealed class WorkloadsView : Panel
 	private ControlSection controlSection = null!;
 	private SessionSection sessionSection = null!;
 	private ValidationSection validationSection = null!;
+	private HistorySection historySection = null!;
 
 	public Button StartButton => controlSection.StartButton;
 	public Button StopButton => controlSection.StopButton;
@@ -64,6 +65,11 @@ public sealed class WorkloadsView : Panel
 		sessionSection.UpdateSession(session);
 	}
 
+	public void UpdateHistory(QualificationHistory history)
+	{
+		historySection.UpdateHistory(history);
+	}
+
 	private void BuildUi()
 	{
 		Controls.Clear();
@@ -98,17 +104,24 @@ public sealed class WorkloadsView : Panel
 			Top = sessionSection.Bottom + LayoutConstants.SectionGap
 		};
 
+		historySection = new HistorySection
+		{
+			Left = LayoutConstants.SidePanelLeft,
+			Top = validationSection.Bottom + LayoutConstants.SectionGap
+		};
+
 		Controls.AddRange([
 			workloadSection,
 			monitoringSection,
 			controlSection,
 			sessionSection,
-			validationSection
+			validationSection,
+			historySection
 		]);
 
 		Height = Math.Max(
 			workloadSection.Bottom,
-			validationSection.Bottom);
+			historySection.Bottom);
 	}
 
 }

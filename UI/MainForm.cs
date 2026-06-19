@@ -18,6 +18,7 @@ public sealed class MainForm : Form
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationSession qualificationSession = new();
+	private readonly QualificationHistory qualificationHistory = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -121,6 +122,7 @@ public sealed class MainForm : Form
 		SwitchTab(ActiveTab.Hardware);
 		UpdateWorkloadStatus();
 		workloadsView.UpdateSession(qualificationSession);
+		workloadsView.UpdateHistory(qualificationHistory);
 
 		ClientSize = new Size(
 			LayoutConstants.WindowWidth,
@@ -291,7 +293,13 @@ public sealed class MainForm : Form
 			qualificationSession.Fail();
 		}
 
+		if (qualificationSession.CanBeRecorded)
+		{
+			qualificationHistory.Add(qualificationSession);
+		}
+
 		workloadsView.UpdateSession(qualificationSession);
+		workloadsView.UpdateHistory(qualificationHistory);
 
 		UpdateWorkloadStatus();
 	}
@@ -387,4 +395,5 @@ public sealed class MainForm : Form
 
 		base.Dispose(disposing);
 	}
+
 }

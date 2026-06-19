@@ -6,79 +6,68 @@ namespace Singularity.Core.Validation;
 
 public sealed class QualificationSession
 {
-	public QualificationSessionState State { get; private set; } = QualificationSessionState.Idle;
+	public QualificationSessionState State { get; private set; } =
+		QualificationSessionState.Idle;
 
 	public DateTime? StartTime { get; private set; }
 
 	public DateTime? EndTime { get; private set; }
 
-	public ValidationStatus Result { get; private set; } = ValidationStatus.Unknown;
+	public ValidationStatus Result { get; private set; } =
+		ValidationStatus.Unknown;
 
 	public TimeSpan Duration
 	{
 		get
 		{
 			if (StartTime is null)
-			{
 				return TimeSpan.Zero;
-			}
 
 			if (State == QualificationSessionState.Running)
-			{
 				return DateTime.Now - StartTime.Value;
-			}
 
 			if (EndTime is null)
-			{
 				return TimeSpan.Zero;
-			}
 
 			return EndTime.Value - StartTime.Value;
 		}
 	}
 
+	public bool CanBeRecorded =>
+		StartTime is not null &&
+		EndTime is not null &&
+		State is QualificationSessionState.Completed or QualificationSessionState.Failed;
+
 	public void Start()
 	{
 		State = QualificationSessionState.Running;
-
 		StartTime = DateTime.Now;
 		EndTime = null;
-
 		Result = ValidationStatus.Unknown;
 	}
 
-	public void Complete(
-		ValidationStatus result)
+	public void Complete(ValidationStatus result)
 	{
 		if (State != QualificationSessionState.Running)
-		{
 			return;
-		}
 
 		State = QualificationSessionState.Completed;
-
 		EndTime = DateTime.Now;
-
 		Result = result;
 	}
 
 	public void Fail()
 	{
 		State = QualificationSessionState.Failed;
-
 		EndTime = DateTime.Now;
-
 		Result = ValidationStatus.Fail;
 	}
 
 	public void Reset()
 	{
 		State = QualificationSessionState.Idle;
-
 		StartTime = null;
 		EndTime = null;
-
 		Result = ValidationStatus.Unknown;
 	}
-
 }
