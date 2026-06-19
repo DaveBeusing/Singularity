@@ -29,16 +29,22 @@ public sealed class MonitoringSection : Panel
 
 	public void UpdateMetrics(SystemSnapshot snapshot)
 	{
-		CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} %";
-		CpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.CpuLoadPercent, 0, 100);
+		if (snapshot.CpuTemperatureAvailable)
+		{
+			CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureCelsius:0} °C";
+		}
+		else
+		{
+			CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureStatus}";
+		}
+
+		CpuMetricCard.Bar.Value =
+			(int)Math.Clamp(snapshot.CpuLoadPercent, 0, 100);
 
 		if (snapshot.GpuTelemetryAvailable)
 		{
-			GpuMetricCard.ValueLabel.Text =
-				$"{snapshot.GpuLoadPercent:0.0} % | {snapshot.GpuTemperatureCelsius} °C";
-
-			GpuMetricCard.Bar.Value =
-				(int)Math.Clamp(snapshot.GpuLoadPercent, 0, 100);
+			GpuMetricCard.ValueLabel.Text = $"{snapshot.GpuLoadPercent:0.0} % | {snapshot.GpuTemperatureCelsius} °C";
+			GpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.GpuLoadPercent, 0, 100);
 		}
 		else
 		{
@@ -46,11 +52,8 @@ public sealed class MonitoringSection : Panel
 			GpuMetricCard.Bar.Value = 0;
 		}
 
-		MemoryMetricCard.ValueLabel.Text =
-			$"{snapshot.UsedPhysicalMemoryPercent:0.0} %";
-
-		MemoryMetricCard.Bar.Value =
-			(int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
+		MemoryMetricCard.ValueLabel.Text = $"{snapshot.UsedPhysicalMemoryPercent:0.0} %";
+		MemoryMetricCard.Bar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
 	}
 
 	private void BuildUi()

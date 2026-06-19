@@ -1,3 +1,9 @@
+// Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
+// Licensed under the MIT License.
+// See LICENSE file in the project root for full license information.
+
+using System.ComponentModel;
+
 namespace Singularity.UI.Controls;
 
 /// <summary>
@@ -9,8 +15,11 @@ public sealed class SingularityNumeric : Control
 	private int value;
 	private bool minusHover;
 	private bool plusHover;
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public int Minimum { get; set; } = 0;
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public int Maximum { get; set; } = 100;
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public int Value
 	{
 		get => value;

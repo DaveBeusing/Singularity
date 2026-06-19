@@ -1,3 +1,8 @@
+// Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
+// Licensed under the MIT License.
+// See LICENSE file in the project root for full license information.
+
+using System.ComponentModel;
 using Singularity.UI;
 
 namespace Singularity.UI.Controls;
@@ -23,8 +28,10 @@ public enum SingularityIconType
 /// </summary>
 public sealed class SingularityIcon : Control
 {
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public SingularityIconType IconType { get; set; }
 
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public Color IconColor { get; set; } = Color.White;
 
 	public SingularityIcon()

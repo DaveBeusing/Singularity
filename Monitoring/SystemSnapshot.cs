@@ -7,6 +7,9 @@ namespace Singularity.Monitoring;
 public sealed class SystemSnapshot
 {
 	public double CpuLoadPercent { get; set; }
+	public bool CpuTemperatureAvailable { get; set; }
+	public double CpuTemperatureCelsius { get; set; }
+	public string CpuTemperatureStatus { get; set; } = "Unavailable";
 
 	public long TotalPhysicalMemoryMb { get; set; }
 	public long AvailablePhysicalMemoryMb { get; set; }

@@ -9,14 +9,16 @@ namespace Singularity.Monitoring;
 
 /// <summary>
 /// Liest aktuelle Systemwerte aus.
-/// CPU wird über GetSystemTimes gelesen.
+/// CPU Load wird über GetSystemTimes gelesen.
+/// CPU Temperature wird über LibreHardwareMonitor gelesen.
 /// RAM wird über GlobalMemoryStatusEx gelesen.
 /// GPU wird über NVML gelesen.
 /// </summary>
-public sealed class SystemMonitor
+public sealed class SystemMonitor : IDisposable
 {
 	private readonly Process process = Process.GetCurrentProcess();
 	private readonly NvmlGpuTelemetryProvider gpuTelemetryProvider = new();
+	private readonly LibreHardwareCpuTelemetryProvider cpuTelemetryProvider = new();
 
 	private TimeSpan lastProcessCpuTime;
 	private DateTime lastProcessSampleTime;
@@ -25,6 +27,7 @@ public sealed class SystemMonitor
 	private ulong lastKernelTime;
 	private ulong lastUserTime;
 	private bool hasCpuSample;
+	private bool disposed;
 
 	public SystemMonitor()
 	{
@@ -38,6 +41,7 @@ public sealed class SystemMonitor
 
 		MemoryStatus memory = GetMemoryStatus();
 		GpuTelemetrySnapshot gpu = gpuTelemetryProvider.Read();
+		CpuTelemetrySnapshot cpu = cpuTelemetryProvider.Read();
 
 		long totalMb = (long)(memory.TotalPhys / 1024 / 1024);
 		long availableMb = (long)(memory.AvailPhys / 1024 / 1024);
@@ -48,6 +52,10 @@ public sealed class SystemMonitor
 		return new SystemSnapshot
 		{
 			CpuLoadPercent = GetCpuLoadPercent(),
+
+			CpuTemperatureAvailable = cpu.IsAvailable,
+			CpuTemperatureCelsius = cpu.TemperatureCelsius,
+			CpuTemperatureStatus = cpu.Status,
 
 			ProcessCpuPercent = GetProcessCpuPercent(),
 			ProcessMemoryMb = process.WorkingSet64 / 1024 / 1024,
@@ -72,7 +80,6 @@ public sealed class SystemMonitor
 
 		double cpuUsedMs = (currentCpuTime - lastProcessCpuTime).TotalMilliseconds;
 		double elapsedMs = (currentSampleTime - lastProcessSampleTime).TotalMilliseconds;
-
 		double cpuPercent = 0;
 
 		if (elapsedMs > 0)
@@ -88,7 +95,10 @@ public sealed class SystemMonitor
 
 	private double GetCpuLoadPercent()
 	{
-		if (!GetSystemTimes(out FileTime idleTime, out FileTime kernelTime, out FileTime userTime))
+		if (!GetSystemTimes(
+			out FileTime idleTime,
+			out FileTime kernelTime,
+			out FileTime userTime))
 		{
 			return 0;
 		}
@@ -103,6 +113,7 @@ public sealed class SystemMonitor
 			lastKernelTime = kernel;
 			lastUserTime = user;
 			hasCpuSample = true;
+
 			return 0;
 		}
 
@@ -142,14 +153,22 @@ public sealed class SystemMonitor
 			fileTime.LowDateTime;
 	}
 
+	public void Dispose()
+	{
+		if (disposed)
+			return;
+
+		cpuTelemetryProvider.Dispose();
+		process.Dispose();
+
+		disposed = true;
+	}
+
 	[DllImport("kernel32.dll", SetLastError = true)]
 	private static extern bool GlobalMemoryStatusEx(ref MemoryStatus buffer);
 
 	[DllImport("kernel32.dll", SetLastError = true)]
-	private static extern bool GetSystemTimes(
-		out FileTime idleTime,
-		out FileTime kernelTime,
-		out FileTime userTime);
+	private static extern bool GetSystemTimes(out FileTime idleTime, out FileTime kernelTime, out FileTime userTime);
 
 	[StructLayout(LayoutKind.Sequential)]
 	private struct MemoryStatus

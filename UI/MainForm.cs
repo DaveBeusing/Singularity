@@ -242,4 +242,17 @@ public sealed class MainForm : Form
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 		workloadsView.UpdateMetrics(snapshot);
 	}
+
+	protected override void Dispose(bool disposing)
+	{
+		if (disposing)
+		{
+			timer.Dispose();
+			systemMonitor.Dispose();
+		}
+
+		base.Dispose(disposing);
+	}
+
+
 }
