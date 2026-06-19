@@ -257,6 +257,9 @@ public sealed class MainForm : Form
 
 		workloadManager.Start(options);
 
+		lastValidationResult = null;
+		workloadsView.ResetValidation();
+
 		UpdateWorkloadStatus();
 		SwitchTab(ActiveTab.Workloads);
 	}
@@ -270,7 +273,9 @@ public sealed class MainForm : Form
 		}
 
 		workloadManager.Stop();
+
 		lastValidationResult = null;
+		workloadsView.ResetValidation();
 
 		UpdateWorkloadStatus();
 	}
@@ -286,9 +291,11 @@ public sealed class MainForm : Form
 
 		if (workloadManager.IsRunning)
 		{
-			lastValidationResult = workloadValidator.Validate(
-				workloadManager.Status,
-				snapshot);
+			lastValidationResult = workloadValidator.Validate(workloadManager.Status,snapshot);
+			if (workloadsView is not null)
+			{
+				workloadsView.UpdateValidation(lastValidationResult);
+			}
 		}
 
 		UpdateWorkloadStatus();

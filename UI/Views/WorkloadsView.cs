@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core;
+using Singularity.Core.Validation;
 using Singularity.Monitoring;
 using Singularity.UI.Layout;
 using Singularity.UI.Sections;
@@ -14,6 +15,7 @@ public sealed class WorkloadsView : Panel
 	private WorkloadSection workloadSection = null!;
 	private MonitoringSection monitoringSection = null!;
 	private ControlSection controlSection = null!;
+	private ValidationSection validationSection = null!;
 
 	public Button StartButton => controlSection.StartButton;
 	public Button StopButton => controlSection.StopButton;
@@ -46,6 +48,16 @@ public sealed class WorkloadsView : Panel
 		monitoringSection.UpdateMetrics(snapshot);
 	}
 
+	public void UpdateValidation(ValidationResult result)
+	{
+		validationSection.UpdateValidation(result);
+	}
+
+	public void ResetValidation()
+	{
+		validationSection.Reset();
+	}
+
 	private void BuildUi()
 	{
 		Controls.Clear();
@@ -68,15 +80,22 @@ public sealed class WorkloadsView : Panel
 			Top = monitoringSection.Bottom + LayoutConstants.SectionGap
 		};
 
+		validationSection = new ValidationSection
+		{
+			Left = LayoutConstants.SidePanelLeft,
+			Top = controlSection.Bottom + LayoutConstants.SectionGap
+		};
+
 		Controls.AddRange([
 			workloadSection,
 			monitoringSection,
-			controlSection
+			controlSection,
+			validationSection
 		]);
 
 		Height = Math.Max(
 			workloadSection.Bottom,
-			controlSection.Bottom);
+			validationSection.Bottom);
 	}
 
 }
