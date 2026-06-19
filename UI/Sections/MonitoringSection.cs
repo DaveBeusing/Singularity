@@ -13,8 +13,8 @@ namespace Singularity.UI.Sections;
 public sealed class MonitoringSection : Panel
 {
 	public MetricsPanel CpuMetricCard { get; private set; } = null!;
-	public MetricsPanel AppRamMetricCard { get; private set; } = null!;
-	public MetricsPanel SystemRamMetricCard { get; private set; } = null!;
+	public MetricsPanel GpuMetricCard { get; private set; } = null!;
+	public MetricsPanel MemoryMetricCard { get; private set; } = null!;
 
 	public MonitoringSection()
 	{
@@ -29,16 +29,27 @@ public sealed class MonitoringSection : Panel
 
 	public void UpdateMetrics(SystemSnapshot snapshot)
 	{
-		CpuMetricCard.ValueLabel.Text = $"{snapshot.ProcessCpuPercent:0.0} %";
-		CpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.ProcessCpuPercent, 0, 100);
+		CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} %";
+		CpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.CpuLoadPercent, 0, 100);
 
-		AppRamMetricCard.ValueLabel.Text = $"{snapshot.ProcessMemoryMb} MB";
-		AppRamMetricCard.Bar.Value = 0;
+		if (snapshot.GpuTelemetryAvailable)
+		{
+			GpuMetricCard.ValueLabel.Text =
+				$"{snapshot.GpuLoadPercent:0.0} % | {snapshot.GpuTemperatureCelsius} °C";
 
-		SystemRamMetricCard.ValueLabel.Text =
-			$"{snapshot.UsedPhysicalMemoryMb} / {snapshot.TotalPhysicalMemoryMb} MB";
+			GpuMetricCard.Bar.Value =
+				(int)Math.Clamp(snapshot.GpuLoadPercent, 0, 100);
+		}
+		else
+		{
+			GpuMetricCard.ValueLabel.Text = snapshot.GpuTelemetryStatus;
+			GpuMetricCard.Bar.Value = 0;
+		}
 
-		SystemRamMetricCard.Bar.Value =
+		MemoryMetricCard.ValueLabel.Text =
+			$"{snapshot.UsedPhysicalMemoryPercent:0.0} %";
+
+		MemoryMetricCard.Bar.Value =
 			(int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
 	}
 
@@ -47,21 +58,21 @@ public sealed class MonitoringSection : Panel
 		UiFactory.AddSectionHeader(
 			this,
 			SingularityIconType.Metrics,
-			"MONITORING");
+			"TELEMETRY");
 
-		CpuMetricCard = new MetricsPanel("APP CPU", Theme.Accent, 365, 80)
+		CpuMetricCard = new MetricsPanel("CPU LOAD", Theme.Accent, 365, 80)
 		{
 			Left = 20,
 			Top = 60
 		};
 
-		AppRamMetricCard = new MetricsPanel("APP RAM", Theme.Success, 365, 80)
+		GpuMetricCard = new MetricsPanel("GPU LOAD", Theme.Success, 365, 80)
 		{
 			Left = 20,
 			Top = 145
 		};
 
-		SystemRamMetricCard = new MetricsPanel("SYSTEM RAM", Theme.Danger, 365, 80)
+		MemoryMetricCard = new MetricsPanel("MEMORY", Theme.Danger, 365, 80)
 		{
 			Left = 20,
 			Top = 230
@@ -69,8 +80,8 @@ public sealed class MonitoringSection : Panel
 
 		Controls.AddRange([
 			CpuMetricCard,
-			AppRamMetricCard,
-			SystemRamMetricCard
+			GpuMetricCard,
+			MemoryMetricCard
 		]);
 	}
 
