@@ -1,239 +1,277 @@
 # Singularity
 
-Modern Windows hardware inventory, monitoring and stress testing toolkit built with .NET 8 and WinForms.
+> Platform Qualification Suite for Windows
 
-![Platform](https://img.shields.io/badge/.NET-8.0-blue)
+Singularity is a lightweight Windows-based platform qualification tool written in C# and WinForms.
+
+The goal of the project is to provide a self-contained platform validation environment capable of inventory collection, telemetry monitoring, workload execution and qualification reporting without relying on large external software suites.
+
+
+![Platform](https://img.shields.io/badge/.NET-10.0-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
-
----
-
-## Overview
-
-Singularity is a lightweight desktop application for:
-
-- Hardware inventory
-- System monitoring
-- Hardware validation
-- Stress testing
-- System diagnostics
-
-The project focuses on native Windows APIs, WMI, NVML and custom WinForms controls while avoiding heavy external dependencies.
-
 ---
 
 ## Features
 
-### Hardware Inventory
+### Platform Inventory
 
-- Mainboard information
-  - Manufacturer
-  - Product name
-  - BIOS version
-  - BIOS release date
+Collects detailed hardware and operating system information.
 
-- CPU information
-  - Model
-  - Core count
-  - Thread count
-  - Cache sizes
-  - Socket
-  - Virtualization support
+#### Operating System
 
-- Memory inventory
-  - Installed modules
-  - Capacity
-  - Speed
-  - DDR generation
-  - ECC detection
-  - DIMM type
-  - JEDEC manufacturer decoding
+- Name
+- Version
+- Architecture
 
-- Storage inventory
-  - HDD
-  - SATA SSD
-  - NVMe SSD
-  - Manufacturer detection
-  - Bus type detection
-  - Firmware revision
+#### Mainboard
 
-- GPU inventory
-  - NVIDIA NVML integration
-  - VRAM capacity
-  - Temperature
-  - PCIe generation
-  - PCIe link width
+- Manufacturer
+- Model
+- BIOS Version
 
-- Operating system information
-  - Windows version
-  - Build number
-  - Architecture
-  - Install date
-  - Boot time
+#### CPU
 
----
+- Manufacturer
+- Model
+- Core Count
+- Thread Count
 
-### Monitoring
+#### GPU
 
-Real-time monitoring of:
+- Manufacturer
+- Model
+- Dedicated Memory
 
-- Process CPU utilization
-- Process memory usage
-- Physical memory consumption
-- System memory utilization
+#### Memory
+
+- Manufacturer
+- Model
+- Capacity
+- Speed
+
+#### Storage
+
+- Manufacturer
+- Model
+- Capacity
+- Bus Type
+  - NVMe
+  - SATA
+  - USB
 
 ---
 
-### Stress Testing
+## Telemetry
 
-Available workloads:
+Real-time monitoring.
 
-- CPU workload
-- Memory workload
-- GPU workload
+### CPU
 
-Workloads can be combined and controlled through the central WorkloadController.
+- Utilization
+
+### GPU
+
+- Utilization
+- Temperature
+- Memory Usage
+- Power Consumption
+
+### System
+
+- Memory Usage
+
+---
+
+## Workloads
+
+### CPU Stress
+
+Configurable CPU thread workload.
+
+### Memory Stress
+
+Configurable memory allocation workload using native Windows memory allocation.
+
+Current implementation:
+
+- VirtualAlloc
+- VirtualFree
+
+Immediate memory release after workload stop.
+
+---
+
+## Validation
+
+Built-in qualification validation.
+
+### CPU Validation
+
+Validates achieved CPU utilization.
+
+### Memory Validation
+
+Validates requested memory allocation.
+
+### Overall Validation
+
+Aggregated qualification result.
+
+Possible states:
+
+- PASS
+- WARNING
+- FAIL
+
+---
+
+## Qualification Session
+
+Tracks execution details.
+
+### Session Data
+
+- Start Time
+- Duration
+- Result
+
+### Session States
+
+- Idle
+- Running
+- Completed
+- Failed
+
+---
+
+## Qualification History
+
+Stores recent qualification runs.
+
+### History Data
+
+- Result
+- Duration
+- Start Time
+
+History size:
+
+```text
+10 Sessions
+```
 
 ---
 
 ## Architecture
 
 ```text
-UI
- │
- ├─ Sections
- ├─ Panels
- └─ Custom Controls
-
-Hardware
- │
- ├─ Providers
- │   ├─ CpuProvider
- │   ├─ MemoryProvider
- │   ├─ StorageProvider
- │   ├─ MainboardProvider
- │   ├─ OsProvider
- │   └─ NvmlGpuProvider
- │
- ├─ Models
- ├─ Decoders
- └─ Native
-     └─ NVML
-
-Monitoring
- │
- ├─ SystemMonitor
- └─ SystemSnapshot
-
-Core
- │
- ├─ WorkloadController
- └─ WorkloadOptions
-
-Workloads
- │
- ├─ CpuWorkload
- ├─ MemoryWorkload
- └─ GpuWorkload
+Singularity
+│
+├─ Hardware
+│  ├─ Providers
+│  ├─ Models
+│  └─ Inventory
+│
+├─ Monitoring
+│  ├─ Telemetry
+│  └─ SystemSnapshot
+│
+├─ Core
+│  ├─ Workloads
+│  └─ Validation
+│
+└─ UI
+   ├─ Controls
+   ├─ Sections
+   ├─ Panels
+   └─ Views
 ```
 
 ---
 
-## Technology Stack
+## Current Status
 
-- C#
-- .NET 8
-- Windows Forms
-- WMI
-- NVIDIA NVML
-- Native Win32 APIs
+Implemented:
+
+```text
+✓ Platform Inventory
+✓ CPU Telemetry
+✓ GPU Telemetry
+✓ Memory Telemetry
+
+✓ CPU Workload
+✓ Memory Workload
+
+✓ Validation Engine
+✓ Session Tracking
+✓ Session History
+```
+
+Planned:
+
+```text
+□ Qualification Reports
+□ JSON Export
+□ HTML Export
+
+□ GPU Workload
+□ Storage Workload
+
+□ Automated Qualification Runs
+```
+
+## Roadmap
+
+### v0.2
+- Qualification Reports
+- JSON Export
+
+### v0.3
+- GPU Workload
+- Storage Workload
+
+### v0.4
+- Automated Qualification Runs
+
+### v1.0
+- Full Platform Qualification Suite
+
 
 ---
 
-## Building
+## Build
 
-### Requirements
+Requirements:
 
-- Windows 10 / 11
-- .NET 8 SDK
-- NVIDIA Driver (optional for GPU inventory)
+- Windows 11
+- .NET 10 SDK
 
-### Restore
-
-```powershell
-dotnet restore
-```
-
-### Build
+Build:
 
 ```powershell
-dotnet build -c Release
+dotnet build
 ```
 
-### Run
+Run:
 
 ```powershell
 dotnet run
 ```
 
-Or use the provided build script:
+Release:
 
 ```powershell
-.\build.ps1 -Run
+dotnet publish `
+-c Release `
+-r win-x64 `
+--self-contained true
 ```
-
----
-
-## Repository Utilities
-
-### Repository Scan
-
-Generate a complete source scan:
-
-```powershell
-.\scan.ps1
-```
-
-Generated files:
-
-- repo_tree.txt
-- repo_scan.txt
-
----
-
-## Roadmap
-
-### Inventory
-
-- [x] Mainboard
-- [x] CPU
-- [x] Memory
-- [x] Storage
-- [x] GPU
-- [ ] Network adapters
-- [ ] PCIe topology
-
-### Monitoring
-
-- [x] Memory
-- [x] Process CPU
-- [ ] Hardware sensors
-- [ ] Historical charts
-- [ ] Export functionality
-
-### Stress Testing
-
-- [x] CPU
-- [x] Memory
-- [x] GPU
-- [ ] Presets
-- [ ] Result reports
-- [ ] Validation profiles
 
 ---
 
 ## License
 
-Licensed under the MIT License.
+MIT License
 
 Copyright (c) 2026 David Beusing
