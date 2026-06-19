@@ -18,8 +18,13 @@ public sealed class SystemSnapshot
 
 	public bool GpuTelemetryAvailable { get; set; }
 	public double GpuLoadPercent { get; set; }
-	public double GpuMemoryLoadPercent { get; set; }
+	public double GpuMemoryControllerLoadPercent { get; set; }
+	public double GpuMemoryUsedPercent { get; set; }
+	public long GpuMemoryUsedMb { get; set; }
+	public long GpuMemoryTotalMb { get; set; }
 	public int GpuTemperatureCelsius { get; set; }
+	public bool GpuPowerAvailable { get; set; }
+	public double GpuPowerWatts { get; set; }
 	public string GpuTelemetryStatus { get; set; } = "Unavailable";
 
 	public double ProcessCpuPercent { get; set; }

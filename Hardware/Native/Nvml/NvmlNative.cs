@@ -32,6 +32,9 @@ internal static class NvmlNative
 	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetUtilizationRates")]
 	public static extern NvmlReturn DeviceGetUtilizationRates(IntPtr device,out NvmlUtilization utilization);
 
+	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetPowerUsage")]
+	public static extern NvmlReturn DeviceGetPowerUsage(IntPtr device, out uint powerMilliwatts);
+
 	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetCurrPcieLinkGeneration")]
 	public static extern NvmlReturn DeviceGetCurrPcieLinkGeneration(IntPtr device, out uint generation);
 

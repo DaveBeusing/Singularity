@@ -67,8 +67,13 @@ public sealed class SystemMonitor : IDisposable
 
 			GpuTelemetryAvailable = gpu.IsAvailable,
 			GpuLoadPercent = gpu.LoadPercent,
-			GpuMemoryLoadPercent = gpu.MemoryLoadPercent,
+			GpuMemoryControllerLoadPercent = gpu.MemoryControllerLoadPercent,
+			GpuMemoryUsedPercent = gpu.MemoryUsedPercent,
+			GpuMemoryUsedMb = ToMegabytes(gpu.MemoryUsedBytes),
+			GpuMemoryTotalMb = ToMegabytes(gpu.MemoryTotalBytes),
 			GpuTemperatureCelsius = gpu.TemperatureCelsius,
+			GpuPowerAvailable = gpu.PowerAvailable,
+			GpuPowerWatts = gpu.PowerWatts,
 			GpuTelemetryStatus = gpu.Status
 		};
 	}
@@ -78,8 +83,12 @@ public sealed class SystemMonitor : IDisposable
 		TimeSpan currentCpuTime = process.TotalProcessorTime;
 		DateTime currentSampleTime = DateTime.UtcNow;
 
-		double cpuUsedMs = (currentCpuTime - lastProcessCpuTime).TotalMilliseconds;
-		double elapsedMs = (currentSampleTime - lastProcessSampleTime).TotalMilliseconds;
+		double cpuUsedMs =
+			(currentCpuTime - lastProcessCpuTime).TotalMilliseconds;
+
+		double elapsedMs =
+			(currentSampleTime - lastProcessSampleTime).TotalMilliseconds;
+
 		double cpuPercent = 0;
 
 		if (elapsedMs > 0)
@@ -143,7 +152,6 @@ public sealed class SystemMonitor : IDisposable
 		};
 
 		GlobalMemoryStatusEx(ref status);
-
 		return status;
 	}
 
@@ -153,14 +161,17 @@ public sealed class SystemMonitor : IDisposable
 			fileTime.LowDateTime;
 	}
 
+	private static long ToMegabytes(ulong bytes)
+	{
+		return (long)(bytes / 1024 / 1024);
+	}
+
 	public void Dispose()
 	{
 		if (disposed)
 			return;
-
 		cpuTelemetryProvider.Dispose();
 		process.Dispose();
-
 		disposed = true;
 	}
 
