@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core;
+using Singularity.Core.Workloads;
 using Singularity.Monitoring;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
@@ -11,9 +12,9 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.1.5-alpha";
+	private const string VersionString = "v0.1.6-alpha";
 
-	private readonly WorkloadController workloadController = new();
+	private readonly WorkloadManager workloadManager = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -114,9 +115,7 @@ public sealed class MainForm : Form
 
 		SwitchTab(ActiveTab.Hardware);
 
-		ClientSize = new Size(
-			LayoutConstants.WindowWidth,
-			tabHostPanel.Bottom + LayoutConstants.SectionGap);
+		ClientSize = new Size(LayoutConstants.WindowWidth, tabHostPanel.Bottom + LayoutConstants.SectionGap);
 
 		MinimumSize = Size;
 		MaximumSize = Size;
@@ -183,7 +182,11 @@ public sealed class MainForm : Form
 		]);
 	}
 
-	private void ConfigureTabButton(Button button, string text, int left, ActiveTab tab)
+	private void ConfigureTabButton(
+		Button button,
+		string text,
+		int left,
+		ActiveTab tab)
 	{
 		button.Text = text;
 		button.Left = left;
@@ -205,32 +208,32 @@ public sealed class MainForm : Form
 
 		hardwareTabButton.BackColor = activeTab == ActiveTab.Hardware ? Theme.Accent : Theme.PanelLight;
 		hardwareTabButton.ForeColor = activeTab == ActiveTab.Hardware ? Color.Black : Theme.TextMain;
-
 		workloadsTabButton.BackColor = activeTab == ActiveTab.Workloads ? Theme.Accent : Theme.PanelLight;
 		workloadsTabButton.ForeColor = activeTab == ActiveTab.Workloads ? Color.Black : Theme.TextMain;
 	}
 
 	private void StartWorkloads()
 	{
-		if (workloadController.IsRunning)
+		if (workloadManager.IsRunning)
 			return;
 
 		WorkloadOptions options = workloadsView.CreateOptions();
 
-		workloadController.Configure(options);
-		workloadController.Start();
+		workloadManager.Start(options);
 
 		statusBadge.Text = "RUNNING";
 		statusBadge.BackColor = Theme.Success;
 		statusBadge.ForeColor = Color.White;
+
+		SwitchTab(ActiveTab.Workloads);
 	}
 
 	private void StopWorkloads()
 	{
-		if (!workloadController.IsRunning)
+		if (!workloadManager.IsRunning)
 			return;
 
-		workloadController.Stop();
+		workloadManager.Stop();
 
 		statusBadge.Text = "READY";
 		statusBadge.BackColor = Theme.PanelLight;
@@ -240,7 +243,11 @@ public sealed class MainForm : Form
 	private void UpdateMonitoring()
 	{
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
-		workloadsView.UpdateMetrics(snapshot);
+
+		if (workloadsView is not null)
+		{
+			workloadsView.UpdateMetrics(snapshot);
+		}
 	}
 
 	protected override void Dispose(bool disposing)
@@ -248,11 +255,11 @@ public sealed class MainForm : Form
 		if (disposing)
 		{
 			timer.Dispose();
+			workloadManager.Dispose();
 			systemMonitor.Dispose();
 		}
 
 		base.Dispose(disposing);
 	}
-
 
 }

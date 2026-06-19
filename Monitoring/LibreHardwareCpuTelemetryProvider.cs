@@ -54,7 +54,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 			return new CpuTelemetrySnapshot
 			{
 				IsAvailable = false,
-				Status = "CPU temp unavailable"
+				Status = "N/A °C"
 			};
 		}
 		catch (Exception ex)
