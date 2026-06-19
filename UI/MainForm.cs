@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core;
+using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring;
 using Singularity.UI.Layout;
@@ -15,6 +16,7 @@ public sealed class MainForm : Form
 	private const string VersionString = "v0.1.5-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
+	private readonly WorkloadValidator workloadValidator = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -28,6 +30,8 @@ public sealed class MainForm : Form
 
 	private HardwareView hardwareView = null!;
 	private WorkloadsView workloadsView = null!;
+
+	private ValidationResult? lastValidationResult;
 
 	private enum ActiveTab
 	{
@@ -259,13 +263,14 @@ public sealed class MainForm : Form
 
 	private void StopWorkloads()
 	{
-		if (!workloadManager.IsRunning
-			&& workloadManager.Status.State != WorkloadState.Failed)
+		if (!workloadManager.IsRunning &&
+			workloadManager.Status.State != WorkloadState.Failed)
 		{
 			return;
 		}
 
 		workloadManager.Stop();
+		lastValidationResult = null;
 
 		UpdateWorkloadStatus();
 	}
@@ -279,12 +284,24 @@ public sealed class MainForm : Form
 			workloadsView.UpdateMetrics(snapshot);
 		}
 
+		if (workloadManager.IsRunning)
+		{
+			lastValidationResult = workloadValidator.Validate(
+				workloadManager.Status,
+				snapshot);
+		}
+
 		UpdateWorkloadStatus();
 	}
 
 	private void UpdateWorkloadStatus()
 	{
 		WorkloadStatus status = workloadManager.Status;
+
+		ValidationSummary? validationSummary =
+			lastValidationResult is not null
+				? new ValidationSummary(lastValidationResult)
+				: null;
 
 		statusBadge.Text = status.State switch
 		{
@@ -312,6 +329,26 @@ public sealed class MainForm : Form
 			WorkloadState.Stopping => Color.Black,
 			_ => Theme.TextMain
 		};
+
+		if (status.State == WorkloadState.Running &&
+			validationSummary is not null)
+		{
+			switch (validationSummary.OverallStatus)
+			{
+				case ValidationStatus.Pass:
+					statusBadge.BackColor = Theme.Success;
+					break;
+
+				case ValidationStatus.Warning:
+					statusBadge.BackColor = Theme.Accent;
+					statusBadge.ForeColor = Color.Black;
+					break;
+
+				case ValidationStatus.Fail:
+					statusBadge.BackColor = Theme.Danger;
+					break;
+			}
+		}
 	}
 
 	protected override void Dispose(bool disposing)
@@ -322,6 +359,7 @@ public sealed class MainForm : Form
 			workloadManager.Dispose();
 			systemMonitor.Dispose();
 		}
+
 		base.Dispose(disposing);
 	}
 
