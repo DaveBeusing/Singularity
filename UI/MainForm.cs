@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core;
+using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring;
@@ -19,6 +20,7 @@ public sealed class MainForm : Form
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationSession qualificationSession = new();
 	private readonly QualificationHistory qualificationHistory = new();
+	private readonly QualificationReportGenerator reportGenerator = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -34,6 +36,7 @@ public sealed class MainForm : Form
 	private WorkloadsView workloadsView = null!;
 
 	private ValidationResult? lastValidationResult;
+	private QualificationReport? lastReport;
 
 	private enum ActiveTab
 	{
@@ -260,6 +263,7 @@ public sealed class MainForm : Form
 		WorkloadOptions options = workloadsView.CreateOptions();
 
 		lastValidationResult = null;
+		lastReport = null;
 		workloadsView.ResetValidation();
 
 		qualificationSession.Start();
@@ -296,6 +300,13 @@ public sealed class MainForm : Form
 		if (qualificationSession.CanBeRecorded)
 		{
 			qualificationHistory.Add(qualificationSession);
+
+			if (lastValidationResult is not null)
+			{
+				lastReport = reportGenerator.Create(
+					qualificationSession,
+					lastValidationResult);
+			}
 		}
 
 		workloadsView.UpdateSession(qualificationSession);
@@ -392,7 +403,6 @@ public sealed class MainForm : Form
 			workloadManager.Dispose();
 			systemMonitor.Dispose();
 		}
-
 		base.Dispose(disposing);
 	}
 
