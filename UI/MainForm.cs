@@ -126,6 +126,7 @@ public sealed class MainForm : Form
 		UpdateWorkloadStatus();
 		workloadsView.UpdateSession(qualificationSession);
 		workloadsView.UpdateHistory(qualificationHistory);
+		workloadsView.ResetReport();
 
 		ClientSize = new Size(
 			LayoutConstants.WindowWidth,
@@ -264,7 +265,9 @@ public sealed class MainForm : Form
 
 		lastValidationResult = null;
 		lastReport = null;
+
 		workloadsView.ResetValidation();
+		workloadsView.ResetReport();
 
 		qualificationSession.Start();
 		workloadsView.UpdateSession(qualificationSession);
@@ -306,6 +309,8 @@ public sealed class MainForm : Form
 				lastReport = reportGenerator.Create(
 					qualificationSession,
 					lastValidationResult);
+
+				workloadsView.UpdateReport(lastReport);
 			}
 		}
 
@@ -403,6 +408,7 @@ public sealed class MainForm : Form
 			workloadManager.Dispose();
 			systemMonitor.Dispose();
 		}
+
 		base.Dispose(disposing);
 	}
 
