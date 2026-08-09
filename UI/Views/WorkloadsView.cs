@@ -41,6 +41,7 @@ public sealed class WorkloadsView : Panel
 
 	public Button StartButton => controlSection.StartButton;
 	public Button StopButton => controlSection.StopButton;
+	public QualificationProfile SelectedProfile => workloadSection.SelectedProfile;
 
 	public WorkloadsView()
 	{

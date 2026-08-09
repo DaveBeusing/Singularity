@@ -9,6 +9,7 @@ public sealed class QualificationSummary
 	public string StartedAt { get; init; } = string.Empty;
 	public string FinishedAt { get; init; } = string.Empty;
 	public string Duration { get; init; } = string.Empty;
+	public string Profile { get; init; } = string.Empty;
 	public string CpuResult { get; init; } = string.Empty;
 	public string MemoryResult { get; init; } = string.Empty;
 	public string OverallResult { get; init; } = string.Empty;
@@ -20,6 +21,7 @@ public sealed class QualificationSummary
 			StartedAt = report.StartedAt.ToString("yyyy-MM-dd HH:mm:ss"),
 			FinishedAt = report.FinishedAt.ToString("yyyy-MM-dd HH:mm:ss"),
 			Duration = report.Duration.ToString(@"hh\:mm\:ss"),
+			Profile = report.Profile.Name,
 			CpuResult = report.CpuResult.ToString().ToUpperInvariant(),
 			MemoryResult = report.MemoryResult.ToString().ToUpperInvariant(),
 			OverallResult = report.OverallResult.ToString().ToUpperInvariant()

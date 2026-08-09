@@ -11,19 +11,20 @@ public sealed class WorkloadValidator
 {
 	public ValidationResult Validate(
 		WorkloadStatus workload,
-		SystemSnapshot telemetry)
+		SystemSnapshot telemetry,
+		QualificationProfile profile)
 	{
 		ValidationStatus cpuStatus = ValidationStatus.Unknown;
 		string cpuMessage = "CPU workload disabled";
 
 		if (workload.CpuEnabled)
 		{
-			if (telemetry.CpuLoadPercent >= 80)
+			if (telemetry.CpuLoadPercent >= profile.CpuMinimumLoadPercent)
 			{
 				cpuStatus = ValidationStatus.Pass;
 				cpuMessage = $"CPU load {telemetry.CpuLoadPercent:0}%";
 			}
-			else if (telemetry.CpuLoadPercent >= 50)
+			else if (telemetry.CpuLoadPercent >= profile.CpuWarningLoadPercent)
 			{
 				cpuStatus = ValidationStatus.Warning;
 				cpuMessage = $"CPU load {telemetry.CpuLoadPercent:0}%";
@@ -42,9 +43,9 @@ public sealed class WorkloadValidator
 		{
 			long expectedMb = workload.MemoryGb * 1024;
 
-			long passLimit = (long)(expectedMb * 0.90);
+			long passLimit = (long)(expectedMb * profile.MemoryAllocationTolerancePercent / 100.0);
 
-			long warningLimit = (long)(expectedMb * 0.75);
+			long warningLimit = (long)(expectedMb * profile.MemoryWarningTolerancePercent / 100.0);
 
 			if (workload.MemoryAllocatedMb >= passLimit)
 			{

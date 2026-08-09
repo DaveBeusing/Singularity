@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Core.Validation;
 using Singularity.UI.Controls;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
@@ -19,13 +20,15 @@ public sealed class WorkloadSection : Panel
 	public SingularityNumeric CpuThreadsInput { get; } = new();
 	public SingularityNumeric MemoryGbInput { get; } = new();
 	public SingularityNumeric GpuLoadInput { get; } = new();
+	public QualificationProfile SelectedProfile { get; private set; } =
+		QualificationProfiles.Standard;
 
 	public WorkloadSection()
 	{
 		Left = 0;
 		Top = 0;
 		Width = LayoutConstants.WorkloadPanelWidth;
-		Height = 365;
+		Height = 415;
 		BackColor = Theme.Panel;
 
 		BuildUi();
@@ -41,11 +44,13 @@ public sealed class WorkloadSection : Panel
 		Panel cpuCard = BuildCpuCard();
 		Panel ramCard = BuildRamCard();
 		Panel gpuCard = BuildGpuCard();
+		Panel profileCard = BuildProfileCard();
 
 		Controls.AddRange([
 			cpuCard,
 			ramCard,
-			gpuCard
+			gpuCard,
+			profileCard
 		]);
 	}
 
@@ -119,6 +124,64 @@ public sealed class WorkloadSection : Panel
 		]);
 
 		return card;
+	}
+
+	private Panel BuildProfileCard()
+	{
+		Panel card = UiFactory.CreateCard(
+			LayoutConstants.SectionPadding,
+			330,
+			LayoutConstants.SectionContentWidth,
+			65);
+
+		card.Controls.Add(UiFactory.CreateMutedLabel("PROFILE", 14, 6, 80));
+
+		Button quickButton = CreateProfileButton("QUICK", 14, QualificationProfiles.Quick);
+		Button standardButton = CreateProfileButton("STANDARD", 126, QualificationProfiles.Standard);
+		Button burnInButton = CreateProfileButton("BURN IN", 252, QualificationProfiles.BurnIn);
+		card.Controls.AddRange([quickButton, standardButton, burnInButton]);
+
+		UpdateProfileButtonStyles(card);
+		return card;
+	}
+
+	private Button CreateProfileButton(
+		string text,
+		int left,
+		QualificationProfile profile)
+	{
+		Button button = new()
+		{
+			Text = text,
+			Left = left,
+			Top = 28,
+			Width = 100,
+			Height = 28,
+			FlatStyle = FlatStyle.Flat,
+			Font = ThemeFonts.SectionHeader,
+			Tag = profile
+		};
+		button.FlatAppearance.BorderSize = 0;
+		button.Click += (_, _) =>
+		{
+			SelectedProfile = profile;
+			if (button.Parent is Panel parent)
+				UpdateProfileButtonStyles(parent);
+		};
+		return button;
+	}
+
+	private void UpdateProfileButtonStyles(Panel card)
+	{
+		foreach (Control control in card.Controls)
+		{
+			if (control is not Button button || button.Tag is not QualificationProfile profile)
+				continue;
+
+			bool selected = profile == SelectedProfile;
+			button.BackColor = selected ? Theme.Accent : Theme.Panel;
+			button.ForeColor = selected ? Color.Black : Theme.TextMain;
+		}
 	}
 
 }

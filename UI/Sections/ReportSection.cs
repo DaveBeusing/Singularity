@@ -18,6 +18,7 @@ public sealed class ReportSection : Panel
 	private readonly ValueRow cpuRow;
 	private readonly ValueRow memoryRow;
 	private readonly ValueRow overallRow;
+	private readonly ValueRow profileRow;
 	private readonly ValueRow cpuLoadRow;
 	private readonly ValueRow gpuLoadRow;
 	private readonly ValueRow gpuTemperatureRow;
@@ -28,7 +29,7 @@ public sealed class ReportSection : Panel
 	public ReportSection()
 	{
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 375;
+		Height = 400;
 		BackColor = Theme.Panel;
 
 		UiFactory.AddSectionHeader(
@@ -42,12 +43,13 @@ public sealed class ReportSection : Panel
 		cpuRow = CreateRow("CPU", 130);
 		memoryRow = CreateRow("Memory", 155);
 		overallRow = CreateRow("Overall", 180);
-		cpuLoadRow = CreateRow("CPU avg / max", 215);
-		gpuLoadRow = CreateRow("GPU avg / max", 240);
-		gpuTemperatureRow = CreateRow("GPU temp", 265);
-		gpuPowerRow = CreateRow("GPU power", 290);
-		gpuVramRow = CreateRow("VRAM avg / max", 315);
-		systemMemoryRow = CreateRow("RAM avg / max", 340);
+		profileRow = CreateRow("Profile", 215);
+		cpuLoadRow = CreateRow("CPU avg / max", 240);
+		gpuLoadRow = CreateRow("GPU avg / max", 265);
+		gpuTemperatureRow = CreateRow("GPU temp", 290);
+		gpuPowerRow = CreateRow("GPU power", 315);
+		gpuVramRow = CreateRow("VRAM avg / max", 340);
+		systemMemoryRow = CreateRow("RAM avg / max", 365);
 
 		Controls.AddRange([
 			startedRow,
@@ -56,6 +58,7 @@ public sealed class ReportSection : Panel
 			cpuRow,
 			memoryRow,
 			overallRow,
+			profileRow,
 			cpuLoadRow,
 			gpuLoadRow,
 			gpuTemperatureRow,
@@ -73,6 +76,7 @@ public sealed class ReportSection : Panel
 		SetStatus(cpuRow, report.CpuResult);
 		SetStatus(memoryRow, report.MemoryResult);
 		SetStatus(overallRow, report.OverallResult);
+		profileRow.SetValue(report.Profile.Name);
 
 		SessionTelemetryStatistics statistics = report.TelemetryStatistics;
 		cpuLoadRow.SetValue(FormatMetric(statistics.CpuLoadPercent, "%"));
@@ -91,6 +95,7 @@ public sealed class ReportSection : Panel
 		cpuRow.SetValue("-", Theme.TextMain);
 		memoryRow.SetValue("-", Theme.TextMain);
 		overallRow.SetValue("-", Theme.TextMain);
+		profileRow.SetValue("-");
 		cpuLoadRow.SetValue("-");
 		gpuLoadRow.SetValue("-");
 		gpuTemperatureRow.SetValue("-");

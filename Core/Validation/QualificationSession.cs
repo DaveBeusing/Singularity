@@ -24,6 +24,9 @@ public sealed class QualificationSession
 	public SessionTelemetryStatistics TelemetryStatistics { get; private set; } =
 		SessionTelemetryStatistics.Empty;
 
+	public QualificationProfile Profile { get; private set; } =
+		QualificationProfiles.Standard;
+
 	public TimeSpan Duration
 	{
 		get
@@ -46,7 +49,7 @@ public sealed class QualificationSession
 		EndTime is not null &&
 		State is QualificationSessionState.Completed or QualificationSessionState.Failed;
 
-	public void Start()
+	public void Start(QualificationProfile profile)
 	{
 		State = QualificationSessionState.Running;
 		StartTime = DateTime.Now;
@@ -54,6 +57,7 @@ public sealed class QualificationSession
 		Result = ValidationStatus.Unknown;
 		telemetryCollector = new SessionTelemetryCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
+		Profile = profile;
 	}
 
 	public void RecordTelemetry(SystemSnapshot snapshot)
@@ -89,5 +93,6 @@ public sealed class QualificationSession
 		Result = ValidationStatus.Unknown;
 		telemetryCollector = new SessionTelemetryCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
+		Profile = QualificationProfiles.Standard;
 	}
 }

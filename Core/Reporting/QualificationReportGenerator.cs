@@ -29,6 +29,7 @@ public sealed class QualificationReportGenerator
 			StartedAt = session.StartTime.Value,
 			FinishedAt = session.EndTime.Value,
 			Duration = session.Duration,
+			Profile = session.Profile,
 			CpuResult = validationResult.CpuStatus,
 			MemoryResult = validationResult.MemoryStatus,
 			OverallResult = summary.OverallStatus,

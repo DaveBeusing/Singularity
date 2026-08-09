@@ -14,7 +14,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.8.0-alpha";
+	private const string VersionString = "v0.9.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();
@@ -269,7 +269,7 @@ public sealed class MainForm : Form
 		workloadsView.ResetValidation();
 		workloadsView.ResetReport();
 
-		qualificationSession.Start();
+		qualificationSession.Start(workloadsView.SelectedProfile);
 		workloadsView.UpdateSession(qualificationSession);
 
 		workloadManager.Start(options);
@@ -332,8 +332,9 @@ public sealed class MainForm : Form
 
 			lastValidationResult =
 				workloadValidator.Validate(
-					workloadManager.Status,
-					snapshot);
+				workloadManager.Status,
+					snapshot,
+					qualificationSession.Profile);
 
 			workloadsView.UpdateValidation(
 				lastValidationResult);

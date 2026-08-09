@@ -14,6 +14,9 @@ public sealed class QualificationReport
 
 	public TimeSpan Duration { get; init; }
 
+	public QualificationProfile Profile { get; init; } =
+		QualificationProfiles.Standard;
+
 	public ValidationStatus CpuResult { get; init; } = ValidationStatus.Unknown;
 
 	public ValidationStatus MemoryResult { get; init; } = ValidationStatus.Unknown;
