@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using Singularity.Core;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
@@ -15,7 +14,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.4.0-alpha";
+	private const string VersionString = "v0.5.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();

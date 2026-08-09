@@ -1,8 +1,11 @@
-namespace Singularity.Core;
+// Copyright (c) 2026 David Beusing <david.beusing@gmail.com>
+// Licensed under the MIT License.
+// See LICENSE file in the project root for full license information.
+
+namespace Singularity.Core.Workloads;
 
 /// <summary>
-/// Enthält alle Optionen, die der Nutzer in der Oberfläche auswählt.
-/// Diese Klasse wird vom UI an den WorkloadController übergeben.
+/// Defines the workloads and targets selected for a workload run.
 /// </summary>
 public sealed class WorkloadOptions
 {

@@ -2,9 +2,9 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using Singularity.Core;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
+using Singularity.Core.Workloads;
 using Singularity.Monitoring;
 using Singularity.UI.Layout;
 using Singularity.UI.Sections;

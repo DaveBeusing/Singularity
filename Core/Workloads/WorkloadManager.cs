@@ -2,8 +2,6 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using Singularity.Core;
-
 namespace Singularity.Core.Workloads;
 
 public sealed class WorkloadManager : IDisposable
