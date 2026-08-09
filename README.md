@@ -250,7 +250,7 @@ Requirements:
 Build:
 
 ```powershell
-dotnet build src/Singularity/Singularity.csproj
+dotnet build
 ```
 
 Run:

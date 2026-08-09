@@ -14,13 +14,14 @@ $RepoRoot = if ([string]::IsNullOrWhiteSpace($RootPath)) {
 	$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RootPath)
 }
 $ProjectPath = Join-Path $RepoRoot "src\Singularity\Singularity.csproj"
+$SolutionPath = Join-Path $RepoRoot "Singularity.slnx"
 
 Push-Location $RepoRoot
 
 Write-Host ""
 Write-Host "=== Restore ===" -ForegroundColor Cyan
 
-dotnet restore $ProjectPath
+dotnet restore $SolutionPath
 
 if ($LASTEXITCODE -ne 0) {
 	Pop-Location
@@ -32,7 +33,7 @@ Write-Host ""
 Write-Host "=== Build ($Configuration) ===" -ForegroundColor Cyan
 
 dotnet build `
-	$ProjectPath `
+	$SolutionPath `
     --configuration $Configuration `
     --no-restore
 
