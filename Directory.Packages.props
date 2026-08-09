@@ -1,0 +1,11 @@
+<Project>
+	<PropertyGroup>
+		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageVersion Include="LibreHardwareMonitorLib" Version="0.9.6" />
+		<PackageVersion Include="System.Management" Version="10.0.9" />
+		<PackageVersion Include="Vortice.Direct3D12" Version="3.8.3" />
+		<PackageVersion Include="Vortice.Dxc" Version="3.8.3" />
+	</ItemGroup>
+</Project>
