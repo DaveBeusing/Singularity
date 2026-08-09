@@ -15,7 +15,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.17.0-alpha";
+	private const string VersionString = "v0.18.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly QualificationRunner qualificationRunner;
