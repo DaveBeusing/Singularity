@@ -1,15 +1,21 @@
 # build.ps1
 
 param(
-    [string]$RootPath = ".",
+	[string]$RootPath = "",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
     [switch]$Run
 )
 
-Set-Location $RootPath
-$ProjectPath = Join-Path (Get-Location) "src\Singularity\Singularity.csproj"
+$RepoRoot = if ([string]::IsNullOrWhiteSpace($RootPath)) {
+	Split-Path -Parent $PSScriptRoot
+} else {
+	$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RootPath)
+}
+$ProjectPath = Join-Path $RepoRoot "src\Singularity\Singularity.csproj"
+
+Push-Location $RepoRoot
 
 Write-Host ""
 Write-Host "=== Restore ===" -ForegroundColor Cyan
@@ -17,6 +23,7 @@ Write-Host "=== Restore ===" -ForegroundColor Cyan
 dotnet restore $ProjectPath
 
 if ($LASTEXITCODE -ne 0) {
+	Pop-Location
     Write-Error "dotnet restore fehlgeschlagen."
     exit $LASTEXITCODE
 }
@@ -30,6 +37,7 @@ dotnet build `
     --no-restore
 
 if ($LASTEXITCODE -ne 0) {
+	Pop-Location
     Write-Error "dotnet build fehlgeschlagen."
     exit $LASTEXITCODE
 }
@@ -46,6 +54,9 @@ if ($Run) {
 		--project $ProjectPath `
         --configuration $Configuration `
         --no-build
-
-    exit $LASTEXITCODE
+	$RunExitCode = $LASTEXITCODE
+	Pop-Location
+	exit $RunExitCode
 }
+
+Pop-Location

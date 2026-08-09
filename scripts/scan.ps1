@@ -1,16 +1,24 @@
-# scan-repo.ps1
+# scan.ps1
 # Erstellt repo_tree.txt und repo_scan.txt für ein C#/.NET Repository
 
 param(
-    [string]$RootPath = ".",
+	[string]$RootPath = "",
     [string]$TreeOutput = "repo_tree.txt",
     [string]$ScanOutput = "repo_scan.txt"
 )
 
-Set-Location $RootPath
+$RepoRoot = if ([string]::IsNullOrWhiteSpace($RootPath)) {
+	Split-Path -Parent $PSScriptRoot
+} else {
+	$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RootPath)
+}
+$TreeOutputPath = Join-Path $RepoRoot $TreeOutput
+$ScanOutputPath = Join-Path $RepoRoot $ScanOutput
+
+Push-Location $RepoRoot
 
 Write-Host "Erzeuge Repository-Struktur..."
-cmd /c "tree /f > `"$TreeOutput`""
+cmd /c "tree /f > `"$TreeOutputPath`""
 
 Write-Host "Scanne C# Projektdateien..."
 
@@ -22,9 +30,11 @@ Get-ChildItem -Recurse -Include *.cs, *.csproj |
     ForEach-Object {
         "`n===== $($_.FullName) ====="
         Get-Content $_.FullName -Raw
-    } | Set-Content $ScanOutput -Encoding UTF8
+    } | Set-Content $ScanOutputPath -Encoding UTF8
+
+Pop-Location
 
 Write-Host "Fertig."
 Write-Host "Erstellt:"
-Write-Host " - $TreeOutput"
-Write-Host " - $ScanOutput"
+Write-Host " - $TreeOutputPath"
+Write-Host " - $ScanOutputPath"
