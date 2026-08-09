@@ -30,4 +30,8 @@ public sealed class SystemSnapshot
 	public double ProcessCpuPercent { get; set; }
 	public long ProcessMemoryMb { get; set; }
 
+	internal SystemSnapshot Copy()
+	{
+		return (SystemSnapshot)MemberwiseClone();
+	}
 }
