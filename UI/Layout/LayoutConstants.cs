@@ -26,6 +26,8 @@ public static class LayoutConstants
 	public const int StatusRowGap = 7;
 
 	public const int TabBarHeight = 54;
+	public const int WorkloadsSubviewNavigationHeight = 48;
+	public const int WorkloadsHistoryHeight = 400;
 
 	public const int CardGap = 10;
 	public const int CardHeight = 78;

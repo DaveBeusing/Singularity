@@ -13,6 +13,17 @@ namespace Singularity.UI.Views;
 
 public sealed class WorkloadsView : Panel
 {
+	private const int SubviewNavigationHeight = LayoutConstants.WorkloadsSubviewNavigationHeight;
+	private const int SubviewContentTop = SubviewNavigationHeight + LayoutConstants.SectionGap;
+
+	private readonly Button runButton = new();
+	private readonly Button resultsButton = new();
+	private readonly Button historyButton = new();
+	private readonly Panel subviewNavigation = new();
+	private readonly Panel runView = new();
+	private readonly Panel resultsView = new();
+	private readonly Panel historyView = new();
+
 	private WorkloadSection workloadSection = null!;
 	private MonitoringSection monitoringSection = null!;
 	private ControlSection controlSection = null!;
@@ -20,6 +31,13 @@ public sealed class WorkloadsView : Panel
 	private ValidationSection validationSection = null!;
 	private HistorySection historySection = null!;
 	private ReportSection reportSection = null!;
+
+	private enum ActiveSubview
+	{
+		Run,
+		Results,
+		History
+	}
 
 	public Button StartButton => controlSection.StartButton;
 	public Button StopButton => controlSection.StopButton;
@@ -85,6 +103,7 @@ public sealed class WorkloadsView : Panel
 	private void BuildUi()
 	{
 		Controls.Clear();
+		BuildSubviewNavigation();
 
 		workloadSection = new WorkloadSection
 		{
@@ -106,41 +125,102 @@ public sealed class WorkloadsView : Panel
 
 		sessionSection = new SessionSection
 		{
-			Left = LayoutConstants.SidePanelLeft,
-			Top = controlSection.Bottom + LayoutConstants.SectionGap
+			Left = 0,
+			Top = 0
 		};
 
 		validationSection = new ValidationSection
 		{
-			Left = LayoutConstants.SidePanelLeft,
+			Left = 0,
 			Top = sessionSection.Bottom + LayoutConstants.SectionGap
 		};
 
-		historySection = new HistorySection
+		historySection = new HistorySection(
+			LayoutConstants.MainWidth,
+			LayoutConstants.WorkloadsHistoryHeight)
 		{
-			Left = LayoutConstants.SidePanelLeft,
-			Top = validationSection.Bottom + LayoutConstants.SectionGap
+			Left = 0,
+			Top = 0
 		};
 
 		reportSection = new ReportSection
 		{
 			Left = LayoutConstants.SidePanelLeft,
-			Top = historySection.Bottom + LayoutConstants.SectionGap
+			Top = 0
 		};
 
-		Controls.AddRange([
+		runView.SetBounds(0, SubviewContentTop, Width, controlSection.Bottom);
+		runView.BackColor = Theme.Background;
+		runView.Controls.AddRange([
 			workloadSection,
 			monitoringSection,
-			controlSection,
+			controlSection
+		]);
+
+		resultsView.SetBounds(0, SubviewContentTop, Width, validationSection.Bottom);
+		resultsView.BackColor = Theme.Background;
+		resultsView.Controls.AddRange([
 			sessionSection,
 			validationSection,
-			historySection,
 			reportSection
 		]);
 
-		Height = Math.Max(
-			workloadSection.Bottom,
-			reportSection.Bottom);
+		historyView.SetBounds(0, SubviewContentTop, Width, historySection.Height);
+		historyView.BackColor = Theme.Background;
+		historyView.Controls.Add(historySection);
+
+		Controls.AddRange([
+			subviewNavigation,
+			runView,
+			resultsView,
+			historyView
+		]);
+
+		Height = SubviewContentTop + runView.Height;
+		SwitchSubview(ActiveSubview.Run);
+	}
+
+	private void BuildSubviewNavigation()
+	{
+		subviewNavigation.SetBounds(0, 0, Width, SubviewNavigationHeight);
+		subviewNavigation.BackColor = Theme.Panel;
+
+		ConfigureSubviewButton(runButton, "RUN", 20, ActiveSubview.Run);
+		ConfigureSubviewButton(resultsButton, "RESULTS", 160, ActiveSubview.Results);
+		ConfigureSubviewButton(historyButton, "HISTORY", 320, ActiveSubview.History);
+
+		subviewNavigation.Controls.AddRange([runButton, resultsButton, historyButton]);
+	}
+
+	private void ConfigureSubviewButton(
+		Button button,
+		string text,
+		int left,
+		ActiveSubview subview)
+	{
+		button.Text = text;
+		button.SetBounds(left, 8, 130, 32);
+		button.FlatStyle = FlatStyle.Flat;
+		button.FlatAppearance.BorderSize = 0;
+		button.Font = ThemeFonts.Button;
+		button.Click += (_, _) => SwitchSubview(subview);
+	}
+
+	private void SwitchSubview(ActiveSubview subview)
+	{
+		runView.Visible = subview == ActiveSubview.Run;
+		resultsView.Visible = subview == ActiveSubview.Results;
+		historyView.Visible = subview == ActiveSubview.History;
+
+		StyleSubviewButton(runButton, subview == ActiveSubview.Run);
+		StyleSubviewButton(resultsButton, subview == ActiveSubview.Results);
+		StyleSubviewButton(historyButton, subview == ActiveSubview.History);
+	}
+
+	private static void StyleSubviewButton(Button button, bool active)
+	{
+		button.BackColor = active ? Theme.Accent : Theme.PanelLight;
+		button.ForeColor = active ? Color.Black : Theme.TextMain;
 	}
 
 }

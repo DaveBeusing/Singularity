@@ -12,11 +12,13 @@ namespace Singularity.UI.Sections;
 public sealed class HistorySection : Panel
 {
 	private readonly FlowLayoutPanel listPanel;
+	private readonly int contentWidth;
 
-	public HistorySection()
+	public HistorySection(int width = LayoutConstants.MetricsPanelWidth, int height = 220)
 	{
-		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 220;
+		Width = width;
+		Height = height;
+		contentWidth = width - LayoutConstants.SectionPadding * 2;
 		BackColor = Theme.Panel;
 
 		UiFactory.AddSectionHeader(
@@ -28,12 +30,12 @@ public sealed class HistorySection : Panel
 		{
 			Left = LayoutConstants.SectionPadding,
 			Top = 55,
-			Width = LayoutConstants.SectionContentWidth,
-			Height = 145,
+			Width = contentWidth,
+			Height = height - LayoutConstants.SectionHeaderHeight - LayoutConstants.SectionPadding,
 			BackColor = Theme.Panel,
 			FlowDirection = FlowDirection.TopDown,
 			WrapContents = false,
-			AutoScroll = false
+			AutoScroll = true
 		};
 
 		Controls.Add(listPanel);
@@ -56,12 +58,12 @@ public sealed class HistorySection : Panel
 		}
 	}
 
-	private static Label CreateEmptyLabel()
+	private Label CreateEmptyLabel()
 	{
 		return new Label
 		{
 			Text = "No sessions yet",
-			Width = LayoutConstants.SectionContentWidth,
+			Width = contentWidth,
 			Height = 26,
 			Font = ThemeFonts.CardText,
 			ForeColor = Theme.TextMuted,
@@ -70,11 +72,11 @@ public sealed class HistorySection : Panel
 		};
 	}
 
-	private static Panel CreateHistoryRow(QualificationRecord record)
+	private Panel CreateHistoryRow(QualificationRecord record)
 	{
 		Panel row = new()
 		{
-			Width = LayoutConstants.SectionContentWidth,
+			Width = contentWidth,
 			Height = 28,
 			BackColor = Theme.PanelLight,
 			Margin = new Padding(0, 0, 0, 6)
@@ -109,7 +111,7 @@ public sealed class HistorySection : Panel
 		Label startedLabel = new()
 		{
 			Text = record.DisplayStarted,
-			Left = 245,
+			Left = contentWidth - 120,
 			Top = 0,
 			Width = 100,
 			Height = 28,
