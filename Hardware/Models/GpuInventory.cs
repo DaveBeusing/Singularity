@@ -7,6 +7,9 @@ namespace Singularity.Hardware.Models;
 
 public sealed class GpuInventory
 {
+	public string Identifier { get; set; } = string.Empty;
+	public int AdapterIndex { get; set; }
+	public bool IsNvidia { get; set; } = true;
 	public string Name { get; set; } = "Unknown";
 
 	public string Vram { get; set; } = "Unknown";

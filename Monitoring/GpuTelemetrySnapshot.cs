@@ -6,6 +6,10 @@ namespace Singularity.Monitoring;
 
 public sealed class GpuTelemetrySnapshot
 {
+	public string Identifier { get; init; } = string.Empty;
+	public string Name { get; init; } = "Unknown GPU";
+	public int AdapterIndex { get; init; }
+	public bool IsNvidia { get; init; } = true;
 	public bool IsAvailable { get; init; }
 
 	public double LoadPercent { get; init; }

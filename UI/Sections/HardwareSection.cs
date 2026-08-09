@@ -40,10 +40,13 @@ public sealed class HardwareSection : Panel
 			LayoutConstants.HardwareCardWidth,
 			LayoutConstants.LargeCardHeight));
 
-		AddHardwareCard(flow, new GpuInfoPanel(
-			inventory.Gpu,
-			LayoutConstants.HardwareCardWidth,
-			LayoutConstants.LargeCardHeight));
+		foreach (GpuInventory gpu in inventory.Gpus)
+		{
+			AddHardwareCard(flow, new GpuInfoPanel(
+				gpu,
+				LayoutConstants.HardwareCardWidth,
+				LayoutConstants.LargeCardHeight));
+		}
 
 		foreach (MemoryInventory module in inventory.MemoryModules)
 		{

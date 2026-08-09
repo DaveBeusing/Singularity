@@ -26,12 +26,39 @@ public sealed class SystemSnapshot
 	public bool GpuPowerAvailable { get; set; }
 	public double GpuPowerWatts { get; set; }
 	public string GpuTelemetryStatus { get; set; } = "Unavailable";
+	public IReadOnlyList<GpuTelemetrySnapshot> GpuTelemetrySnapshots { get; set; } = Array.Empty<GpuTelemetrySnapshot>();
 
 	public double ProcessCpuPercent { get; set; }
 	public long ProcessMemoryMb { get; set; }
 
 	internal SystemSnapshot Copy()
 	{
-		return (SystemSnapshot)MemberwiseClone();
+		SystemSnapshot copy = (SystemSnapshot)MemberwiseClone();
+		copy.GpuTelemetrySnapshots = Array.AsReadOnly(GpuTelemetrySnapshots.ToArray());
+		return copy;
+	}
+
+	internal void ApplyGpuSnapshots(IReadOnlyList<GpuTelemetrySnapshot> gpuSnapshots)
+	{
+		GpuTelemetrySnapshots = Array.AsReadOnly(gpuSnapshots.ToArray());
+		if (gpuSnapshots.Count == 0)
+		{
+			GpuTelemetryAvailable = false;
+			GpuPowerAvailable = false;
+			GpuTelemetryStatus = "GPU telemetry unavailable";
+			return;
+		}
+
+		GpuTelemetrySnapshot gpu = gpuSnapshots[0];
+		GpuTelemetryAvailable = gpu.IsAvailable;
+		GpuLoadPercent = gpu.LoadPercent;
+		GpuMemoryControllerLoadPercent = gpu.MemoryControllerLoadPercent;
+		GpuMemoryUsedPercent = gpu.MemoryUsedPercent;
+		GpuMemoryUsedMb = (long)(gpu.MemoryUsedBytes / 1024 / 1024);
+		GpuMemoryTotalMb = (long)(gpu.MemoryTotalBytes / 1024 / 1024);
+		GpuTemperatureCelsius = gpu.TemperatureCelsius;
+		GpuPowerAvailable = gpu.PowerAvailable;
+		GpuPowerWatts = gpu.PowerWatts;
+		GpuTelemetryStatus = gpu.Status;
 	}
 }

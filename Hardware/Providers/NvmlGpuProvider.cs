@@ -10,52 +10,29 @@ namespace Singularity.Hardware.Providers;
 
 public sealed class NvmlGpuProvider
 {
-	public GpuInventory Read()
+	public IReadOnlyList<GpuInventory> ReadAll()
 	{
 		try
 		{
 			NvmlReturn result = NvmlNative.Init();
 			if (result != NvmlReturn.Success)
 			{
-				return new GpuInventory
-				{
-					Name = "NVIDIA GPU",
-					Details = "NVML initialization failed"
-				};
+				return Unavailable("NVML initialization failed");
 			}
 			try
 			{
-				result = NvmlNative.DeviceGetHandleByIndex(0, out IntPtr device);
+				result = NvmlNative.DeviceGetCount(out uint deviceCount);
 				if (result != NvmlReturn.Success)
+					return Unavailable("NVML device enumeration failed");
+
+				List<GpuInventory> gpus = new((int)deviceCount);
+				for (uint index = 0; index < deviceCount; index++)
 				{
-					return new GpuInventory
-					{
-						Name = "NVIDIA GPU",
-						Details = "NVML device not found"
-					};
+					if (NvmlNative.DeviceGetHandleByIndex(index, out IntPtr device) != NvmlReturn.Success)
+						continue;
+					gpus.Add(ReadGpu(device, (int)index));
 				}
-				string name = ReadGpuName(device);
-				//string driver = ReadDriverVersion();
-				string memory = ReadMemoryInfo(device);
-				string temperature = ReadTemperature(device);
-
-				ReadPcieInfo(device, out string currentGeneration, out string maxGeneration, out string currentWidth, out string maxWidth);
-
-				return new GpuInventory
-				{
-					Name = name,
-					Vram = memory,
-					Temperature = temperature,
-					PcieGenerationCurrent = currentGeneration,
-					PcieGenerationMax = maxGeneration,
-					PcieWidthCurrent = currentWidth,
-					PcieWidthMax = maxWidth,
-					Details =
-						$"{memory} | " +
-						$"{temperature} | " +
-						$"PCIe Gen{currentGeneration}x{currentWidth} | " +
-						$"[Gen{maxGeneration}x{maxWidth}]"
-				};
+				return gpus.Count > 0 ? gpus.AsReadOnly() : Unavailable("NVML device not found");
 			}
 			finally
 			{
@@ -64,20 +41,48 @@ public sealed class NvmlGpuProvider
 		}
 		catch (DllNotFoundException)
 		{
-			return new GpuInventory
-			{
-				Name = "NVIDIA GPU",
-				Details = "NVML not found"
-			};
+			return Unavailable("NVML not found");
 		}
 		catch
 		{
-			return new GpuInventory
-			{
-				Name = "NVIDIA GPU",
-				Details = "NVML read failed"
-			};
+			return Unavailable("NVML read failed");
 		}
+	}
+
+	private static IReadOnlyList<GpuInventory> Unavailable(string details) =>
+		Array.AsReadOnly([new GpuInventory
+		{
+			Identifier = "nvml:unavailable",
+			Name = "NVIDIA GPU",
+			Details = details
+		}]);
+
+	private static GpuInventory ReadGpu(IntPtr device, int adapterIndex)
+	{
+		string name = ReadGpuName(device);
+		string memory = ReadMemoryInfo(device);
+		string temperature = ReadTemperature(device);
+		ReadPcieInfo(device, out string currentGeneration, out string maxGeneration, out string currentWidth, out string maxWidth);
+		return new GpuInventory
+		{
+			Identifier = ReadGpuUuid(device, adapterIndex),
+			AdapterIndex = adapterIndex,
+			Name = name,
+			Vram = memory,
+			Temperature = temperature,
+			PcieGenerationCurrent = currentGeneration,
+			PcieGenerationMax = maxGeneration,
+			PcieWidthCurrent = currentWidth,
+			PcieWidthMax = maxWidth,
+			Details = $"{memory} | {temperature} | PCIe Gen{currentGeneration}x{currentWidth} | [Gen{maxGeneration}x{maxWidth}]"
+		};
+	}
+
+	private static string ReadGpuUuid(IntPtr device, int adapterIndex)
+	{
+		byte[] buffer = new byte[96];
+		NvmlReturn result = NvmlNative.DeviceGetUuid(device, buffer, (uint)buffer.Length);
+		return result == NvmlReturn.Success ? DecodeAscii(buffer) : $"nvml:{adapterIndex}";
 	}
 
 	private static string ReadGpuName(IntPtr device)

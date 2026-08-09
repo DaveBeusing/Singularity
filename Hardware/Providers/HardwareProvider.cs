@@ -24,7 +24,7 @@ public sealed class HardwareProvider
 			Cpu = cpuProvider.Read(),
 			MemoryModules = memoryProvider.Read(),
 			Os = osProvider.Read(),
-			Gpu = gpuProvider.Read(),
+			Gpus = gpuProvider.ReadAll(),
 			StorageDrives = storageProvider.Read()
 		};
 	}

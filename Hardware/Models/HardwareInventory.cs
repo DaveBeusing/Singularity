@@ -8,7 +8,8 @@ public sealed class HardwareInventory
 {
 	public MainboardInventory Mainboard { get; init; } = new();
 	public CpuInventory Cpu { get; init; } = new();
-	public GpuInventory Gpu { get; init; } = new();
+	public IReadOnlyList<GpuInventory> Gpus { get; init; } = Array.Empty<GpuInventory>();
+	public GpuInventory Gpu => Gpus.Count > 0 ? Gpus[0] : new();
 	public OsInventory Os { get; init; } = new();
 	public IReadOnlyList<MemoryInventory> MemoryModules { get; init; } = Array.Empty<MemoryInventory>();
 	public IReadOnlyList<StorageInventory> StorageDrives { get; init; } = Array.Empty<StorageInventory>();

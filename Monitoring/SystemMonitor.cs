@@ -43,7 +43,7 @@ public sealed class SystemMonitor : IDisposable
 	{
 		process.Refresh();
 		MemoryStatus memory = GetMemoryStatus();
-		GpuTelemetrySnapshot gpu = gpuTelemetryProvider.ReadFast();
+		IReadOnlyList<GpuTelemetrySnapshot> gpus = gpuTelemetryProvider.ReadFast();
 		long totalMb = (long)(memory.TotalPhys / 1024 / 1024);
 		long availableMb = (long)(memory.AvailPhys / 1024 / 1024);
 		long usedMb = totalMb - availableMb;
@@ -57,33 +57,16 @@ public sealed class SystemMonitor : IDisposable
 			snapshot.AvailablePhysicalMemoryMb = availableMb;
 			snapshot.UsedPhysicalMemoryMb = usedMb;
 			snapshot.UsedPhysicalMemoryPercent = totalMb > 0 ? usedMb / (double)totalMb * 100.0 : 0;
-			snapshot.GpuTelemetryAvailable = gpu.IsAvailable;
-			snapshot.GpuLoadPercent = gpu.LoadPercent;
-			snapshot.GpuMemoryControllerLoadPercent = gpu.MemoryControllerLoadPercent;
-			snapshot.GpuMemoryUsedPercent = gpu.MemoryUsedPercent;
-			snapshot.GpuMemoryUsedMb = ToMegabytes(gpu.MemoryUsedBytes);
-			snapshot.GpuMemoryTotalMb = ToMegabytes(gpu.MemoryTotalBytes);
-			snapshot.GpuTelemetryStatus = gpu.Status;
+			snapshot.ApplyGpuSnapshots(gpus);
 		});
 	}
 
 	private void SampleMedium()
 	{
-		GpuTelemetrySnapshot gpu = gpuTelemetryProvider.ReadMedium();
+		IReadOnlyList<GpuTelemetrySnapshot> gpus = gpuTelemetryProvider.ReadMedium();
 		cache.Update(snapshot =>
 		{
-			if (!gpu.IsAvailable)
-			{
-				snapshot.GpuTelemetryAvailable = false;
-				snapshot.GpuTelemetryStatus = gpu.Status;
-				return;
-			}
-
-			snapshot.GpuTelemetryAvailable = true;
-			snapshot.GpuTemperatureCelsius = gpu.TemperatureCelsius;
-			snapshot.GpuPowerAvailable = gpu.PowerAvailable;
-			snapshot.GpuPowerWatts = gpu.PowerWatts;
-			snapshot.GpuTelemetryStatus = gpu.Status;
+			snapshot.ApplyGpuSnapshots(gpus);
 		});
 	}
 
@@ -144,8 +127,6 @@ public sealed class SystemMonitor : IDisposable
 	}
 
 	private static ulong ToUInt64(FileTime value) => ((ulong)value.HighDateTime << 32) | value.LowDateTime;
-	private static long ToMegabytes(ulong bytes) => (long)(bytes / 1024 / 1024);
-
 	public void Dispose()
 	{
 		if (disposed)
