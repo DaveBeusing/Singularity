@@ -20,7 +20,11 @@ public sealed class MetricBar : Control
 		get => value;
 		set
 		{
-			this.value = Math.Clamp(value, 0, 100);
+			int clampedValue = Math.Clamp(value, 0, 100);
+			if (this.value == clampedValue)
+				return;
+
+			this.value = clampedValue;
 			Invalidate();
 		}
 	}

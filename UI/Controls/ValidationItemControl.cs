@@ -55,28 +55,16 @@ public sealed class ValidationItemControl : Panel
 		ValidationStatus status,
 		string _)
 	{
-		switch (status)
+		(string text, Color color) = status switch
 		{
-			case ValidationStatus.Pass:
-				statusLabel.Text = "PASS";
-				statusLabel.ForeColor = Theme.Success;
-				break;
+			ValidationStatus.Pass => ("PASS", Theme.Success),
+			ValidationStatus.Warning => ("WARNING", Theme.Accent),
+			ValidationStatus.Fail => ("FAIL", Theme.Danger),
+			_ => ("UNKNOWN", Theme.TextMuted)
+		};
 
-			case ValidationStatus.Warning:
-				statusLabel.Text = "WARNING";
-				statusLabel.ForeColor = Theme.Accent;
-				break;
-
-			case ValidationStatus.Fail:
-				statusLabel.Text = "FAIL";
-				statusLabel.ForeColor = Theme.Danger;
-				break;
-
-			default:
-				statusLabel.Text = "UNKNOWN";
-				statusLabel.ForeColor = Theme.TextMuted;
-				break;
-		}
+		ControlUpdate.SetText(statusLabel, text);
+		ControlUpdate.SetForeColor(statusLabel, color);
 	}
 
 	public void Reset()

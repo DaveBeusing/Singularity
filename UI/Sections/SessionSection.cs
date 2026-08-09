@@ -41,23 +41,24 @@ public sealed class SessionSection : Panel
 
 	public void UpdateSession(QualificationSession session)
 	{
-		startedValue.Text =
-			session.StartTime?.ToString("HH:mm:ss") ?? "Not Started";
+		ControlUpdate.SetText(
+			startedValue,
+			session.StartTime?.ToString("HH:mm:ss") ?? "Not Started");
+		ControlUpdate.SetText(
+			durationValue,
+			session.Duration.ToString(@"hh\:mm\:ss"));
+		ControlUpdate.SetText(
+			resultValue,
+			session.Result.ToString().ToUpperInvariant());
 
-		durationValue.Text =
-			session.Duration.ToString(@"hh\:mm\:ss");
-
-		resultValue.Text =
-			session.Result.ToString().ToUpperInvariant();
-
-		resultValue.ForeColor =
-			session.Result switch
-			{
-				ValidationStatus.Pass => Theme.Success,
-				ValidationStatus.Warning => Theme.Accent,
-				ValidationStatus.Fail => Theme.Danger,
-				_ => Theme.TextMuted
-			};
+		Color resultColor = session.Result switch
+		{
+			ValidationStatus.Pass => Theme.Success,
+			ValidationStatus.Warning => Theme.Accent,
+			ValidationStatus.Fail => Theme.Danger,
+			_ => Theme.TextMuted
+		};
+		ControlUpdate.SetForeColor(resultValue, resultColor);
 	}
 
 	private static Label CreateTitleLabel(string text, int top)

@@ -29,34 +29,38 @@ public sealed class MonitoringSection : Panel
 
 	public void UpdateMetrics(SystemSnapshot snapshot)
 	{
+		string cpuText;
 		if (snapshot.CpuTemperatureAvailable)
 		{
-			CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureCelsius:0} °C";
+			cpuText = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureCelsius:0} °C";
 		}
 		else
 		{
-			CpuMetricCard.ValueLabel.Text = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureStatus}";
+			cpuText = $"{snapshot.CpuLoadPercent:0.0} % | {snapshot.CpuTemperatureStatus}";
 		}
 
-		CpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.CpuLoadPercent, 0, 100);
+		CpuMetricCard.UpdateMetric(
+			cpuText,
+			(int)Math.Clamp(snapshot.CpuLoadPercent, 0, 100));
 
 		if (snapshot.GpuTelemetryAvailable)
 		{
-			GpuMetricCard.ValueLabel.Text = BuildGpuMainText(snapshot);
-			GpuMetricCard.Bar.Value = (int)Math.Clamp(snapshot.GpuLoadPercent, 0, 100);
-			GpuMemoryMetricCard.ValueLabel.Text = $"{snapshot.GpuMemoryUsedMb} / {snapshot.GpuMemoryTotalMb} MB";
-			GpuMemoryMetricCard.Bar.Value = (int)Math.Clamp(snapshot.GpuMemoryUsedPercent, 0, 100);
+			GpuMetricCard.UpdateMetric(
+				BuildGpuMainText(snapshot),
+				(int)Math.Clamp(snapshot.GpuLoadPercent, 0, 100));
+			GpuMemoryMetricCard.UpdateMetric(
+				$"{snapshot.GpuMemoryUsedMb} / {snapshot.GpuMemoryTotalMb} MB",
+				(int)Math.Clamp(snapshot.GpuMemoryUsedPercent, 0, 100));
 		}
 		else
 		{
-			GpuMetricCard.ValueLabel.Text = snapshot.GpuTelemetryStatus;
-			GpuMetricCard.Bar.Value = 0;
-			GpuMemoryMetricCard.ValueLabel.Text = snapshot.GpuTelemetryStatus;
-			GpuMemoryMetricCard.Bar.Value = 0;
+			GpuMetricCard.UpdateMetric(snapshot.GpuTelemetryStatus, 0);
+			GpuMemoryMetricCard.UpdateMetric(snapshot.GpuTelemetryStatus, 0);
 		}
 
-		MemoryMetricCard.ValueLabel.Text = $"{snapshot.UsedPhysicalMemoryPercent:0.0} %";
-		MemoryMetricCard.Bar.Value = (int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100);
+		MemoryMetricCard.UpdateMetric(
+			$"{snapshot.UsedPhysicalMemoryPercent:0.0} %",
+			(int)Math.Clamp(snapshot.UsedPhysicalMemoryPercent, 0, 100));
 	}
 
 	private static string BuildGpuMainText(SystemSnapshot snapshot)

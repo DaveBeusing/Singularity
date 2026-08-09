@@ -51,4 +51,10 @@ public sealed class MetricsPanel : Panel
 		Controls.Add(Bar);
 	}
 
+	public void UpdateMetric(string text, int value)
+	{
+		ControlUpdate.SetText(ValueLabel, text);
+		Bar.Value = value;
+	}
+
 }

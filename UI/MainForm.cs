@@ -7,6 +7,7 @@ using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring;
+using Singularity.UI.Controls;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
 
@@ -14,7 +15,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.3.0-alpha";
+	private const string VersionString = "v0.4.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();
@@ -352,7 +353,7 @@ public sealed class MainForm : Form
 				? new ValidationSummary(lastValidationResult)
 				: null;
 
-		statusBadge.Text = status.State switch
+		string badgeText = status.State switch
 		{
 			WorkloadState.Stopped => "READY",
 			WorkloadState.Starting => "STARTING",
@@ -362,7 +363,7 @@ public sealed class MainForm : Form
 			_ => "UNKNOWN"
 		};
 
-		statusBadge.BackColor = status.State switch
+		Color badgeBackColor = status.State switch
 		{
 			WorkloadState.Stopped => Theme.PanelLight,
 			WorkloadState.Starting => Theme.Accent,
@@ -372,7 +373,7 @@ public sealed class MainForm : Form
 			_ => Theme.PanelLight
 		};
 
-		statusBadge.ForeColor = status.State switch
+		Color badgeForeColor = status.State switch
 		{
 			WorkloadState.Starting => Color.Black,
 			WorkloadState.Stopping => Color.Black,
@@ -385,19 +386,23 @@ public sealed class MainForm : Form
 			switch (validationSummary.OverallStatus)
 			{
 				case ValidationStatus.Pass:
-					statusBadge.BackColor = Theme.Success;
+					badgeBackColor = Theme.Success;
 					break;
 
 				case ValidationStatus.Warning:
-					statusBadge.BackColor = Theme.Accent;
-					statusBadge.ForeColor = Color.Black;
+					badgeBackColor = Theme.Accent;
+					badgeForeColor = Color.Black;
 					break;
 
 				case ValidationStatus.Fail:
-					statusBadge.BackColor = Theme.Danger;
+					badgeBackColor = Theme.Danger;
 					break;
 			}
 		}
+
+		ControlUpdate.SetText(statusBadge, badgeText);
+		ControlUpdate.SetBackColor(statusBadge, badgeBackColor);
+		ControlUpdate.SetForeColor(statusBadge, badgeForeColor);
 	}
 
 	protected override void Dispose(bool disposing)
