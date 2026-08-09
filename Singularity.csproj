@@ -17,5 +17,7 @@
 	<ItemGroup>
 		<PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
 		<PackageReference Include="System.Management" Version="10.0.9" />
+		<PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />
+		<PackageReference Include="Vortice.Dxc" Version="3.8.3" />
 	</ItemGroup>
 </Project>

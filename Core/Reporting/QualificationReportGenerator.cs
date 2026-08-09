@@ -32,6 +32,7 @@ public sealed class QualificationReportGenerator
 			Profile = session.Profile,
 			CpuResult = validationResult.CpuStatus,
 			MemoryResult = validationResult.MemoryStatus,
+			GpuResult = validationResult.GpuStatus,
 			OverallResult = summary.OverallStatus,
 			TelemetryStatistics = session.TelemetryStatistics
 		};

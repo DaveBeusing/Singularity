@@ -17,6 +17,7 @@ public sealed class ReportSection : Panel
 	private readonly ValueRow durationRow;
 	private readonly ValueRow cpuRow;
 	private readonly ValueRow memoryRow;
+	private readonly ValueRow gpuRow;
 	private readonly ValueRow overallRow;
 	private readonly ValueRow profileRow;
 	private readonly ValueRow cpuLoadRow;
@@ -29,7 +30,7 @@ public sealed class ReportSection : Panel
 	public ReportSection()
 	{
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 400;
+		Height = 425;
 		BackColor = Theme.Panel;
 
 		UiFactory.AddSectionHeader(
@@ -42,14 +43,15 @@ public sealed class ReportSection : Panel
 		durationRow = CreateRow("Duration", 105);
 		cpuRow = CreateRow("CPU", 130);
 		memoryRow = CreateRow("Memory", 155);
-		overallRow = CreateRow("Overall", 180);
-		profileRow = CreateRow("Profile", 215);
-		cpuLoadRow = CreateRow("CPU avg / max", 240);
-		gpuLoadRow = CreateRow("GPU avg / max", 265);
-		gpuTemperatureRow = CreateRow("GPU temp", 290);
-		gpuPowerRow = CreateRow("GPU power", 315);
-		gpuVramRow = CreateRow("VRAM avg / max", 340);
-		systemMemoryRow = CreateRow("RAM avg / max", 365);
+		gpuRow = CreateRow("GPU", 180);
+		overallRow = CreateRow("Overall", 205);
+		profileRow = CreateRow("Profile", 240);
+		cpuLoadRow = CreateRow("CPU avg / max", 265);
+		gpuLoadRow = CreateRow("GPU avg / max", 290);
+		gpuTemperatureRow = CreateRow("GPU temp", 315);
+		gpuPowerRow = CreateRow("GPU power", 340);
+		gpuVramRow = CreateRow("VRAM avg / max", 365);
+		systemMemoryRow = CreateRow("RAM avg / max", 390);
 
 		Controls.AddRange([
 			startedRow,
@@ -57,6 +59,7 @@ public sealed class ReportSection : Panel
 			durationRow,
 			cpuRow,
 			memoryRow,
+			gpuRow,
 			overallRow,
 			profileRow,
 			cpuLoadRow,
@@ -75,6 +78,7 @@ public sealed class ReportSection : Panel
 		durationRow.SetValue(report.Duration.ToString(@"hh\:mm\:ss"));
 		SetStatus(cpuRow, report.CpuResult);
 		SetStatus(memoryRow, report.MemoryResult);
+		SetStatus(gpuRow, report.GpuResult);
 		SetStatus(overallRow, report.OverallResult);
 		profileRow.SetValue(report.Profile.Name);
 
@@ -94,6 +98,7 @@ public sealed class ReportSection : Panel
 		durationRow.SetValue("-");
 		cpuRow.SetValue("-", Theme.TextMain);
 		memoryRow.SetValue("-", Theme.TextMain);
+		gpuRow.SetValue("-", Theme.TextMain);
 		overallRow.SetValue("-", Theme.TextMain);
 		profileRow.SetValue("-");
 		cpuLoadRow.SetValue("-");

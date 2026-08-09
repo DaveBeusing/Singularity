@@ -8,29 +8,46 @@ public sealed class WorkloadManager : IDisposable
 {
 	private readonly CpuStressWorker cpuStressWorker = new();
 	private readonly MemoryStressWorker memoryStressWorker = new();
+	private readonly GpuStressWorker gpuStressWorker = new();
 
 	private WorkloadState state = WorkloadState.Stopped;
 	private string message = "Ready";
 
 	private bool cpuEnabled;
 	private bool memoryEnabled;
+	private bool gpuEnabled;
 	private int cpuThreads;
 	private int memoryGb;
+	private int gpuLoadPercent;
 
-	public bool IsRunning =>
-		state is WorkloadState.Starting or WorkloadState.Running or WorkloadState.Stopping;
-
-	public WorkloadStatus Status =>
-		new()
+	public bool IsRunning
+	{
+		get
 		{
-			State = state,
-			CpuEnabled = cpuEnabled,
-			MemoryEnabled = memoryEnabled,
-			CpuThreads = cpuThreads,
-			MemoryGb = memoryGb,
-			MemoryAllocatedMb = memoryStressWorker.AllocatedMegabytes,
-			Message = message
-		};
+			RefreshGpuState();
+			return state is WorkloadState.Starting or WorkloadState.Running or WorkloadState.Stopping;
+		}
+	}
+
+	public WorkloadStatus Status
+	{
+		get
+		{
+			RefreshGpuState();
+			return new WorkloadStatus
+			{
+				State = state,
+				CpuEnabled = cpuEnabled,
+				MemoryEnabled = memoryEnabled,
+				GpuEnabled = gpuEnabled,
+				CpuThreads = cpuThreads,
+				MemoryGb = memoryGb,
+				GpuLoadPercent = gpuLoadPercent,
+				MemoryAllocatedMb = memoryStressWorker.AllocatedMegabytes,
+				Message = message
+			};
+		}
+	}
 
 	public void Start(WorkloadOptions options)
 	{
@@ -40,8 +57,10 @@ public sealed class WorkloadManager : IDisposable
 		message = "Starting";
 		cpuEnabled = options.EnableCpuWorkload;
 		memoryEnabled = options.EnableMemoryWorkload;
+		gpuEnabled = options.EnableGpuWorkload;
 		cpuThreads = options.CpuThreads;
 		memoryGb = options.MemoryGb;
+		gpuLoadPercent = options.GpuLoadPercent;
 		try
 		{
 			if (cpuEnabled)
@@ -52,7 +71,11 @@ public sealed class WorkloadManager : IDisposable
 			{
 				memoryStressWorker.Start(memoryGb);
 			}
-			state = WorkloadState.Running;
+			if (gpuEnabled)
+			{
+				gpuStressWorker.Start(gpuLoadPercent);
+			}
+			state = gpuEnabled ? WorkloadState.Starting : WorkloadState.Running;
 			message = BuildRunningMessage();
 		}
 		catch (Exception ex)
@@ -71,12 +94,15 @@ public sealed class WorkloadManager : IDisposable
 		message = "Stopping";
 		cpuStressWorker.Stop();
 		memoryStressWorker.Stop();
+		gpuStressWorker.Stop();
 		state = WorkloadState.Stopped;
 		message = "Ready";
 		cpuEnabled = false;
 		memoryEnabled = false;
+		gpuEnabled = false;
 		cpuThreads = 0;
 		memoryGb = 0;
+		gpuLoadPercent = 0;
 	}
 
 	public void ResetFailure()
@@ -98,6 +124,10 @@ public sealed class WorkloadManager : IDisposable
 		{
 			parts.Add($"RAM {memoryGb}GB");
 		}
+		if (gpuEnabled)
+		{
+			parts.Add($"GPU {gpuLoadPercent}%");
+		}
 		if (parts.Count == 0)
 		{
 			return "No workload selected";
@@ -110,6 +140,29 @@ public sealed class WorkloadManager : IDisposable
 		Stop();
 		cpuStressWorker.Dispose();
 		memoryStressWorker.Dispose();
+		gpuStressWorker.Dispose();
+	}
+
+	private void RefreshGpuState()
+	{
+		if (!gpuEnabled || state is WorkloadState.Stopped or WorkloadState.Stopping or WorkloadState.Failed)
+			return;
+
+		if (gpuStressWorker.Failure is Exception failure)
+		{
+			cpuStressWorker.Stop();
+			memoryStressWorker.Stop();
+			gpuStressWorker.Stop();
+			state = WorkloadState.Failed;
+			message = failure.Message;
+			return;
+		}
+
+		if (state == WorkloadState.Starting && gpuStressWorker.IsReady)
+		{
+			state = WorkloadState.Running;
+			message = BuildRunningMessage();
+		}
 	}
 
 }

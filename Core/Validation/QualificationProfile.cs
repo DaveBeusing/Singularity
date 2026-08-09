@@ -12,7 +12,9 @@ public sealed record QualificationProfile(
 	double MemoryAllocationTolerancePercent,
 	double MemoryWarningTolerancePercent,
 	double GpuMinimumLoadPercent,
-	double GpuMaximumTemperatureCelsius);
+	double GpuMaximumTemperatureCelsius,
+	TimeSpan GpuWarmupDuration,
+	TimeSpan GpuStabilityDuration);
 
 public static class QualificationProfiles
 {
@@ -24,7 +26,9 @@ public static class QualificationProfiles
 		85,
 		70,
 		75,
-		90);
+		90,
+		TimeSpan.FromSeconds(5),
+		TimeSpan.FromSeconds(2));
 
 	public static QualificationProfile Standard { get; } = new(
 		"Standard",
@@ -34,7 +38,9 @@ public static class QualificationProfiles
 		90,
 		75,
 		85,
-		85);
+		85,
+		TimeSpan.FromSeconds(10),
+		TimeSpan.FromSeconds(3));
 
 	public static QualificationProfile BurnIn { get; } = new(
 		"BurnIn",
@@ -44,7 +50,9 @@ public static class QualificationProfiles
 		95,
 		85,
 		90,
-		80);
+		80,
+		TimeSpan.FromSeconds(20),
+		TimeSpan.FromSeconds(5));
 
 	public static IReadOnlyList<QualificationProfile> All { get; } =
 		[Quick, Standard, BurnIn];

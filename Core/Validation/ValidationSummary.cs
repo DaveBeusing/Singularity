@@ -19,19 +19,22 @@ public sealed class ValidationSummary
 		get
 		{
 			if (Result.CpuStatus == ValidationStatus.Fail ||
-				Result.MemoryStatus == ValidationStatus.Fail)
+				Result.MemoryStatus == ValidationStatus.Fail ||
+				Result.GpuStatus == ValidationStatus.Fail)
 			{
 				return ValidationStatus.Fail;
 			}
 
 			if (Result.CpuStatus == ValidationStatus.Warning ||
-				Result.MemoryStatus == ValidationStatus.Warning)
+				Result.MemoryStatus == ValidationStatus.Warning ||
+				Result.GpuStatus == ValidationStatus.Warning)
 			{
 				return ValidationStatus.Warning;
 			}
 
 			if (Result.CpuStatus == ValidationStatus.Pass ||
-				Result.MemoryStatus == ValidationStatus.Pass)
+				Result.MemoryStatus == ValidationStatus.Pass ||
+				Result.GpuStatus == ValidationStatus.Pass)
 			{
 				return ValidationStatus.Pass;
 			}

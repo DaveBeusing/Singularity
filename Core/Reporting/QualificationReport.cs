@@ -21,6 +21,8 @@ public sealed class QualificationReport
 
 	public ValidationStatus MemoryResult { get; init; } = ValidationStatus.Unknown;
 
+	public ValidationStatus GpuResult { get; init; } = ValidationStatus.Unknown;
+
 	public ValidationStatus OverallResult { get; init; } = ValidationStatus.Unknown;
 
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =

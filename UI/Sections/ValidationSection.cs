@@ -13,6 +13,7 @@ public sealed class ValidationSection : Panel
 {
 	private readonly StatusRow cpuItem;
 	private readonly StatusRow memoryItem;
+	private readonly StatusRow gpuItem;
 	private readonly StatusRow overallItem;
 
 	public ValidationSection()
@@ -21,7 +22,7 @@ public sealed class ValidationSection : Panel
 		Top = 430;
 
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 185;
+		Height = 228;
 
 		BackColor = Theme.Panel;
 
@@ -42,15 +43,22 @@ public sealed class ValidationSection : Panel
 			Top = 55 + LayoutConstants.StatusRowHeight + LayoutConstants.StatusRowGap
 		};
 
-		overallItem = new StatusRow("OVERALL")
+		gpuItem = new StatusRow("GPU")
 		{
 			Left = LayoutConstants.SectionPadding,
 			Top = 55 + (LayoutConstants.StatusRowHeight + LayoutConstants.StatusRowGap) * 2
 		};
 
+		overallItem = new StatusRow("OVERALL")
+		{
+			Left = LayoutConstants.SectionPadding,
+			Top = 55 + (LayoutConstants.StatusRowHeight + LayoutConstants.StatusRowGap) * 3
+		};
+
 		Controls.AddRange([
 			cpuItem,
 			memoryItem,
+			gpuItem,
 			overallItem
 		]);
 
@@ -62,6 +70,7 @@ public sealed class ValidationSection : Panel
 	{
 		cpuItem.SetStatus(result.CpuStatus);
 		memoryItem.SetStatus(result.MemoryStatus);
+		gpuItem.SetStatus(result.GpuStatus);
 
 		ValidationSummary summary =
 			new(result);
@@ -73,6 +82,7 @@ public sealed class ValidationSection : Panel
 	{
 		cpuItem.Reset();
 		memoryItem.Reset();
+		gpuItem.Reset();
 		overallItem.Reset();
 	}
 }

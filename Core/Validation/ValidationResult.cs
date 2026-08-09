@@ -8,10 +8,15 @@ public sealed class ValidationResult
 {
 	public ValidationStatus CpuStatus { get; init; }
 	public ValidationStatus MemoryStatus { get; init; }
+	public ValidationStatus GpuStatus { get; init; }
 
 	public string CpuMessage { get; init; } = string.Empty;
 	public string MemoryMessage { get; init; } = string.Empty;
+	public string GpuMessage { get; init; } = string.Empty;
 
-	public bool IsSuccess => CpuStatus != ValidationStatus.Fail && MemoryStatus != ValidationStatus.Fail;
+	public bool IsSuccess =>
+		CpuStatus != ValidationStatus.Fail &&
+		MemoryStatus != ValidationStatus.Fail &&
+		GpuStatus != ValidationStatus.Fail;
 
 }

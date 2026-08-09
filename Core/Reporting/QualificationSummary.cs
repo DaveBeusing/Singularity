@@ -12,6 +12,7 @@ public sealed class QualificationSummary
 	public string Profile { get; init; } = string.Empty;
 	public string CpuResult { get; init; } = string.Empty;
 	public string MemoryResult { get; init; } = string.Empty;
+	public string GpuResult { get; init; } = string.Empty;
 	public string OverallResult { get; init; } = string.Empty;
 
 	public static QualificationSummary FromReport(QualificationReport report)
@@ -24,6 +25,7 @@ public sealed class QualificationSummary
 			Profile = report.Profile.Name,
 			CpuResult = report.CpuResult.ToString().ToUpperInvariant(),
 			MemoryResult = report.MemoryResult.ToString().ToUpperInvariant(),
+			GpuResult = report.GpuResult.ToString().ToUpperInvariant(),
 			OverallResult = report.OverallResult.ToString().ToUpperInvariant()
 		};
 	}

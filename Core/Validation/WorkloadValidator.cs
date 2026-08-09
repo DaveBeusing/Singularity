@@ -9,10 +9,20 @@ namespace Singularity.Core.Validation;
 
 public sealed class WorkloadValidator
 {
+	private TimeSpan? gpuLoadStableSince;
+	private TimeSpan? gpuRunningSince;
+
+	public void Reset()
+	{
+		gpuLoadStableSince = null;
+		gpuRunningSince = null;
+	}
+
 	public ValidationResult Validate(
 		WorkloadStatus workload,
 		SystemSnapshot telemetry,
-		QualificationProfile profile)
+		QualificationProfile profile,
+		TimeSpan sessionDuration)
 	{
 		ValidationStatus cpuStatus = ValidationStatus.Unknown;
 		string cpuMessage = "CPU workload disabled";
@@ -67,12 +77,70 @@ public sealed class WorkloadValidator
 			}
 		}
 
+		ValidationStatus gpuStatus = ValidationStatus.Unknown;
+		string gpuMessage = "GPU workload disabled";
+
+		if (workload.GpuEnabled)
+		{
+			if (workload.State != WorkloadState.Running)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Warning;
+				gpuMessage = "GPU initializing";
+			}
+			else if (sessionDuration - (gpuRunningSince ??= sessionDuration) < profile.GpuWarmupDuration)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Warning;
+				gpuMessage = "GPU warming up";
+			}
+			else if (!telemetry.GpuTelemetryAvailable)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Warning;
+				gpuMessage = telemetry.GpuTelemetryStatus;
+			}
+			else if (telemetry.GpuTemperatureCelsius > profile.GpuMaximumTemperatureCelsius)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Fail;
+				gpuMessage = $"GPU temperature {telemetry.GpuTemperatureCelsius} °C";
+			}
+			else if (telemetry.GpuLoadPercent >= profile.GpuMinimumLoadPercent)
+			{
+				gpuLoadStableSince ??= sessionDuration;
+				if (sessionDuration - gpuLoadStableSince.Value >= profile.GpuStabilityDuration)
+				{
+					gpuStatus = ValidationStatus.Pass;
+					gpuMessage = $"GPU load {telemetry.GpuLoadPercent:0}%";
+				}
+				else
+				{
+					gpuStatus = ValidationStatus.Warning;
+					gpuMessage = "GPU load stabilizing";
+				}
+			}
+			else
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Fail;
+				gpuMessage = $"GPU load only {telemetry.GpuLoadPercent:0}%";
+			}
+		}
+		else
+		{
+			gpuLoadStableSince = null;
+			gpuRunningSince = null;
+		}
+
 		return new ValidationResult
 		{
 			CpuStatus = cpuStatus,
 			MemoryStatus = memoryStatus,
+			GpuStatus = gpuStatus,
 			CpuMessage = cpuMessage,
-			MemoryMessage = memoryMessage
+			MemoryMessage = memoryMessage,
+			GpuMessage = gpuMessage
 		};
 	}
 

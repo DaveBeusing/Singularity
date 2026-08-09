@@ -9,8 +9,10 @@ public sealed class WorkloadStatus
 	public WorkloadState State { get; init; } = WorkloadState.Stopped;
 	public bool CpuEnabled { get; init; }
 	public bool MemoryEnabled { get; init; }
+	public bool GpuEnabled { get; init; }
 	public int CpuThreads { get; init; }
 	public int MemoryGb { get; init; }
+	public int GpuLoadPercent { get; init; }
 	public long MemoryAllocatedMb { get; init; }
 	public string Message { get; init; } = "Ready";
 
