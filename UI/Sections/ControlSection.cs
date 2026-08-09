@@ -11,14 +11,16 @@ namespace Singularity.UI.Sections;
 public sealed class ControlSection : Panel
 {
 	public Button StartButton { get; } = new();
+	public Button AutoButton { get; } = new();
 	public Button StopButton { get; } = new();
+	private readonly Label progressLabel = new();
 
 	public ControlSection()
 	{
 		Left = LayoutConstants.SidePanelLeft;
 		Top = 350;
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 150;
+		Height = 170;
 		BackColor = Theme.Panel;
 
 		BuildUi();
@@ -31,26 +33,40 @@ public sealed class ControlSection : Panel
 			SingularityIconType.Play,
 			"CONTROL");
 
-		ConfigureButton(StartButton, "START", 20, 70, Theme.Success);
-		ConfigureButton(StopButton, "STOP", 210, 70, Theme.Danger);
+		ConfigureButton(StartButton, "START", 20, 65, 115, Theme.Success);
+		ConfigureButton(AutoButton, "AUTO", 145, 65, 115, Theme.Accent);
+		ConfigureButton(StopButton, "STOP", 270, 65, 115, Theme.Danger);
+		progressLabel.SetBounds(20, 120, 365, 24);
+		progressLabel.Text = "MANUAL MODE";
+		progressLabel.TextAlign = ContentAlignment.MiddleCenter;
+		progressLabel.Font = ThemeFonts.SectionHeader;
+		progressLabel.ForeColor = Theme.TextMuted;
+		progressLabel.BackColor = Theme.Panel;
 
 		Controls.AddRange([
 			StartButton,
-			StopButton
+			AutoButton,
+			StopButton,
+			progressLabel
 		]);
 	}
 
-	private static void ConfigureButton(Button button, string text, int left, int top, Color backColor)
+	public void UpdateProgress(string text)
+	{
+		ControlUpdate.SetText(progressLabel, text);
+	}
+
+	private static void ConfigureButton(Button button, string text, int left, int top, int width, Color backColor)
 	{
 		button.Text = text;
 		button.Left = left;
 		button.Top = top;
-		button.Width = 170;
+		button.Width = width;
 		button.Height = 46;
 		button.FlatStyle = FlatStyle.Flat;
 		button.FlatAppearance.BorderSize = 0;
 		button.BackColor = backColor;
-		button.ForeColor = Color.White;
+		button.ForeColor = backColor == Theme.Accent ? Color.Black : Color.White;
 		button.Font = ThemeFonts.Button;
 	}
 

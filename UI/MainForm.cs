@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core.Reporting;
+using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring;
@@ -14,9 +15,10 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.11.0-alpha";
+	private const string VersionString = "v0.12.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
+	private readonly QualificationRunner qualificationRunner;
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationSession qualificationSession = new();
 	private readonly QualificationHistory qualificationHistory = new();
@@ -37,6 +39,7 @@ public sealed class MainForm : Form
 
 	private ValidationResult? lastValidationResult;
 	private QualificationReport? lastReport;
+	private bool automatedRunFinalized;
 
 	private enum ActiveTab
 	{
@@ -48,6 +51,7 @@ public sealed class MainForm : Form
 
 	public MainForm()
 	{
+		qualificationRunner = new QualificationRunner(workloadManager);
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -120,6 +124,7 @@ public sealed class MainForm : Form
 		]);
 
 		workloadsView.StartButton.Click += (_, _) => StartWorkloads();
+		workloadsView.AutoButton.Click += (_, _) => StartAutomatedQualification();
 		workloadsView.StopButton.Click += (_, _) => StopWorkloads();
 
 		SwitchTab(ActiveTab.Hardware);
@@ -262,25 +267,58 @@ public sealed class MainForm : Form
 			return;
 
 		WorkloadOptions options = workloadsView.CreateOptions();
-
-		lastValidationResult = null;
-		lastReport = null;
-
-		workloadsView.ResetValidation();
-		workloadValidator.Reset();
-		workloadsView.ResetReport();
-
-		qualificationSession.Start(workloadsView.SelectedProfile);
-		workloadsView.UpdateSession(qualificationSession);
-
+		PrepareSession();
 		workloadManager.Start(options);
 
 		UpdateWorkloadStatus();
 		SwitchTab(ActiveTab.Workloads);
 	}
 
+	private void PrepareSession()
+	{
+		lastValidationResult = null;
+		lastReport = null;
+		workloadsView.ResetValidation();
+		workloadValidator.Reset();
+		workloadsView.ResetReport();
+		qualificationSession.Start(workloadsView.SelectedProfile);
+		workloadsView.UpdateSession(qualificationSession);
+	}
+
+	private void StartAutomatedQualification()
+	{
+		if (workloadManager.IsRunning || qualificationRunner.IsRunning)
+			return;
+
+		try
+		{
+			qualificationRunner.Reset();
+			QualificationPlan plan = QualificationPlan.CreateStandard(
+				workloadsView.CreateOptions(),
+				workloadsView.SelectedProfile);
+			PrepareSession();
+			automatedRunFinalized = false;
+			qualificationRunner.Start(plan);
+			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
+			UpdateWorkloadStatus();
+			SwitchTab(ActiveTab.Workloads);
+		}
+		catch (InvalidOperationException ex)
+		{
+			MessageBox.Show(this, ex.Message, "Automated qualification", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+	}
+
 	private void StopWorkloads()
 	{
+		if (qualificationRunner.IsRunning)
+		{
+			qualificationRunner.Cancel();
+			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
+			FinalizeSession(forceFailure: true);
+			return;
+		}
+
 		if (!workloadManager.IsRunning &&
 			workloadManager.Status.State != WorkloadState.Failed)
 		{
@@ -288,8 +326,19 @@ public sealed class MainForm : Form
 		}
 
 		workloadManager.Stop();
+		FinalizeSession();
+	}
 
-		if (lastValidationResult is not null)
+	private void FinalizeSession(bool forceFailure = false)
+	{
+		if (qualificationSession.State != QualificationSessionState.Running)
+			return;
+
+		if (forceFailure)
+		{
+			qualificationSession.Fail();
+		}
+		else if (lastValidationResult is not null)
 		{
 			ValidationSummary summary = new(lastValidationResult);
 
@@ -340,6 +389,20 @@ public sealed class MainForm : Form
 
 			workloadsView.UpdateValidation(
 				lastValidationResult);
+		}
+
+		if (qualificationRunner.IsRunning)
+		{
+			qualificationRunner.Update(lastValidationResult);
+			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
+		}
+
+		if (!automatedRunFinalized &&
+			qualificationRunner.State is QualificationRunState.Completed or QualificationRunState.Failed)
+		{
+			automatedRunFinalized = true;
+			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
+			FinalizeSession(qualificationRunner.State == QualificationRunState.Failed);
 		}
 
 		workloadsView.UpdateSession(

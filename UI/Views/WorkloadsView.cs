@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core.Reporting;
+using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring;
@@ -40,6 +41,7 @@ public sealed class WorkloadsView : Panel
 	}
 
 	public Button StartButton => controlSection.StartButton;
+	public Button AutoButton => controlSection.AutoButton;
 	public Button StopButton => controlSection.StopButton;
 	public QualificationProfile SelectedProfile => workloadSection.SelectedProfile;
 
@@ -183,6 +185,19 @@ public sealed class WorkloadsView : Panel
 
 		Height = SubviewContentTop + runView.Height;
 		SwitchSubview(ActiveSubview.Run);
+	}
+
+	public void UpdateQualificationProgress(QualificationProgress progress)
+	{
+		string text = progress.State switch
+		{
+			QualificationRunState.Running => $"{progress.StepNumber}/{progress.StepCount} {progress.StepName}  {progress.Percent:0}%",
+			QualificationRunState.Completed => "AUTOMATED RUN COMPLETE",
+			QualificationRunState.Cancelled => "AUTOMATED RUN CANCELLED",
+			QualificationRunState.Failed => "AUTOMATED RUN FAILED",
+			_ => "MANUAL MODE"
+		};
+		controlSection.UpdateProgress(text);
 	}
 
 	private void BuildSubviewNavigation()

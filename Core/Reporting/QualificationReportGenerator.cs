@@ -22,8 +22,6 @@ public sealed class QualificationReportGenerator
 			throw new InvalidOperationException("Session has no end time.");
 		}
 
-		ValidationSummary summary = new(validationResult);
-
 		return new QualificationReport
 		{
 			StartedAt = session.StartTime.Value,
@@ -33,7 +31,7 @@ public sealed class QualificationReportGenerator
 			CpuResult = validationResult.CpuStatus,
 			MemoryResult = validationResult.MemoryStatus,
 			GpuResult = validationResult.GpuStatus,
-			OverallResult = summary.OverallStatus,
+			OverallResult = session.Result,
 			TelemetryStatistics = session.TelemetryStatistics
 		};
 	}
