@@ -1,3 +1,4 @@
 <Solution>
 	<Project Path="src/Singularity/Singularity.csproj" />
+	<Project Path="tests/Singularity.Tests/Singularity.Tests.csproj" />
 </Solution>
