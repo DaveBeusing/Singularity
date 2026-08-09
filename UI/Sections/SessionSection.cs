@@ -11,9 +11,9 @@ namespace Singularity.UI.Sections;
 
 public sealed class SessionSection : Panel
 {
-	private readonly Label startedValue;
-	private readonly Label durationValue;
-	private readonly Label resultValue;
+	private readonly ValueRow startedRow;
+	private readonly ValueRow durationRow;
+	private readonly ValueRow resultRow;
 
 	public SessionSection()
 	{
@@ -26,69 +26,25 @@ public sealed class SessionSection : Panel
 			SingularityIconType.Metrics,
 			"SESSION");
 
-		Controls.Add(CreateTitleLabel("Started", 55));
-		Controls.Add(CreateTitleLabel("Duration", 85));
-		Controls.Add(CreateTitleLabel("Result", 115));
-
-		startedValue = CreateValueLabel("Not Started", 55);
-		durationValue = CreateValueLabel("00:00:00", 85);
-		resultValue = CreateValueLabel("UNKNOWN", 115);
-
-		Controls.Add(startedValue);
-		Controls.Add(durationValue);
-		Controls.Add(resultValue);
+		startedRow = CreateRow("Started", "Not Started", 55);
+		durationRow = CreateRow("Duration", "00:00:00", 85);
+		resultRow = CreateRow("Result", "UNKNOWN", 115);
+		Controls.AddRange([startedRow, durationRow, resultRow]);
 	}
 
 	public void UpdateSession(QualificationSession session)
 	{
-		ControlUpdate.SetText(
-			startedValue,
-			session.StartTime?.ToString("HH:mm:ss") ?? "Not Started");
-		ControlUpdate.SetText(
-			durationValue,
-			session.Duration.ToString(@"hh\:mm\:ss"));
-		ControlUpdate.SetText(
-			resultValue,
-			session.Result.ToString().ToUpperInvariant());
-
-		Color resultColor = session.Result switch
-		{
-			ValidationStatus.Pass => Theme.Success,
-			ValidationStatus.Warning => Theme.Accent,
-			ValidationStatus.Fail => Theme.Danger,
-			_ => Theme.TextMuted
-		};
-		ControlUpdate.SetForeColor(resultValue, resultColor);
+		startedRow.SetValue(session.StartTime?.ToString("HH:mm:ss") ?? "Not Started");
+		durationRow.SetValue(session.Duration.ToString(@"hh\:mm\:ss"));
+		resultRow.SetValue(StatusStyle.Format(session.Result), StatusStyle.GetColor(session.Result));
 	}
 
-	private static Label CreateTitleLabel(string text, int top)
+	private static ValueRow CreateRow(string title, string value, int top)
 	{
-		return new Label
+		return new ValueRow(title, value)
 		{
-			Text = text,
-			Left = 20,
-			Top = top,
-			Width = 90,
-			Height = 20,
-			Font = ThemeFonts.CardTitle,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Panel
-		};
-	}
-
-	private static Label CreateValueLabel(string text, int top)
-	{
-		return new Label
-		{
-			Text = text,
-			Left = 140,
-			Top = top,
-			Width = 220,
-			Height = 20,
-			Font = ThemeFonts.CardText,
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.Panel,
-			TextAlign = ContentAlignment.MiddleRight
+			Left = LayoutConstants.SectionPadding,
+			Top = top
 		};
 	}
 

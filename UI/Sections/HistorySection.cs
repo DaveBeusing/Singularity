@@ -26,9 +26,9 @@ public sealed class HistorySection : Panel
 
 		listPanel = new FlowLayoutPanel
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 55,
-			Width = 365,
+			Width = LayoutConstants.SectionContentWidth,
 			Height = 145,
 			BackColor = Theme.Panel,
 			FlowDirection = FlowDirection.TopDown,
@@ -61,7 +61,7 @@ public sealed class HistorySection : Panel
 		return new Label
 		{
 			Text = "No sessions yet",
-			Width = 365,
+			Width = LayoutConstants.SectionContentWidth,
 			Height = 26,
 			Font = ThemeFonts.CardText,
 			ForeColor = Theme.TextMuted,
@@ -74,7 +74,7 @@ public sealed class HistorySection : Panel
 	{
 		Panel row = new()
 		{
-			Width = 365,
+			Width = LayoutConstants.SectionContentWidth,
 			Height = 28,
 			BackColor = Theme.PanelLight,
 			Margin = new Padding(0, 0, 0, 6)
@@ -88,7 +88,7 @@ public sealed class HistorySection : Panel
 			Width = 90,
 			Height = 28,
 			Font = ThemeFonts.CardTitle,
-			ForeColor = GetStatusColor(record.Result),
+			ForeColor = StatusStyle.GetColor(record.Result),
 			BackColor = Theme.PanelLight,
 			TextAlign = ContentAlignment.MiddleLeft
 		};
@@ -126,17 +126,6 @@ public sealed class HistorySection : Panel
 		]);
 
 		return row;
-	}
-
-	private static Color GetStatusColor(ValidationStatus status)
-	{
-		return status switch
-		{
-			ValidationStatus.Pass => Theme.Success,
-			ValidationStatus.Warning => Theme.Accent,
-			ValidationStatus.Fail => Theme.Danger,
-			_ => Theme.TextMuted
-		};
 	}
 
 }

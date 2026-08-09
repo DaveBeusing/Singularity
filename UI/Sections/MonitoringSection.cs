@@ -79,27 +79,27 @@ public sealed class MonitoringSection : Panel
 	{
 		UiFactory.AddSectionHeader(this, SingularityIconType.Metrics, "TELEMETRY");
 
-		CpuMetricCard = new MetricsPanel("CPU LOAD", Theme.Accent, 365, 80)
+		CpuMetricCard = new MetricsPanel("CPU LOAD", Theme.Accent, LayoutConstants.SectionContentWidth, 80)
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 60
 		};
 
-		GpuMetricCard = new MetricsPanel("GPU LOAD", Theme.Success, 365, 80)
+		GpuMetricCard = new MetricsPanel("GPU LOAD", Theme.Success, LayoutConstants.SectionContentWidth, 80)
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 145
 		};
 
-		GpuMemoryMetricCard = new MetricsPanel("GPU MEMORY", Theme.Success, 365, 80)
+		GpuMemoryMetricCard = new MetricsPanel("GPU MEMORY", Theme.Success, LayoutConstants.SectionContentWidth, 80)
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 230
 		};
 
-		MemoryMetricCard = new MetricsPanel("SYSTEM MEMORY", Theme.Danger, 365, 80)
+		MemoryMetricCard = new MetricsPanel("SYSTEM MEMORY", Theme.Danger, LayoutConstants.SectionContentWidth, 80)
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 315
 		};
 

@@ -12,12 +12,12 @@ namespace Singularity.UI.Sections;
 
 public sealed class ReportSection : Panel
 {
-	private readonly Label startedValue;
-	private readonly Label finishedValue;
-	private readonly Label durationValue;
-	private readonly Label cpuValue;
-	private readonly Label memoryValue;
-	private readonly Label overallValue;
+	private readonly ValueRow startedRow;
+	private readonly ValueRow finishedRow;
+	private readonly ValueRow durationRow;
+	private readonly ValueRow cpuRow;
+	private readonly ValueRow memoryRow;
+	private readonly ValueRow overallRow;
 
 	public ReportSection()
 	{
@@ -30,103 +30,54 @@ public sealed class ReportSection : Panel
 			SingularityIconType.Metrics,
 			"REPORT");
 
-		Controls.Add(CreateTitleLabel("Started", 55));
-		Controls.Add(CreateTitleLabel("Finished", 80));
-		Controls.Add(CreateTitleLabel("Duration", 105));
-		Controls.Add(CreateTitleLabel("CPU", 130));
-		Controls.Add(CreateTitleLabel("Memory", 155));
-		Controls.Add(CreateTitleLabel("Overall", 180));
-
-		startedValue = CreateValueLabel("-", 55);
-		finishedValue = CreateValueLabel("-", 80);
-		durationValue = CreateValueLabel("-", 105);
-		cpuValue = CreateValueLabel("-", 130);
-		memoryValue = CreateValueLabel("-", 155);
-		overallValue = CreateValueLabel("-", 180);
+		startedRow = CreateRow("Started", 55);
+		finishedRow = CreateRow("Finished", 80);
+		durationRow = CreateRow("Duration", 105);
+		cpuRow = CreateRow("CPU", 130);
+		memoryRow = CreateRow("Memory", 155);
+		overallRow = CreateRow("Overall", 180);
 
 		Controls.AddRange([
-			startedValue,
-			finishedValue,
-			durationValue,
-			cpuValue,
-			memoryValue,
-			overallValue
+			startedRow,
+			finishedRow,
+			durationRow,
+			cpuRow,
+			memoryRow,
+			overallRow
 		]);
 	}
 
 	public void UpdateReport(QualificationReport report)
 	{
-		startedValue.Text = report.StartedAt.ToString("HH:mm:ss");
-		finishedValue.Text = report.FinishedAt.ToString("HH:mm:ss");
-		durationValue.Text = report.Duration.ToString(@"hh\:mm\:ss");
-
-		cpuValue.Text = FormatStatus(report.CpuResult);
-		memoryValue.Text = FormatStatus(report.MemoryResult);
-		overallValue.Text = FormatStatus(report.OverallResult);
-
-		cpuValue.ForeColor = GetStatusColor(report.CpuResult);
-		memoryValue.ForeColor = GetStatusColor(report.MemoryResult);
-		overallValue.ForeColor = GetStatusColor(report.OverallResult);
+		startedRow.SetValue(report.StartedAt.ToString("HH:mm:ss"));
+		finishedRow.SetValue(report.FinishedAt.ToString("HH:mm:ss"));
+		durationRow.SetValue(report.Duration.ToString(@"hh\:mm\:ss"));
+		SetStatus(cpuRow, report.CpuResult);
+		SetStatus(memoryRow, report.MemoryResult);
+		SetStatus(overallRow, report.OverallResult);
 	}
 
 	public void Reset()
 	{
-		startedValue.Text = "-";
-		finishedValue.Text = "-";
-		durationValue.Text = "-";
-		cpuValue.Text = "-";
-		memoryValue.Text = "-";
-		overallValue.Text = "-";
-
-		cpuValue.ForeColor = Theme.TextMain;
-		memoryValue.ForeColor = Theme.TextMain;
-		overallValue.ForeColor = Theme.TextMain;
+		startedRow.SetValue("-");
+		finishedRow.SetValue("-");
+		durationRow.SetValue("-");
+		cpuRow.SetValue("-", Theme.TextMain);
+		memoryRow.SetValue("-", Theme.TextMain);
+		overallRow.SetValue("-", Theme.TextMain);
 	}
 
-	private static string FormatStatus(ValidationStatus status)
+	private static void SetStatus(ValueRow row, ValidationStatus status)
 	{
-		return status.ToString().ToUpperInvariant();
+		row.SetValue(StatusStyle.Format(status), StatusStyle.GetColor(status));
 	}
 
-	private static Color GetStatusColor(ValidationStatus status)
+	private static ValueRow CreateRow(string title, int top)
 	{
-		return status switch
+		return new ValueRow(title, "-")
 		{
-			ValidationStatus.Pass => Theme.Success,
-			ValidationStatus.Warning => Theme.Accent,
-			ValidationStatus.Fail => Theme.Danger,
-			_ => Theme.TextMuted
-		};
-	}
-
-	private static Label CreateTitleLabel(string text, int top)
-	{
-		return new Label
-		{
-			Text = text,
-			Left = 20,
-			Top = top,
-			Width = 100,
-			Height = 20,
-			Font = ThemeFonts.CardTitle,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Panel
-		};
-	}
-
-	private static Label CreateValueLabel(string text, int top)
-	{
-		return new Label
-		{
-			Text = text,
-			Left = 140,
-			Top = top,
-			Width = 220,
-			Height = 20,
-			TextAlign = ContentAlignment.MiddleRight,
-			Font = ThemeFonts.CardText,
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.Panel
+			Left = LayoutConstants.SectionPadding,
+			Top = top
 		};
 	}
 

@@ -49,23 +49,11 @@ internal static class UiFactory
 
 	public static void AddSectionHeader(Panel parent, SingularityIconType iconType, string title)
 	{
-		SingularityIcon icon = new()
+		SectionHeader header = new(iconType, title)
 		{
-			IconType = iconType,
-			IconColor = Theme.Accent,
-			Left = 20,
-			Top = 14,
-			Width = 32,
-			Height = 32,
-			BackColor = Theme.Panel
+			Width = parent.ClientSize.Width
 		};
-
-		Label label = CreateSectionTitle(title, 60, 14);
-
-		parent.Controls.AddRange([
-			icon,
-			label
-		]);
+		parent.Controls.Add(header);
 	}
 
 	public static Label CreateMutedLabel(string text, int left, int top, int width)

@@ -11,9 +11,9 @@ namespace Singularity.UI.Sections;
 
 public sealed class ValidationSection : Panel
 {
-	private readonly ValidationItemControl cpuItem;
-	private readonly ValidationItemControl memoryItem;
-	private readonly ValidationItemControl overallItem;
+	private readonly StatusRow cpuItem;
+	private readonly StatusRow memoryItem;
+	private readonly StatusRow overallItem;
 
 	public ValidationSection()
 	{
@@ -30,31 +30,22 @@ public sealed class ValidationSection : Panel
 			SingularityIconType.Metrics,
 			"VALIDATION");
 
-		cpuItem = new ValidationItemControl(
-			"CPU",
-			365,
-			36)
+		cpuItem = new StatusRow("CPU")
 		{
-			Left = 20,
+			Left = LayoutConstants.SectionPadding,
 			Top = 55
 		};
 
-		memoryItem = new ValidationItemControl(
-			"MEMORY",
-			365,
-			36)
+		memoryItem = new StatusRow("MEMORY")
 		{
-			Left = 20,
-			Top = 98
+			Left = LayoutConstants.SectionPadding,
+			Top = 55 + LayoutConstants.StatusRowHeight + LayoutConstants.StatusRowGap
 		};
 
-		overallItem = new ValidationItemControl(
-			"OVERALL",
-			365,
-			36)
+		overallItem = new StatusRow("OVERALL")
 		{
-			Left = 20,
-			Top = 141
+			Left = LayoutConstants.SectionPadding,
+			Top = 55 + (LayoutConstants.StatusRowHeight + LayoutConstants.StatusRowGap) * 2
 		};
 
 		Controls.AddRange([
@@ -69,20 +60,13 @@ public sealed class ValidationSection : Panel
 	public void UpdateValidation(
 		ValidationResult result)
 	{
-		cpuItem.UpdateStatus(
-			result.CpuStatus,
-			result.CpuMessage);
-
-		memoryItem.UpdateStatus(
-			result.MemoryStatus,
-			result.MemoryMessage);
+		cpuItem.SetStatus(result.CpuStatus);
+		memoryItem.SetStatus(result.MemoryStatus);
 
 		ValidationSummary summary =
 			new(result);
 
-		overallItem.UpdateStatus(
-			summary.OverallStatus,
-			string.Empty);
+		overallItem.SetStatus(summary.OverallStatus);
 	}
 
 	public void Reset()

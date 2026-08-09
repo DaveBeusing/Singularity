@@ -15,7 +15,15 @@ public static class LayoutConstants
 	public const int HeaderTop = 24;
 
 	public const int SectionGap = 20;
+	public const int SectionPadding = 20;
 	public const int SectionHeaderHeight = 55;
+	public const int SectionContentWidth = 365;
+	public const int ValueRowHeight = 20;
+	public const int ValueRowLabelWidth = 100;
+	public const int ValueRowValueLeft = 120;
+	public const int ValueRowValueWidth = 240;
+	public const int StatusRowHeight = 36;
+	public const int StatusRowGap = 7;
 
 	public const int TabBarHeight = 54;
 
