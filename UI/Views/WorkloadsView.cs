@@ -43,6 +43,7 @@ public sealed class WorkloadsView : Panel
 	public Button StartButton => controlSection.StartButton;
 	public Button AutoButton => controlSection.AutoButton;
 	public Button StopButton => controlSection.StopButton;
+	public Button ExportJsonButton => reportSection.ExportJsonButton;
 	public QualificationProfile SelectedProfile => workloadSection.SelectedProfile;
 
 	public WorkloadsView()

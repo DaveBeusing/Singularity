@@ -12,6 +12,7 @@ namespace Singularity.UI.Sections;
 
 public sealed class ReportSection : Panel
 {
+	public Button ExportJsonButton { get; } = new();
 	private readonly ValueRow startedRow;
 	private readonly ValueRow finishedRow;
 	private readonly ValueRow durationRow;
@@ -30,7 +31,7 @@ public sealed class ReportSection : Panel
 	public ReportSection()
 	{
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 425;
+		Height = 480;
 		BackColor = Theme.Panel;
 
 		UiFactory.AddSectionHeader(
@@ -52,6 +53,14 @@ public sealed class ReportSection : Panel
 		gpuPowerRow = CreateRow("GPU power", 340);
 		gpuVramRow = CreateRow("VRAM avg / max", 365);
 		systemMemoryRow = CreateRow("RAM avg / max", 390);
+		ExportJsonButton.SetBounds(LayoutConstants.SectionPadding, 425, Width - LayoutConstants.SectionPadding * 2, 36);
+		ExportJsonButton.Text = "EXPORT JSON";
+		ExportJsonButton.Enabled = false;
+		ExportJsonButton.FlatStyle = FlatStyle.Flat;
+		ExportJsonButton.FlatAppearance.BorderSize = 0;
+		ExportJsonButton.BackColor = Theme.Accent;
+		ExportJsonButton.ForeColor = Color.Black;
+		ExportJsonButton.Font = ThemeFonts.Button;
 
 		Controls.AddRange([
 			startedRow,
@@ -67,7 +76,8 @@ public sealed class ReportSection : Panel
 			gpuTemperatureRow,
 			gpuPowerRow,
 			gpuVramRow,
-			systemMemoryRow
+			systemMemoryRow,
+			ExportJsonButton
 		]);
 	}
 
@@ -89,6 +99,7 @@ public sealed class ReportSection : Panel
 		gpuPowerRow.SetValue(FormatMetric(statistics.GpuPowerWatts, "W"));
 		gpuVramRow.SetValue(FormatMetric(statistics.GpuVramUsagePercent, "%"));
 		systemMemoryRow.SetValue(FormatMetric(statistics.SystemMemoryUsagePercent, "%"));
+		ExportJsonButton.Enabled = true;
 	}
 
 	public void Reset()
@@ -107,6 +118,7 @@ public sealed class ReportSection : Panel
 		gpuPowerRow.SetValue("-");
 		gpuVramRow.SetValue("-");
 		systemMemoryRow.SetValue("-");
+		ExportJsonButton.Enabled = false;
 	}
 
 	private static string FormatMetric(MetricStatistics? statistics, string unit)

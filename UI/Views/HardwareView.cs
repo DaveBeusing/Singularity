@@ -12,6 +12,7 @@ namespace Singularity.UI.Views;
 public sealed class HardwareView : Panel
 {
 	private readonly HardwareProvider hardwareProvider = new();
+	public HardwareInventory Inventory { get; private set; } = new();
 
 	public HardwareView()
 	{
@@ -27,15 +28,15 @@ public sealed class HardwareView : Panel
 	{
 		Controls.Clear();
 
-		HardwareInventory inventory = hardwareProvider.Read();
+		Inventory = hardwareProvider.Read();
 
-		OsSection osSection = new(inventory.Os)
+		OsSection osSection = new(Inventory.Os)
 		{
 			Left = 0,
 			Top = 0
 		};
 
-		HardwareSection hardwareSection = new(inventory)
+		HardwareSection hardwareSection = new(Inventory)
 		{
 			Left = 0,
 			Top = osSection.Bottom + LayoutConstants.SectionGap
