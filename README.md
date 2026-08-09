@@ -250,19 +250,20 @@ Requirements:
 Build:
 
 ```powershell
-dotnet build
+dotnet build src/Singularity/Singularity.csproj
 ```
 
 Run:
 
 ```powershell
-dotnet run
+dotnet run --project src/Singularity/Singularity.csproj
 ```
 
 Release:
 
 ```powershell
 dotnet publish `
+src/Singularity/Singularity.csproj `
 -c Release `
 -r win-x64 `
 --self-contained true
