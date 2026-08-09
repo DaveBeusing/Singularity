@@ -24,10 +24,20 @@ public sealed class QualificationJsonExporter
 		HardwareInventory hardware,
 		string singularityVersion)
 	{
+		QualificationJsonDocument document = CreateDocument(report, hardware, singularityVersion);
+
+		return JsonSerializer.Serialize(document, SerializerOptions);
+	}
+
+	internal static QualificationJsonDocument CreateDocument(
+		QualificationReport report,
+		HardwareInventory hardware,
+		string singularityVersion)
+	{
 		ArgumentNullException.ThrowIfNull(report);
 		ArgumentNullException.ThrowIfNull(hardware);
 
-		QualificationJsonDocument document = new(
+		return new QualificationJsonDocument(
 			SchemaVersion,
 			singularityVersion,
 			report.FinishedAt,
@@ -40,8 +50,6 @@ public sealed class QualificationJsonExporter
 				report.OverallResult),
 			report.TelemetryStatistics,
 			CreateHardwareSummary(hardware));
-
-		return JsonSerializer.Serialize(document, SerializerOptions);
 	}
 
 	public void Export(

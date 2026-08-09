@@ -15,7 +15,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.13.0-alpha";
+	private const string VersionString = "v0.14.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly QualificationRunner qualificationRunner;
@@ -24,6 +24,7 @@ public sealed class MainForm : Form
 	private readonly QualificationHistory qualificationHistory = new();
 	private readonly QualificationReportGenerator reportGenerator = new();
 	private readonly QualificationJsonExporter jsonExporter = new();
+	private readonly QualificationHtmlExporter htmlExporter = new();
 	private readonly SystemMonitor systemMonitor = new();
 	private readonly System.Windows.Forms.Timer timer = new();
 
@@ -128,6 +129,7 @@ public sealed class MainForm : Form
 		workloadsView.AutoButton.Click += (_, _) => StartAutomatedQualification();
 		workloadsView.StopButton.Click += (_, _) => StopWorkloads();
 		workloadsView.ExportJsonButton.Click += (_, _) => ExportJsonReport();
+		workloadsView.ExportHtmlButton.Click += (_, _) => ExportHtmlReport();
 
 		SwitchTab(ActiveTab.Hardware);
 		UpdateWorkloadStatus();
@@ -392,6 +394,33 @@ public sealed class MainForm : Form
 		try
 		{
 			jsonExporter.Export(dialog.FileName, lastReport, hardwareView.Inventory, VersionString);
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+		{
+			MessageBox.Show(this, ex.Message, "Report export failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+	}
+
+	private void ExportHtmlReport()
+	{
+		if (lastReport is null)
+			return;
+
+		using SaveFileDialog dialog = new()
+		{
+			Title = "Export qualification report",
+			Filter = "HTML report (*.html)|*.html|All files (*.*)|*.*",
+			DefaultExt = "html",
+			AddExtension = true,
+			FileName = $"singularity-report-{lastReport.FinishedAt:yyyyMMdd-HHmmss}.html"
+		};
+
+		if (dialog.ShowDialog(this) != DialogResult.OK)
+			return;
+
+		try
+		{
+			htmlExporter.Export(dialog.FileName, lastReport, hardwareView.Inventory, VersionString);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{

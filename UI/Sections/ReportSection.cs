@@ -13,6 +13,7 @@ namespace Singularity.UI.Sections;
 public sealed class ReportSection : Panel
 {
 	public Button ExportJsonButton { get; } = new();
+	public Button ExportHtmlButton { get; } = new();
 	private readonly ValueRow startedRow;
 	private readonly ValueRow finishedRow;
 	private readonly ValueRow durationRow;
@@ -53,14 +54,9 @@ public sealed class ReportSection : Panel
 		gpuPowerRow = CreateRow("GPU power", 340);
 		gpuVramRow = CreateRow("VRAM avg / max", 365);
 		systemMemoryRow = CreateRow("RAM avg / max", 390);
-		ExportJsonButton.SetBounds(LayoutConstants.SectionPadding, 425, Width - LayoutConstants.SectionPadding * 2, 36);
-		ExportJsonButton.Text = "EXPORT JSON";
-		ExportJsonButton.Enabled = false;
-		ExportJsonButton.FlatStyle = FlatStyle.Flat;
-		ExportJsonButton.FlatAppearance.BorderSize = 0;
-		ExportJsonButton.BackColor = Theme.Accent;
-		ExportJsonButton.ForeColor = Color.Black;
-		ExportJsonButton.Font = ThemeFonts.Button;
+		int exportWidth = (Width - LayoutConstants.SectionPadding * 2 - LayoutConstants.CardGap) / 2;
+		ConfigureExportButton(ExportJsonButton, "EXPORT JSON", LayoutConstants.SectionPadding, exportWidth);
+		ConfigureExportButton(ExportHtmlButton, "EXPORT HTML", LayoutConstants.SectionPadding + exportWidth + LayoutConstants.CardGap, exportWidth);
 
 		Controls.AddRange([
 			startedRow,
@@ -77,7 +73,8 @@ public sealed class ReportSection : Panel
 			gpuPowerRow,
 			gpuVramRow,
 			systemMemoryRow,
-			ExportJsonButton
+			ExportJsonButton,
+			ExportHtmlButton
 		]);
 	}
 
@@ -100,6 +97,7 @@ public sealed class ReportSection : Panel
 		gpuVramRow.SetValue(FormatMetric(statistics.GpuVramUsagePercent, "%"));
 		systemMemoryRow.SetValue(FormatMetric(statistics.SystemMemoryUsagePercent, "%"));
 		ExportJsonButton.Enabled = true;
+		ExportHtmlButton.Enabled = true;
 	}
 
 	public void Reset()
@@ -119,6 +117,7 @@ public sealed class ReportSection : Panel
 		gpuVramRow.SetValue("-");
 		systemMemoryRow.SetValue("-");
 		ExportJsonButton.Enabled = false;
+		ExportHtmlButton.Enabled = false;
 	}
 
 	private static string FormatMetric(MetricStatistics? statistics, string unit)
@@ -140,6 +139,18 @@ public sealed class ReportSection : Panel
 			Left = LayoutConstants.SectionPadding,
 			Top = top
 		};
+	}
+
+	private static void ConfigureExportButton(Button button, string text, int left, int width)
+	{
+		button.SetBounds(left, 425, width, 36);
+		button.Text = text;
+		button.Enabled = false;
+		button.FlatStyle = FlatStyle.Flat;
+		button.FlatAppearance.BorderSize = 0;
+		button.BackColor = Theme.Accent;
+		button.ForeColor = Color.Black;
+		button.Font = ThemeFonts.Button;
 	}
 
 }
