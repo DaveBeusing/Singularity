@@ -152,6 +152,7 @@ public sealed class SystemMonitor : IDisposable
 			return;
 		disposed = true;
 		scheduler.Dispose();
+		gpuTelemetryProvider.Dispose();
 		cpuTelemetryProvider.Dispose();
 		process.Dispose();
 	}

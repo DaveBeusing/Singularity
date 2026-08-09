@@ -14,6 +14,9 @@ internal static class NvmlNative
 	[DllImport("nvml.dll", EntryPoint = "nvmlShutdown")]
 	public static extern NvmlReturn Shutdown();
 
+	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetCount_v2")]
+	public static extern NvmlReturn DeviceGetCount(out uint deviceCount);
+
 	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetHandleByIndex_v2")]
 	public static extern NvmlReturn DeviceGetHandleByIndex(uint index, out IntPtr device);
 

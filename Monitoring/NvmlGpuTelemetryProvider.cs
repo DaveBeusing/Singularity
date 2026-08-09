@@ -6,14 +6,32 @@ using Singularity.Hardware.Native.Nvml;
 
 namespace Singularity.Monitoring;
 
-public sealed class NvmlGpuTelemetryProvider
+public sealed class NvmlGpuTelemetryProvider : IDisposable
 {
+	private readonly IReadOnlyList<IntPtr> deviceHandles;
+	private readonly string unavailableStatus;
+	private bool initialized;
+	private bool disposed;
+
+	public NvmlGpuTelemetryProvider()
+	{
+		(deviceHandles, unavailableStatus) = Initialize();
+	}
+
 	public GpuTelemetrySnapshot ReadFast()
 	{
 		return Read(device =>
 		{
-			NvmlUtilization utilization = ReadUtilization(device);
-			NvmlMemory memory = ReadMemory(device);
+			NvmlReturn utilizationResult =
+				NvmlNative.DeviceGetUtilizationRates(device, out NvmlUtilization utilization);
+			NvmlReturn memoryResult =
+				NvmlNative.DeviceGetMemoryInfo(device, out NvmlMemory memory);
+
+			if (utilizationResult != NvmlReturn.Success ||
+				memoryResult != NvmlReturn.Success)
+			{
+				return Unavailable("GPU telemetry read failed");
+			}
 
 			return new GpuTelemetrySnapshot
 			{
@@ -32,13 +50,20 @@ public sealed class NvmlGpuTelemetryProvider
 	{
 		return Read(device =>
 		{
-			int temperature = ReadTemperature(device);
+			NvmlReturn temperatureResult = NvmlNative.DeviceGetTemperature(
+				device,
+				NvmlTemperatureSensor.Gpu,
+				out uint temperature);
+
+			if (temperatureResult != NvmlReturn.Success)
+				return Unavailable("GPU telemetry read failed");
+
 			ReadPower(device, out bool powerAvailable, out double powerWatts);
 
 			return new GpuTelemetrySnapshot
 			{
 				IsAvailable = true,
-				TemperatureCelsius = temperature,
+				TemperatureCelsius = (int)temperature,
 				PowerAvailable = powerAvailable,
 				PowerWatts = powerWatts,
 				Status = "OK"
@@ -46,52 +71,61 @@ public sealed class NvmlGpuTelemetryProvider
 		});
 	}
 
-	private static GpuTelemetrySnapshot Read(Func<IntPtr, GpuTelemetrySnapshot> readTelemetry)
+	private GpuTelemetrySnapshot Read(Func<IntPtr, GpuTelemetrySnapshot> readTelemetry)
+	{
+		if (disposed)
+			return Unavailable("NVML provider disposed");
+
+		if (!initialized || deviceHandles.Count == 0)
+			return Unavailable(unavailableStatus);
+
+		try
+		{
+			return readTelemetry(deviceHandles[0]);
+		}
+		catch { return Unavailable("NVML read failed"); }
+	}
+
+	private (IReadOnlyList<IntPtr> Handles, string Status) Initialize()
 	{
 		try
 		{
 			NvmlReturn result = NvmlNative.Init();
 			if (result != NvmlReturn.Success)
+				return (Array.Empty<IntPtr>(), "NVML init failed");
+
+			initialized = true;
+			result = NvmlNative.DeviceGetCount(out uint deviceCount);
+			if (result != NvmlReturn.Success)
+				return (Array.Empty<IntPtr>(), "GPU enumeration failed");
+
+			List<IntPtr> handles = new((int)deviceCount);
+			for (uint index = 0; index < deviceCount; index++)
 			{
-				return Unavailable("NVML init failed");
+				if (NvmlNative.DeviceGetHandleByIndex(index, out IntPtr device) == NvmlReturn.Success)
+					handles.Add(device);
 			}
 
-			try
-			{
-				result = NvmlNative.DeviceGetHandleByIndex(0, out IntPtr device);
-				return result == NvmlReturn.Success
-					? readTelemetry(device)
-					: Unavailable("GPU not found");
-			}
-			finally
-			{
-				NvmlNative.Shutdown();
-			}
+			return handles.Count > 0
+				? (handles.AsReadOnly(), "OK")
+				: (Array.Empty<IntPtr>(), "GPU not found");
 		}
-		catch (DllNotFoundException) { return Unavailable("NVML not found"); }
-		catch { return Unavailable("NVML read failed"); }
+		catch (DllNotFoundException)
+		{
+			return (Array.Empty<IntPtr>(), "NVML not found");
+		}
+		catch (EntryPointNotFoundException)
+		{
+			return (Array.Empty<IntPtr>(), "NVML version unsupported");
+		}
+		catch
+		{
+			return (Array.Empty<IntPtr>(), "NVML initialization failed");
+		}
 	}
 
 	private static GpuTelemetrySnapshot Unavailable(string status) =>
 		new() { IsAvailable = false, Status = status };
-
-	private static NvmlUtilization ReadUtilization(IntPtr device)
-	{
-		NvmlReturn result = NvmlNative.DeviceGetUtilizationRates(device, out NvmlUtilization utilization);
-		return result == NvmlReturn.Success ? utilization : new NvmlUtilization();
-	}
-
-	private static NvmlMemory ReadMemory(IntPtr device)
-	{
-		NvmlReturn result = NvmlNative.DeviceGetMemoryInfo(device, out NvmlMemory memory);
-		return result == NvmlReturn.Success ? memory : new NvmlMemory();
-	}
-
-	private static int ReadTemperature(IntPtr device)
-	{
-		NvmlReturn result = NvmlNative.DeviceGetTemperature(device, NvmlTemperatureSensor.Gpu, out uint temperature);
-		return result == NvmlReturn.Success ? (int)temperature : 0;
-	}
 
 	private static void ReadPower(IntPtr device, out bool available, out double watts)
 	{
@@ -104,6 +138,27 @@ public sealed class NvmlGpuTelemetryProvider
 		}
 		available = false;
 		watts = 0;
+	}
+
+	public void Dispose()
+	{
+		if (disposed)
+			return;
+
+		if (initialized)
+		{
+			try
+			{
+				NvmlNative.Shutdown();
+			}
+			catch
+			{
+				// NVML may already be unavailable during process shutdown.
+			}
+		}
+
+		initialized = false;
+		disposed = true;
 	}
 
 }
