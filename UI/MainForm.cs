@@ -14,7 +14,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.7.0-alpha";
+	private const string VersionString = "v0.8.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly WorkloadValidator workloadValidator = new();
@@ -328,6 +328,8 @@ public sealed class MainForm : Form
 
 		if (workloadManager.IsRunning)
 		{
+			qualificationSession.RecordTelemetry(snapshot);
+
 			lastValidationResult =
 				workloadValidator.Validate(
 					workloadManager.Status,

@@ -157,7 +157,11 @@ public sealed class WorkloadsView : Panel
 			controlSection
 		]);
 
-		resultsView.SetBounds(0, SubviewContentTop, Width, validationSection.Bottom);
+		resultsView.SetBounds(
+			0,
+			SubviewContentTop,
+			Width,
+			Math.Max(validationSection.Bottom, reportSection.Bottom));
 		resultsView.BackColor = Theme.Background;
 		resultsView.Controls.AddRange([
 			sessionSection,

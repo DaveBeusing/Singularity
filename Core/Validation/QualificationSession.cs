@@ -4,8 +4,13 @@
 
 namespace Singularity.Core.Validation;
 
+using Singularity.Core.Reporting;
+using Singularity.Monitoring;
+
 public sealed class QualificationSession
 {
+	private SessionTelemetryCollector telemetryCollector = new();
+
 	public QualificationSessionState State { get; private set; } =
 		QualificationSessionState.Idle;
 
@@ -15,6 +20,9 @@ public sealed class QualificationSession
 
 	public ValidationStatus Result { get; private set; } =
 		ValidationStatus.Unknown;
+
+	public SessionTelemetryStatistics TelemetryStatistics { get; private set; } =
+		SessionTelemetryStatistics.Empty;
 
 	public TimeSpan Duration
 	{
@@ -44,6 +52,14 @@ public sealed class QualificationSession
 		StartTime = DateTime.Now;
 		EndTime = null;
 		Result = ValidationStatus.Unknown;
+		telemetryCollector = new SessionTelemetryCollector();
+		TelemetryStatistics = SessionTelemetryStatistics.Empty;
+	}
+
+	public void RecordTelemetry(SystemSnapshot snapshot)
+	{
+		if (State == QualificationSessionState.Running)
+			telemetryCollector.Add(snapshot);
 	}
 
 	public void Complete(ValidationStatus result)
@@ -54,6 +70,7 @@ public sealed class QualificationSession
 		State = QualificationSessionState.Completed;
 		EndTime = DateTime.Now;
 		Result = result;
+		TelemetryStatistics = telemetryCollector.Snapshot();
 	}
 
 	public void Fail()
@@ -61,6 +78,7 @@ public sealed class QualificationSession
 		State = QualificationSessionState.Failed;
 		EndTime = DateTime.Now;
 		Result = ValidationStatus.Fail;
+		TelemetryStatistics = telemetryCollector.Snapshot();
 	}
 
 	public void Reset()
@@ -69,5 +87,7 @@ public sealed class QualificationSession
 		StartTime = null;
 		EndTime = null;
 		Result = ValidationStatus.Unknown;
+		telemetryCollector = new SessionTelemetryCollector();
+		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 	}
 }

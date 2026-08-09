@@ -31,7 +31,8 @@ public sealed class QualificationReportGenerator
 			Duration = session.Duration,
 			CpuResult = validationResult.CpuStatus,
 			MemoryResult = validationResult.MemoryStatus,
-			OverallResult = summary.OverallStatus
+			OverallResult = summary.OverallStatus,
+			TelemetryStatistics = session.TelemetryStatistics
 		};
 	}
 

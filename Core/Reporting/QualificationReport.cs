@@ -20,4 +20,7 @@ public sealed class QualificationReport
 
 	public ValidationStatus OverallResult { get; init; } = ValidationStatus.Unknown;
 
+	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
+		SessionTelemetryStatistics.Empty;
+
 }

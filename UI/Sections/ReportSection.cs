@@ -18,11 +18,17 @@ public sealed class ReportSection : Panel
 	private readonly ValueRow cpuRow;
 	private readonly ValueRow memoryRow;
 	private readonly ValueRow overallRow;
+	private readonly ValueRow cpuLoadRow;
+	private readonly ValueRow gpuLoadRow;
+	private readonly ValueRow gpuTemperatureRow;
+	private readonly ValueRow gpuPowerRow;
+	private readonly ValueRow gpuVramRow;
+	private readonly ValueRow systemMemoryRow;
 
 	public ReportSection()
 	{
 		Width = LayoutConstants.MetricsPanelWidth;
-		Height = 220;
+		Height = 375;
 		BackColor = Theme.Panel;
 
 		UiFactory.AddSectionHeader(
@@ -36,6 +42,12 @@ public sealed class ReportSection : Panel
 		cpuRow = CreateRow("CPU", 130);
 		memoryRow = CreateRow("Memory", 155);
 		overallRow = CreateRow("Overall", 180);
+		cpuLoadRow = CreateRow("CPU avg / max", 215);
+		gpuLoadRow = CreateRow("GPU avg / max", 240);
+		gpuTemperatureRow = CreateRow("GPU temp", 265);
+		gpuPowerRow = CreateRow("GPU power", 290);
+		gpuVramRow = CreateRow("VRAM avg / max", 315);
+		systemMemoryRow = CreateRow("RAM avg / max", 340);
 
 		Controls.AddRange([
 			startedRow,
@@ -43,7 +55,13 @@ public sealed class ReportSection : Panel
 			durationRow,
 			cpuRow,
 			memoryRow,
-			overallRow
+			overallRow,
+			cpuLoadRow,
+			gpuLoadRow,
+			gpuTemperatureRow,
+			gpuPowerRow,
+			gpuVramRow,
+			systemMemoryRow
 		]);
 	}
 
@@ -55,6 +73,14 @@ public sealed class ReportSection : Panel
 		SetStatus(cpuRow, report.CpuResult);
 		SetStatus(memoryRow, report.MemoryResult);
 		SetStatus(overallRow, report.OverallResult);
+
+		SessionTelemetryStatistics statistics = report.TelemetryStatistics;
+		cpuLoadRow.SetValue(FormatMetric(statistics.CpuLoadPercent, "%"));
+		gpuLoadRow.SetValue(FormatMetric(statistics.GpuLoadPercent, "%"));
+		gpuTemperatureRow.SetValue(FormatMetric(statistics.GpuTemperatureCelsius, "°C"));
+		gpuPowerRow.SetValue(FormatMetric(statistics.GpuPowerWatts, "W"));
+		gpuVramRow.SetValue(FormatMetric(statistics.GpuVramUsagePercent, "%"));
+		systemMemoryRow.SetValue(FormatMetric(statistics.SystemMemoryUsagePercent, "%"));
 	}
 
 	public void Reset()
@@ -65,6 +91,19 @@ public sealed class ReportSection : Panel
 		cpuRow.SetValue("-", Theme.TextMain);
 		memoryRow.SetValue("-", Theme.TextMain);
 		overallRow.SetValue("-", Theme.TextMain);
+		cpuLoadRow.SetValue("-");
+		gpuLoadRow.SetValue("-");
+		gpuTemperatureRow.SetValue("-");
+		gpuPowerRow.SetValue("-");
+		gpuVramRow.SetValue("-");
+		systemMemoryRow.SetValue("-");
+	}
+
+	private static string FormatMetric(MetricStatistics? statistics, string unit)
+	{
+		return statistics is null
+			? "N/A"
+			: $"{statistics.Average:0.0} / {statistics.Maximum:0.0} {unit}";
 	}
 
 	private static void SetStatus(ValueRow row, ValidationStatus status)
