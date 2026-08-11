@@ -19,6 +19,7 @@ public sealed class MainForm : Form
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
 	private readonly System.Windows.Forms.Timer timer = new();
+	private Icon? applicationIcon;
 
 	private readonly Button hardwareTabButton = new();
 	private readonly Button workloadsTabButton = new();
@@ -55,12 +56,28 @@ public sealed class MainForm : Form
 		ForeColor = Theme.TextMain;
 		Font = ThemeFonts.Title;
 		AutoScaleMode = AutoScaleMode.Dpi;
+		ConfigureApplicationIcon();
 
 		BuildUi();
 
 		timer.Interval = 500;
 		timer.Tick += (_, _) => UpdateMonitoring();
 		timer.Start();
+	}
+
+	private void ConfigureApplicationIcon()
+	{
+		try
+		{
+			applicationIcon = Icon.ExtractAssociatedIcon(System.Windows.Forms.Application.ExecutablePath);
+			if (applicationIcon is not null)
+				Icon = applicationIcon;
+		}
+		catch
+		{
+			applicationIcon?.Dispose();
+			applicationIcon = null;
+		}
 	}
 
 	private void BuildUi()
@@ -431,6 +448,7 @@ public sealed class MainForm : Form
 		if (disposing)
 		{
 			timer.Dispose();
+			applicationIcon?.Dispose();
 		}
 
 		base.Dispose(disposing);

@@ -6,12 +6,24 @@
 		<UseWindowsForms>true</UseWindowsForms>
 		<AssemblyName>Singularity</AssemblyName>
 		<RootNamespace>Singularity</RootNamespace>
-		<Version>0.27.0-alpha</Version>
+		<Version>0.28.0</Version>
 		<SelfContained>true</SelfContained>
 		<PublishSingleFile>true</PublishSingleFile>
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 		<ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\Singularity.ico</ApplicationIcon>
+		<Product>Singularity</Product>
+		<Title>Singularity</Title>
+		<Description>Platform Qualification Suite for Windows</Description>
+		<Company>Dave Beusing</Company>
+		<Authors>Dave Beusing</Authors>
+		<Copyright>© 2026 David Beusing</Copyright>
+		<NeutralLanguage>en</NeutralLanguage>
+		<RepositoryUrl>https://github.com/DaveBeusing/Singularity</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/DaveBeusing/Singularity</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="LibreHardwareMonitorLib" />
