@@ -29,5 +29,4 @@ A metric is absent when it received no usable samples.
 
 `QualificationHtmlExporter` uses the same intermediate document as JSON export. It produces a standalone responsive dark-theme HTML file containing session and profile details, validation cards, a telemetry table, hardware inventory, schema version, and generation timestamp. Dynamic text is HTML encoded.
 
-Both exporters write to a path chosen through the WinForms save dialog. Export is available only after a report has been generated; file-system errors are shown in the UI. Reports contain summary statistics rather than the raw telemetry time series.
-
+Both exporters write to a path chosen through the WinForms save dialog. `ReportExportService` supplies the same assembly-derived application version displayed by the UI. Export is available only after a report has been generated; file-system errors are shown in the UI. Reports contain summary statistics rather than the raw telemetry time series.

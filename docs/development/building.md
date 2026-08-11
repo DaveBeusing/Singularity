@@ -52,3 +52,6 @@ dotnet publish src/Singularity/Singularity.csproj --configuration Release
 
 Project metadata configures a self-contained, compressed, single-file `win-x64` publish and includes native libraries for extraction. Output is written beneath `src/Singularity/bin/Release/net10.0-windows/win-x64/publish/` unless an output path is supplied.
 
+## Versioning
+
+`Version` in `src/Singularity/Singularity.csproj` is the single source of truth. The UI and report exports read the generated assembly informational version at runtime, so a version change requires updating only that project property.

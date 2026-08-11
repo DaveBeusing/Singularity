@@ -15,8 +15,6 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.24.0-alpha";
-
 	private readonly QualificationCoordinator coordinator;
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
@@ -96,7 +94,7 @@ public sealed class MainForm : Form
 
 		Label versionLabel = new()
 		{
-			Text = VersionString,
+			Text = ApplicationMetadata.Version,
 			Left = 750,
 			Top = 32,
 			Width = 130,
@@ -305,7 +303,7 @@ public sealed class MainForm : Form
 
 		try
 		{
-			reportExportService.ExportJson(dialog.FileName, report, hardwareView.Inventory, VersionString);
+			reportExportService.ExportJson(dialog.FileName, report, hardwareView.Inventory);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
@@ -332,7 +330,7 @@ public sealed class MainForm : Form
 
 		try
 		{
-			reportExportService.ExportHtml(dialog.FileName, report, hardwareView.Inventory, VersionString);
+			reportExportService.ExportHtml(dialog.FileName, report, hardwareView.Inventory);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{

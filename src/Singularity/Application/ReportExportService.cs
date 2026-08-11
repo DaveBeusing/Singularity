@@ -15,15 +15,12 @@ public sealed class ReportExportService
 	public void ExportJson(
 		string path,
 		QualificationReport report,
-		HardwareInventory hardware,
-		string singularityVersion) =>
-		jsonExporter.Export(path, report, hardware, singularityVersion);
+		HardwareInventory hardware) =>
+		jsonExporter.Export(path, report, hardware, ApplicationMetadata.Version);
 
 	public void ExportHtml(
 		string path,
 		QualificationReport report,
-		HardwareInventory hardware,
-		string singularityVersion) =>
-		htmlExporter.Export(path, report, hardware, singularityVersion);
+		HardwareInventory hardware) =>
+		htmlExporter.Export(path, report, hardware, ApplicationMetadata.Version);
 }
-

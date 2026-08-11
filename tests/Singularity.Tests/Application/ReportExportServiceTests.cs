@@ -29,14 +29,14 @@ public sealed class ReportExportServiceTests
 
 		try
 		{
-			service.ExportJson(jsonPath, report, hardware, "v-test");
-			service.ExportHtml(htmlPath, report, hardware, "v-test");
+			service.ExportJson(jsonPath, report, hardware);
+			service.ExportHtml(htmlPath, report, hardware);
 
 			string json = File.ReadAllText(jsonPath);
 			string html = File.ReadAllText(htmlPath);
-			Assert.Contains("\"singularityVersion\": \"v-test\"", json);
+			Assert.Contains($"\"singularityVersion\": \"{ApplicationMetadata.Version}\"", json);
 			Assert.Contains("Singularity Qualification Report", html);
-			Assert.Contains("v-test", html);
+			Assert.Contains(ApplicationMetadata.Version, html);
 		}
 		finally
 		{
@@ -45,4 +45,3 @@ public sealed class ReportExportServiceTests
 		}
 	}
 }
-
