@@ -3,6 +3,7 @@
 
 using Singularity.Hardware.Models;
 using Singularity.UI.Controls;
+using Singularity.UI.Factories;
 using Singularity.UI.Layout;
 using Singularity.UI.Panels;
 using Singularity.UI.Views;

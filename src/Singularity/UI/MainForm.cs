@@ -6,7 +6,8 @@ using Singularity.Core.Reporting;
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
+using Singularity.Monitoring.Runtime;
 using Singularity.UI.Controls;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
@@ -15,7 +16,7 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.22.0-alpha";
+	private const string VersionString = "v0.23.0-alpha";
 
 	private readonly WorkloadManager workloadManager = new();
 	private readonly QualificationRunner qualificationRunner;

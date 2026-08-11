@@ -6,7 +6,7 @@ using Singularity.Core.Reporting;
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
 using Singularity.UI.Layout;
 using Singularity.UI.Sections;
 

@@ -4,7 +4,7 @@
 
 using System.Diagnostics;
 
-namespace Singularity.Monitoring;
+namespace Singularity.Monitoring.Runtime;
 
 internal sealed class TelemetryScheduler : IDisposable
 {

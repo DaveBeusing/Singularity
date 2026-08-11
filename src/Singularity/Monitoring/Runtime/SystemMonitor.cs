@@ -4,8 +4,10 @@
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Singularity.Monitoring.Models;
+using Singularity.Monitoring.Providers;
 
-namespace Singularity.Monitoring;
+namespace Singularity.Monitoring.Runtime;
 
 /// <summary>
 /// Samples system telemetry in the background and exposes the latest cached snapshot.

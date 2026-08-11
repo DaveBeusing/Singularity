@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-namespace Singularity.Monitoring;
+using Singularity.Monitoring.Models;
+
+namespace Singularity.Monitoring.Runtime;
 
 internal sealed class TelemetryCache
 {

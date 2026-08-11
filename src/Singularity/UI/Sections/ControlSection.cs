@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.UI.Controls;
+using Singularity.UI.Factories;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
 

@@ -4,8 +4,9 @@
 
 using System.Text;
 using Singularity.Hardware.Native.Nvml;
+using Singularity.Monitoring.Models;
 
-namespace Singularity.Monitoring;
+namespace Singularity.Monitoring.Providers;
 
 public sealed class NvmlGpuTelemetryProvider : IDisposable
 {

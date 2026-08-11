@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
+using Singularity.UI.Factories;
 using Singularity.UI.Controls;
 using Singularity.UI.Layout;
 using Singularity.UI.Panels;

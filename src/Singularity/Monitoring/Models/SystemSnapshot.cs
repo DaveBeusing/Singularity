@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-namespace Singularity.Monitoring;
+namespace Singularity.Monitoring.Models;
 
 public sealed class SystemSnapshot
 {

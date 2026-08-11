@@ -4,8 +4,9 @@
 
 using System.Diagnostics;
 using LibreHardwareMonitor.Hardware;
+using Singularity.Monitoring.Models;
 
-namespace Singularity.Monitoring;
+namespace Singularity.Monitoring.Providers;
 
 public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 {

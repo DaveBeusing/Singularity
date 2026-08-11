@@ -4,6 +4,7 @@
 
 using Singularity.Core.Validation;
 using Singularity.UI.Controls;
+using Singularity.UI.Factories;
 using Singularity.UI.Layout;
 using Singularity.UI.Views;
 

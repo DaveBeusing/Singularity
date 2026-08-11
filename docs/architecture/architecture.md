@@ -9,7 +9,7 @@ Singularity is a single-project Windows Forms application. The repository separa
 - `Core/Validation` owns profiles, live workload validation, sessions, and in-memory history.
 - `Core/Workloads` starts and stops the CPU, memory, and GPU stress workers.
 - `Hardware` inventories the operating system, processor, mainboard, memory, storage, and NVIDIA GPUs. It contains WMI helpers, value decoders, and NVML interop.
-- `Monitoring` samples CPU, memory, process, and NVIDIA GPU telemetry into a synchronized cache.
+- `Monitoring/Models` defines telemetry snapshots, `Monitoring/Providers` reads CPU and NVIDIA GPU sensors, and `Monitoring/Runtime` schedules sampling into a synchronized cache.
 - `UI` contains the main form, views, sections, controls, layout constants, and theme definitions.
 
 The main dependencies flow inward from the UI to the core services and platform adapters:
@@ -27,7 +27,7 @@ ReportGenerator    --> QualificationSession + ValidationResult
 Report exporters   --> QualificationReport + HardwareInventory
 ```
 
-Core validation and reporting do not depend on WinForms. Hardware and monitoring code contain the Windows- and device-specific integrations.
+Core validation and reporting do not depend on WinForms. Hardware providers and monitoring providers contain the Windows- and device-specific integrations, while monitoring runtime code owns scheduling and caching.
 
 ## Application flow
 
@@ -43,4 +43,3 @@ Related documents:
 - [Qualification runner](../qualification/qualification-runner.md)
 - [Validation](../qualification/validation.md)
 - [Reporting](../qualification/reporting.md)
-

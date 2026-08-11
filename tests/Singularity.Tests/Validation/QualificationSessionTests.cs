@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core.Validation;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
 
 namespace Singularity.Tests.Validation;
 

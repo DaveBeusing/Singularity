@@ -4,7 +4,7 @@
 
 using Singularity.UI.Controls;
 
-namespace Singularity.UI.Views;
+namespace Singularity.UI.Factories;
 
 internal static class UiFactory
 {

@@ -5,7 +5,7 @@
 namespace Singularity.Core.Validation;
 
 using Singularity.Core.Reporting;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
 
 public sealed class QualificationSession
 {

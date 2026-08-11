@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Core.Workloads;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
 
 namespace Singularity.Core.Validation;
 

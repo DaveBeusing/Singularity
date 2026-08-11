@@ -4,7 +4,7 @@
 
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
-using Singularity.Monitoring;
+using Singularity.Monitoring.Models;
 
 namespace Singularity.Tests.Validation;
 
