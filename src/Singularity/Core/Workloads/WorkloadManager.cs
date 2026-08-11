@@ -4,7 +4,7 @@
 
 namespace Singularity.Core.Workloads;
 
-public sealed class WorkloadManager : IDisposable
+public sealed class WorkloadManager : IWorkloadController, IDisposable
 {
 	private readonly CpuStressWorker cpuStressWorker = new();
 	private readonly MemoryStressWorker memoryStressWorker = new();

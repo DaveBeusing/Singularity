@@ -10,7 +10,7 @@ namespace Singularity.Core.Qualification;
 
 public sealed class QualificationRunner
 {
-	private readonly WorkloadManager workloadManager;
+	private readonly IWorkloadController workloadManager;
 	private readonly Stopwatch stepTimer = new();
 	private QualificationPlan? plan;
 	private int stepIndex = -1;
@@ -19,7 +19,7 @@ public sealed class QualificationRunner
 	public bool IsRunning => State == QualificationRunState.Running;
 	public QualificationProgress Progress => CreateProgress();
 
-	public QualificationRunner(WorkloadManager workloadManager)
+	public QualificationRunner(IWorkloadController workloadManager)
 	{
 		this.workloadManager = workloadManager;
 	}

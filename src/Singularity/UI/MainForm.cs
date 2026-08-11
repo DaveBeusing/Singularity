@@ -2,8 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using Singularity.Core.Reporting;
-using Singularity.Core.Qualification;
+using Singularity.Application;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
@@ -16,17 +15,11 @@ namespace Singularity.UI;
 
 public sealed class MainForm : Form
 {
-	private const string VersionString = "v0.23.0-alpha";
+	private const string VersionString = "v0.24.0-alpha";
 
-	private readonly WorkloadManager workloadManager = new();
-	private readonly QualificationRunner qualificationRunner;
-	private readonly WorkloadValidator workloadValidator = new();
-	private readonly QualificationSession qualificationSession = new();
-	private readonly QualificationHistory qualificationHistory = new();
-	private readonly QualificationReportGenerator reportGenerator = new();
-	private readonly QualificationJsonExporter jsonExporter = new();
-	private readonly QualificationHtmlExporter htmlExporter = new();
-	private readonly SystemMonitor systemMonitor = new();
+	private readonly QualificationCoordinator coordinator;
+	private readonly ReportExportService reportExportService;
+	private readonly SystemMonitor systemMonitor;
 	private readonly System.Windows.Forms.Timer timer = new();
 
 	private readonly Button hardwareTabButton = new();
@@ -40,10 +33,6 @@ public sealed class MainForm : Form
 	private HardwareView hardwareView = null!;
 	private WorkloadsView workloadsView = null!;
 
-	private ValidationResult? lastValidationResult;
-	private QualificationReport? lastReport;
-	private bool automatedRunFinalized;
-
 	private enum ActiveTab
 	{
 		Hardware,
@@ -52,9 +41,14 @@ public sealed class MainForm : Form
 
 	private ActiveTab activeTab = ActiveTab.Hardware;
 
-	public MainForm()
+	public MainForm(
+		QualificationCoordinator coordinator,
+		ReportExportService reportExportService,
+		SystemMonitor systemMonitor)
 	{
-		qualificationRunner = new QualificationRunner(workloadManager);
+		this.coordinator = coordinator;
+		this.reportExportService = reportExportService;
+		this.systemMonitor = systemMonitor;
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
 		FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -134,8 +128,8 @@ public sealed class MainForm : Form
 
 		SwitchTab(ActiveTab.Hardware);
 		UpdateWorkloadStatus();
-		workloadsView.UpdateSession(qualificationSession);
-		workloadsView.UpdateHistory(qualificationHistory);
+		workloadsView.UpdateSession(coordinator.Session);
+		workloadsView.UpdateHistory(coordinator.History);
 		workloadsView.ResetReport();
 
 		ClientSize = new Size(
@@ -263,50 +257,22 @@ public sealed class MainForm : Form
 
 	private void StartWorkloads()
 	{
-		if (workloadManager.Status.State == WorkloadState.Failed)
+		if (coordinator.StartManual(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
 		{
-			workloadManager.ResetFailure();
+			RenderQualificationState();
+			SwitchTab(ActiveTab.Workloads);
 		}
-
-		if (workloadManager.IsRunning)
-			return;
-
-		WorkloadOptions options = workloadsView.CreateOptions();
-		PrepareSession();
-		workloadManager.Start(options);
-
-		UpdateWorkloadStatus();
-		SwitchTab(ActiveTab.Workloads);
-	}
-
-	private void PrepareSession()
-	{
-		lastValidationResult = null;
-		lastReport = null;
-		workloadsView.ResetValidation();
-		workloadValidator.Reset();
-		workloadsView.ResetReport();
-		qualificationSession.Start(workloadsView.SelectedProfile);
-		workloadsView.UpdateSession(qualificationSession);
 	}
 
 	private void StartAutomatedQualification()
 	{
-		if (workloadManager.IsRunning || qualificationRunner.IsRunning)
-			return;
-
 		try
 		{
-			qualificationRunner.Reset();
-			QualificationPlan plan = QualificationPlan.CreateStandard(
-				workloadsView.CreateOptions(),
-				workloadsView.SelectedProfile);
-			PrepareSession();
-			automatedRunFinalized = false;
-			qualificationRunner.Start(plan);
-			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
-			UpdateWorkloadStatus();
-			SwitchTab(ActiveTab.Workloads);
+			if (coordinator.StartAutomated(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
+			{
+				RenderQualificationState();
+				SwitchTab(ActiveTab.Workloads);
+			}
 		}
 		catch (InvalidOperationException ex)
 		{
@@ -316,68 +282,13 @@ public sealed class MainForm : Form
 
 	private void StopWorkloads()
 	{
-		if (qualificationRunner.IsRunning)
-		{
-			qualificationRunner.Cancel();
-			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
-			FinalizeSession(forceFailure: true);
-			return;
-		}
-
-		if (!workloadManager.IsRunning &&
-			workloadManager.Status.State != WorkloadState.Failed)
-		{
-			return;
-		}
-
-		workloadManager.Stop();
-		FinalizeSession();
-	}
-
-	private void FinalizeSession(bool forceFailure = false)
-	{
-		if (qualificationSession.State != QualificationSessionState.Running)
-			return;
-
-		if (forceFailure)
-		{
-			qualificationSession.Fail();
-		}
-		else if (lastValidationResult is not null)
-		{
-			ValidationSummary summary = new(lastValidationResult);
-
-			qualificationSession.Complete(
-				summary.OverallStatus);
-		}
-		else
-		{
-			qualificationSession.Fail();
-		}
-
-		if (qualificationSession.CanBeRecorded)
-		{
-			qualificationHistory.Add(qualificationSession);
-
-			if (lastValidationResult is not null)
-			{
-				lastReport = reportGenerator.Create(
-					qualificationSession,
-					lastValidationResult);
-
-				workloadsView.UpdateReport(lastReport);
-			}
-		}
-
-		workloadsView.UpdateSession(qualificationSession);
-		workloadsView.UpdateHistory(qualificationHistory);
-
-		UpdateWorkloadStatus();
+		if (coordinator.Stop())
+			RenderQualificationState();
 	}
 
 	private void ExportJsonReport()
 	{
-		if (lastReport is null)
+		if (coordinator.LastReport is not { } report)
 			return;
 
 		using SaveFileDialog dialog = new()
@@ -386,7 +297,7 @@ public sealed class MainForm : Form
 			Filter = "JSON report (*.json)|*.json|All files (*.*)|*.*",
 			DefaultExt = "json",
 			AddExtension = true,
-			FileName = $"singularity-report-{lastReport.FinishedAt:yyyyMMdd-HHmmss}.json"
+			FileName = $"singularity-report-{report.FinishedAt:yyyyMMdd-HHmmss}.json"
 		};
 
 		if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -394,7 +305,7 @@ public sealed class MainForm : Form
 
 		try
 		{
-			jsonExporter.Export(dialog.FileName, lastReport, hardwareView.Inventory, VersionString);
+			reportExportService.ExportJson(dialog.FileName, report, hardwareView.Inventory, VersionString);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
@@ -404,7 +315,7 @@ public sealed class MainForm : Form
 
 	private void ExportHtmlReport()
 	{
-		if (lastReport is null)
+		if (coordinator.LastReport is not { } report)
 			return;
 
 		using SaveFileDialog dialog = new()
@@ -413,7 +324,7 @@ public sealed class MainForm : Form
 			Filter = "HTML report (*.html)|*.html|All files (*.*)|*.*",
 			DefaultExt = "html",
 			AddExtension = true,
-			FileName = $"singularity-report-{lastReport.FinishedAt:yyyyMMdd-HHmmss}.html"
+			FileName = $"singularity-report-{report.FinishedAt:yyyyMMdd-HHmmss}.html"
 		};
 
 		if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -421,7 +332,7 @@ public sealed class MainForm : Form
 
 		try
 		{
-			htmlExporter.Export(dialog.FileName, lastReport, hardwareView.Inventory, VersionString);
+			reportExportService.ExportHtml(dialog.FileName, report, hardwareView.Inventory, VersionString);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
@@ -434,49 +345,35 @@ public sealed class MainForm : Form
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
 		workloadsView.UpdateMetrics(snapshot);
+		coordinator.Update(snapshot);
+		RenderQualificationState();
+	}
 
-		if (workloadManager.IsRunning)
-		{
-			qualificationSession.RecordTelemetry(snapshot);
+	private void RenderQualificationState()
+	{
+		if (coordinator.LastValidationResult is { } validation)
+			workloadsView.UpdateValidation(validation);
+		else
+			workloadsView.ResetValidation();
 
-			lastValidationResult =
-				workloadValidator.Validate(
-				workloadManager.Status,
-					snapshot,
-					qualificationSession.Profile,
-					qualificationSession.Duration);
+		if (coordinator.LastReport is { } report)
+			workloadsView.UpdateReport(report);
+		else
+			workloadsView.ResetReport();
 
-			workloadsView.UpdateValidation(
-				lastValidationResult);
-		}
-
-		if (qualificationRunner.IsRunning)
-		{
-			qualificationRunner.Update(lastValidationResult);
-			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
-		}
-
-		if (!automatedRunFinalized &&
-			qualificationRunner.State is QualificationRunState.Completed or QualificationRunState.Failed)
-		{
-			automatedRunFinalized = true;
-			workloadsView.UpdateQualificationProgress(qualificationRunner.Progress);
-			FinalizeSession(qualificationRunner.State == QualificationRunState.Failed);
-		}
-
-		workloadsView.UpdateSession(
-			qualificationSession);
-
+		workloadsView.UpdateQualificationProgress(coordinator.Progress);
+		workloadsView.UpdateSession(coordinator.Session);
+		workloadsView.UpdateHistory(coordinator.History);
 		UpdateWorkloadStatus();
 	}
 
 	private void UpdateWorkloadStatus()
 	{
-		WorkloadStatus status = workloadManager.Status;
+		WorkloadStatus status = coordinator.WorkloadStatus;
 
 		ValidationSummary? validationSummary =
-			lastValidationResult is not null
-				? new ValidationSummary(lastValidationResult)
+			coordinator.LastValidationResult is not null
+				? new ValidationSummary(coordinator.LastValidationResult)
 				: null;
 
 		string badgeText = status.State switch
@@ -536,8 +433,6 @@ public sealed class MainForm : Form
 		if (disposing)
 		{
 			timer.Dispose();
-			workloadManager.Dispose();
-			systemMonitor.Dispose();
 		}
 
 		base.Dispose(disposing);

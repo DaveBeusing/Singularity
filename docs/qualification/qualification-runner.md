@@ -26,5 +26,4 @@ The UI calls `Update` with the latest validation result. The runner:
 
 Cancellation stops the workload and marks the run cancelled. Reset is allowed only while no run is active. `QualificationProgress` exposes the current step, elapsed and target durations, step counts, state, and a bounded overall percentage.
 
-`MainForm` currently coordinates the runner with session tracking, telemetry validation, UI updates, and final report generation.
-
+`QualificationCoordinator` coordinates the runner with session tracking, telemetry validation, and final report generation. `MainForm` passes user commands and snapshots to the coordinator and renders its exposed state.
