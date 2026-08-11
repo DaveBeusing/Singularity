@@ -6,7 +6,7 @@
 		<UseWindowsForms>true</UseWindowsForms>
 		<AssemblyName>Singularity</AssemblyName>
 		<RootNamespace>Singularity</RootNamespace>
-		<Version>0.25.0-alpha</Version>
+		<Version>0.26.0-alpha</Version>
 		<SelfContained>true</SelfContained>
 		<PublishSingleFile>true</PublishSingleFile>
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
