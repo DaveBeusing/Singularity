@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.UI.Shell;
+using Xunit;
 
 namespace Singularity.Tests.UI;
 
