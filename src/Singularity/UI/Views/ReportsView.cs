@@ -63,7 +63,7 @@ public sealed class ReportsView : Panel
 				break;
 			default:
 				if (historyButtons.Count > 0)
-					historyButtons[Math.Max(0, Math.Min(historyButtons.Count - 1, 0))].Focus();
+					historyButtons[0].Focus();
 				else
 					historyList.Focus();
 				break;
@@ -104,9 +104,9 @@ public sealed class ReportsView : Panel
 			Dock = DockStyle.Fill,
 			Orientation = Orientation.Vertical,
 			SplitterWidth = ThemeMetrics.SplitterWidth,
-			SplitterDistance = 300,
-			Panel1MinSize = 220,
-			Panel2MinSize = 320,
+			SplitterDistance = 260,
+			Panel1MinSize = 180,
+			Panel2MinSize = 240,
 			BackColor = Theme.Separator
 		};
 		split.Panel1.Padding = new Padding(ThemeMetrics.SpacingLarge, ThemeMetrics.SpacingLarge, ThemeMetrics.Spacing, ThemeMetrics.SpacingLarge);
