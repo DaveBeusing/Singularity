@@ -51,22 +51,22 @@ public static class WorkspaceCatalog
 				WorkspaceId.Results,
 				"Results",
 				"R",
-				"Latest qualification result, validation evidence, and statistics.",
+				"Latest completed qualification result, validation evidence, and statistics.",
 				[
 					new("latest", "Latest"),
 					new("validation", "Validation"),
 					new("statistics", "Statistics")
 				],
 				SupportsInspector: true,
-				SupportsToolPanel: true),
+				SupportsToolPanel: false),
 			new(
 				WorkspaceId.Reports,
 				"Reports",
 				"D",
-				"Qualification history, report preview, and export.",
+				"Qualification history, report review, and export.",
 				[
 					new("history", "History"),
-					new("preview", "Preview"),
+					new("report", "Report"),
 					new("export", "Export")
 				],
 				SupportsInspector: true,

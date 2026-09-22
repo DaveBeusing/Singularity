@@ -68,7 +68,6 @@ public sealed class ReportsWorkspaceStateTests
 				OverallResult = ValidationStatus.Pass
 			};
 			history.Add(session, report);
-			Thread.Sleep(1);
 		}
 
 		return history;

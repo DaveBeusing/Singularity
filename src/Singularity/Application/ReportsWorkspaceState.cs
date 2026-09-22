@@ -24,8 +24,8 @@ public sealed record ReportsWorkspaceSnapshot(
 
 public sealed class ReportsWorkspaceState
 {
-	private DateTime? selectedStartedAt;
-	private DateTime? latestStartedAt;
+	private QualificationRecord? selectedRecord;
+	private QualificationRecord? latestRecord;
 
 	public ReportsWorkspaceSnapshot CreateSnapshot(
 		QualificationHistory history,
@@ -36,32 +36,31 @@ public sealed class ReportsWorkspaceState
 		IReadOnlyList<QualificationRecord> records = history.Records;
 		if (records.Count == 0)
 		{
-			selectedStartedAt = null;
-			latestStartedAt = null;
+			selectedRecord = null;
+			latestRecord = null;
 			return ReportsWorkspaceSnapshot.Empty;
 		}
 
-		DateTime newest = records[0].StartedAt;
-		if (latestStartedAt != newest)
+		if (!ReferenceEquals(latestRecord, records[0]))
 		{
-			latestStartedAt = newest;
-			selectedStartedAt = newest;
+			latestRecord = records[0];
+			selectedRecord = records[0];
 		}
 
 		int selectedIndex = FindSelectedIndex(records);
 		if (selectedIndex < 0)
 		{
 			selectedIndex = 0;
-			selectedStartedAt = records[0].StartedAt;
+			selectedRecord = records[0];
 		}
 
-		QualificationRecord selectedRecord = records[selectedIndex];
-		QualificationReport? selectedReport = selectedRecord.Report;
+		QualificationRecord current = records[selectedIndex];
+		QualificationReport? selectedReport = current.Report;
 
 		return new ReportsWorkspaceSnapshot(
 			records,
 			selectedIndex,
-			selectedRecord,
+			current,
 			selectedReport,
 			selectedReport is not null && inventoryAvailable);
 	}
@@ -73,22 +72,21 @@ public sealed class ReportsWorkspaceState
 	{
 		ArgumentNullException.ThrowIfNull(history);
 
-		if (index < 0 || index >= history.Records.Count)
-			return CreateSnapshot(history, inventoryAvailable);
+		if (index >= 0 && index < history.Records.Count)
+			selectedRecord = history.Records[index];
 
-		selectedStartedAt = history.Records[index].StartedAt;
-		latestStartedAt ??= history.Records[0].StartedAt;
+		latestRecord ??= history.Records.Count > 0 ? history.Records[0] : null;
 		return CreateSnapshot(history, inventoryAvailable);
 	}
 
 	private int FindSelectedIndex(IReadOnlyList<QualificationRecord> records)
 	{
-		if (selectedStartedAt is null)
+		if (selectedRecord is null)
 			return -1;
 
 		for (int index = 0; index < records.Count; index++)
 		{
-			if (records[index].StartedAt == selectedStartedAt.Value)
+			if (ReferenceEquals(records[index], selectedRecord))
 				return index;
 		}
 
