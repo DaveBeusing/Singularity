@@ -40,7 +40,7 @@ public sealed class ActivityBar : Panel
 		FlowLayoutPanel tools = new()
 		{
 			Dock = DockStyle.Bottom,
-			Height = 142,
+			Height = 148,
 			FlowDirection = FlowDirection.TopDown,
 			WrapContents = false,
 			Padding = new Padding(6, 4, 6, 8),
