@@ -19,6 +19,7 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 - Runs automated qualification plans with dedicated and combined workload steps.
 - Exports qualification results as JSON or standalone HTML reports, including profile, validation, statistics, hardware inventory, and application version.
 - Uses a resizable editor-style WinForms shell with persistent Overview, Platform, Qualification, Results, and Reports workspaces, contextual navigation, optional inspector/tool regions, and a global status bar.
+- Provides a dedicated Qualification workspace with state-aware commands, persistent configuration, current-session state, automated progress, failure feedback, contextual inspection, and live cached telemetry in the Tool Panel.
 - Caches platform inventory outside the UI lifecycle, supports explicit non-blocking refresh, and provides component-level Platform navigation with selection-driven device inspection.
 
 ## Repository Structure
@@ -135,6 +136,7 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 - [Telemetry design](docs/architecture/telemetry.md)
 - [Building](docs/development/building.md)
 - [Testing](docs/development/testing.md)
+- [Qualification workspace](docs/qualification/qualification-workspace.md)
 - [Qualification runner](docs/qualification/qualification-runner.md)
 - [Validation](docs/qualification/validation.md)
 - [Reporting](docs/qualification/reporting.md)
