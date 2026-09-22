@@ -266,11 +266,19 @@ public sealed class ApplicationShell : UserControl
 			{
 				requiredContentWidth += inspectorSplit.SplitterWidth + inspectorSplit.Panel2MinSize;
 			}
+			else
+			{
+				bodySplit.Panel2MinSize = ThemeMetrics.MinimumWorkspaceWidth;
+			}
 
 			int maximumNavigationWidth = Math.Max(
 				ThemeMetrics.ActivityBarWidth,
 				bodySplit.ClientSize.Width - bodySplit.SplitterWidth - requiredContentWidth);
 			bodySplit.SplitterDistance = Math.Min(desiredNavigationWidth, maximumNavigationWidth);
+
+			if (LayoutState.InspectorVisible)
+				bodySplit.Panel2MinSize = requiredContentWidth;
+
 			bodySplit.PerformLayout();
 
 			inspectorSplit.Panel2Collapsed = !LayoutState.InspectorVisible;
