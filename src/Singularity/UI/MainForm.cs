@@ -20,16 +20,18 @@ public sealed class MainForm : Form
 	private readonly QualificationCoordinator coordinator;
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
+	private readonly PlatformInventoryState platformInventoryState;
 	private readonly NavigationService navigationService = new(WorkspaceCatalog.CreateDefault());
 	private readonly CommandRouter commandRouter = new();
 	private readonly List<ButtonCommandBinding> commandBindings = [];
 	private readonly System.Windows.Forms.Timer timer = new();
 	private readonly CancellationTokenSource shutdownCancellation = new();
 	private Icon? applicationIcon;
-	private bool inventoryRefreshInProgress;
 
 	private ApplicationShell shell = null!;
-	private HardwareView hardwareView = null!;
+	private OverviewView overviewView = null!;
+	private PlatformView platformView = null!;
+	private PlatformInspectorView platformInspectorView = null!;
 	private QualificationView qualificationView = null!;
 	private ResultsView resultsView = null!;
 	private ReportsView reportsView = null!;
@@ -37,11 +39,13 @@ public sealed class MainForm : Form
 	public MainForm(
 		QualificationCoordinator coordinator,
 		ReportExportService reportExportService,
-		SystemMonitor systemMonitor)
+		SystemMonitor systemMonitor,
+		PlatformInventoryState platformInventoryState)
 	{
 		this.coordinator = coordinator;
 		this.reportExportService = reportExportService;
 		this.systemMonitor = systemMonitor;
+		this.platformInventoryState = platformInventoryState;
 
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
@@ -59,6 +63,7 @@ public sealed class MainForm : Form
 		ConfigureApplicationIcon();
 		RegisterApplicationCommands();
 		BuildUi();
+		Shown += OnShown;
 
 		timer.Interval = 500;
 		timer.Tick += (_, _) => UpdateMonitoring();
@@ -100,12 +105,12 @@ public sealed class MainForm : Form
 		commandRouter.Register(
 			CommandId.ExportJson,
 			ExportJsonReport,
-			() => coordinator.LastReport is not null);
+			() => coordinator.LastReport is not null && platformInventoryState.Current is not null);
 
 		commandRouter.Register(
 			CommandId.ExportHtml,
 			ExportHtmlReport,
-			() => coordinator.LastReport is not null);
+			() => coordinator.LastReport is not null && platformInventoryState.Current is not null);
 
 		commandRouter.Register(
 			CommandId.RefreshInventory,
@@ -113,7 +118,7 @@ public sealed class MainForm : Form
 			() =>
 				navigationService.ActiveWorkspace == WorkspaceId.Platform &&
 				coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed &&
-				!inventoryRefreshInProgress);
+				!platformInventoryState.IsRefreshing);
 	}
 
 	private void BuildUi()
@@ -131,17 +136,16 @@ public sealed class MainForm : Form
 				Dock = DockStyle.Fill
 			};
 
-			hardwareView = new HardwareView();
+			overviewView = new OverviewView();
+			platformView = new PlatformView();
+			platformInspectorView = new PlatformInspectorView();
 			qualificationView = new QualificationView();
 			resultsView = new ResultsView();
 			reportsView = new ReportsView();
 
-			shell.RegisterWorkspace(
-				WorkspaceId.Overview,
-				new WorkspacePlaceholderView(
-					"Overview",
-					"Use this workspace as the platform qualification entry point. Detailed overview content will be migrated in a later workspace package."));
-			shell.RegisterWorkspace(WorkspaceId.Platform, hardwareView);
+			shell.RegisterWorkspace(WorkspaceId.Overview, overviewView);
+			shell.RegisterWorkspace(WorkspaceId.Platform, platformView);
+			shell.RegisterInspectorContent(WorkspaceId.Platform, platformInspectorView);
 			shell.RegisterWorkspace(WorkspaceId.Qualification, qualificationView);
 			shell.RegisterWorkspace(WorkspaceId.Results, resultsView);
 			shell.RegisterWorkspace(WorkspaceId.Reports, reportsView);
@@ -152,8 +156,13 @@ public sealed class MainForm : Form
 					"Application settings are prepared as a dedicated workspace. Domain-specific settings will be migrated when their ownership is defined."));
 
 			Controls.Add(shell);
-			BindCommandButtons();
 
+			overviewView.QualificationRequested += OpenQualification;
+			platformView.DeviceSelected += OnPlatformDeviceSelected;
+			navigationService.ContextItemChanged += OnContextItemChanged;
+
+			BindCommandButtons();
+			RenderInventoryState();
 			UpdateWorkloadStatus();
 			resultsView.UpdateSession(coordinator.Session);
 			reportsView.UpdateHistory(coordinator.History);
@@ -177,6 +186,7 @@ public sealed class MainForm : Form
 		commandBindings.Add(new ButtonCommandBinding(qualificationView.StopButton, commandRouter, CommandId.StopQualification));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportJsonButton, commandRouter, CommandId.ExportJson));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportHtmlButton, commandRouter, CommandId.ExportHtml));
+		commandBindings.Add(new ButtonCommandBinding(platformView.RefreshButton, commandRouter, CommandId.RefreshInventory));
 	}
 
 	private void StartWorkloads()
@@ -210,31 +220,81 @@ public sealed class MainForm : Form
 			RenderQualificationState();
 	}
 
-	private async void RefreshInventory()
+	private async void OnShown(object? sender, EventArgs e)
 	{
-		if (inventoryRefreshInProgress)
+		Shown -= OnShown;
+		await RefreshPlatformInventoryAsync();
+	}
+
+	private void OpenQualification()
+	{
+		navigationService.Navigate(WorkspaceId.Qualification);
+	}
+
+	private void OnContextItemChanged(NavigationItem? item)
+	{
+		if (navigationService.ActiveWorkspace != WorkspaceId.Platform)
 			return;
 
-		inventoryRefreshInProgress = true;
+		platformView.SetCategory(item?.Id ?? "system");
+		platformInspectorView.ShowSelection(null);
+	}
+
+	private void OnPlatformDeviceSelected(PlatformDeviceSelection selection)
+	{
+		navigationService.SetSelection(
+			new WorkspaceSelection(
+				WorkspaceId.Platform,
+				selection.Kind,
+				selection.Id,
+				selection.DisplayName));
+
+		platformInspectorView.ShowSelection(selection);
+		shell.SetInspectorVisible(true);
+	}
+
+	private async void RefreshInventory()
+	{
+		await RefreshPlatformInventoryAsync();
+	}
+
+	private async Task RefreshPlatformInventoryAsync()
+	{
+		if (platformInventoryState.IsRefreshing)
+			return;
+
+		Task<bool> refreshTask = platformInventoryState.RefreshAsync(shutdownCancellation.Token);
+		RenderInventoryState();
 		commandRouter.RefreshStates();
 
 		try
 		{
-			await hardwareView.RefreshInventoryAsync(shutdownCancellation.Token);
+			await refreshTask;
 		}
 		catch (OperationCanceledException) when (shutdownCancellation.IsCancellationRequested)
 		{
 			return;
 		}
-		catch (Exception ex)
-		{
-			MessageBox.Show(this, ex.Message, "Inventory refresh failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-		}
 		finally
 		{
-			inventoryRefreshInProgress = false;
 			if (!IsDisposed)
+			{
+				RenderInventoryState();
 				commandRouter.RefreshStates();
+			}
+		}
+	}
+
+	private void RenderInventoryState()
+	{
+		overviewView.UpdateInventory(platformInventoryState);
+		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
+		platformView.UpdateInventory(platformInventoryState);
+
+		if (navigationService.ActiveWorkspace == WorkspaceId.Platform)
+		{
+			navigationService.SetSelection(null);
+			platformInspectorView.ShowSelection(null);
 		}
 	}
 
@@ -255,9 +315,12 @@ public sealed class MainForm : Form
 		if (dialog.ShowDialog(this) != DialogResult.OK)
 			return;
 
+		if (platformInventoryState.Current is not { } inventory)
+			return;
+
 		try
 		{
-			reportExportService.ExportJson(dialog.FileName, report, hardwareView.Inventory);
+			reportExportService.ExportJson(dialog.FileName, report, inventory);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
@@ -282,9 +345,12 @@ public sealed class MainForm : Form
 		if (dialog.ShowDialog(this) != DialogResult.OK)
 			return;
 
+		if (platformInventoryState.Current is not { } inventory)
+			return;
+
 		try
 		{
-			reportExportService.ExportHtml(dialog.FileName, report, hardwareView.Inventory);
+			reportExportService.ExportHtml(dialog.FileName, report, inventory);
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
@@ -296,6 +362,7 @@ public sealed class MainForm : Form
 	{
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
+		overviewView.UpdateTelemetry(snapshot);
 		qualificationView.UpdateMetrics(snapshot);
 		coordinator.Update(snapshot);
 		RenderQualificationState();
@@ -313,6 +380,7 @@ public sealed class MainForm : Form
 		else
 			reportsView.ResetReport();
 
+		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
 		qualificationView.UpdateQualificationProgress(coordinator.Progress);
 		resultsView.UpdateSession(coordinator.Session);
 		reportsView.UpdateHistory(coordinator.History);
@@ -376,6 +444,12 @@ public sealed class MainForm : Form
 		if (disposing)
 		{
 			shutdownCancellation.Cancel();
+			Shown -= OnShown;
+			navigationService.ContextItemChanged -= OnContextItemChanged;
+			if (overviewView is not null)
+				overviewView.QualificationRequested -= OpenQualification;
+			if (platformView is not null)
+				platformView.DeviceSelected -= OnPlatformDeviceSelected;
 
 			foreach (ButtonCommandBinding binding in commandBindings)
 				binding.Dispose();

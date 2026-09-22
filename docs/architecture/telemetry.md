@@ -28,3 +28,14 @@ System CPU load comes from the Windows `GetSystemTimes` API. Process utilization
 
 The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting snapshot updates the metrics view. During an active workload it is also added to `QualificationSession` statistics and passed to `WorkloadValidator`.
 
+
+
+## Inventory versus telemetry lifecycle
+
+Platform inventory and telemetry are intentionally separate lifecycles.
+
+`PlatformInventoryState` owns the stable hardware inventory used by Overview, Platform, and report export. Inventory discovery runs once after the main window is shown and thereafter only through explicit user refresh. A refresh is performed away from the WinForms UI thread, concurrent refresh requests are rejected, and the last valid inventory is retained if a later refresh fails.
+
+`SystemMonitor` owns continuously sampled telemetry. Its scheduler and cache continue running while Overview or Platform is visible and while the user navigates between workspaces. UI refreshes read cached telemetry snapshots and never trigger full WMI or hardware inventory enumeration.
+
+Unavailable CPU temperature and GPU telemetry remain explicit states in the UI rather than being replaced with synthetic zero values.

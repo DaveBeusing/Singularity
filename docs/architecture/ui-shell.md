@@ -30,17 +30,17 @@ The main window is resizable, supports maximize and restore, and uses DPI autosc
 
 `WorkspaceHost` registers workspace controls once and switches visibility without reconstructing the control tree.
 
-Platform, Qualification, Results, and Reports are persistent domain workspaces. Overview and Settings currently use technical placeholder surfaces until their later domain migrations.
+Overview, Platform, Qualification, Results, and Reports are persistent domain workspaces. Settings currently uses a technical placeholder surface until its domain migration.
 
 The previous Workloads subview navigation is no longer part of the shell architecture. Qualification controls, current results, and reporting/history are separate top-level workspaces.
 
-This is important for telemetry and qualification rendering: timer-driven state updates target existing controls and do not recreate the shell or workspace hierarchy.
+This is important for telemetry, qualification, and inventory rendering: timer-driven telemetry updates target existing controls; workspace navigation does not reconstruct the shell or trigger platform enumeration.
 
 ## Contextual regions
 
 The sidebar is generated from the active `WorkspaceDefinition`. Context selection is maintained by `NavigationService`, along with a small workspace-scoped selection value for future inspector and contextual-action consumption.
 
-Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework.
+Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework. Platform uses the inspector for selection-driven metadata from memory modules, GPUs, and storage devices. With no detailed device selection, the inspector presents an explicit empty state.
 
 ## Commands and keyboard access
 
@@ -67,16 +67,16 @@ Semantic shell roles such as application background, sidebar, workspace, status 
 
 `ThemeMetrics` centralizes shell measurements such as activity-bar width, default sidebar width, inspector width, tool-panel height, status-bar height, spacing, control height, and minimum workspace/window dimensions.
 
-Reusable shell controls live under `UI/Controls`, including command, activity, tool, status-indicator, and separator controls. Accent yellow is used selectively for active indicators, focus/primary action states, and warnings rather than large full-surface navigation selections.
+Reusable shell controls live under `UI/Controls`, including command, activity, tool, status-indicator, metric-tile, property/value, selectable-device, and separator controls. Accent yellow is used selectively for active indicators, focus/primary action states, and warnings rather than large full-surface navigation selections.
 
 ## High-DPI and performance rules
 
 The shell uses WinForms DPI autoscaling and docking/splitting rather than global absolute coordinates. Hardware discovery and telemetry acquisition remain outside paint and layout paths.
 
-Hardware inventory remains a startup or explicit-refresh concern. Explicit refresh is scheduled away from the UI thread. Telemetry refreshes update existing controls and cached application state only. Expensive hardware enumeration must not be introduced into shell resize, repaint, navigation, or timer-rendering paths.
+Hardware inventory remains a startup or explicit-refresh concern owned by `PlatformInventoryState`. Initial discovery begins after the main window is shown, and explicit refresh is scheduled away from the UI thread. The previous valid inventory remains visible when a refresh fails. Telemetry refreshes use `SystemMonitor` and its cache independently of inventory and update existing controls only. Expensive hardware enumeration must not be introduced into shell resize, repaint, navigation, or timer-rendering paths.
 
 ## Migration boundary
 
-This shell and navigation model are infrastructure for later workspace-specific UI migrations. Placeholder content in Overview, Settings, and contextual sidebar destinations does not represent completed domain functionality.
+Overview and Platform are complete domain workspaces on the shell. Settings remains placeholder content and does not represent completed domain functionality.
 
 The change does not redesign qualification business rules, telemetry sampling, workload execution, validation rules, reporting contracts, or hardware-provider behavior.
