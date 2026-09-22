@@ -50,7 +50,7 @@ Context selection is owned by `NavigationService`. Platform context switches the
 
 Workspace definitions declare whether inspector and tool-panel activation is supported.
 
-`ApplicationShell` exposes explicit registration points for optional inspector and tool-panel content. Unsupported regions are collapsed when navigation moves to a workspace that does not opt into them.
+`ApplicationShell` exposes explicit registration points for optional inspector and tool-panel content. Unsupported regions are collapsed when navigation moves to a workspace that does not opt into them. Qualification registers a contextual inspector for Profile, Workloads, and Session and a Tool Panel surface for cached telemetry and automated-run progress.
 
 ## Command routing
 
@@ -88,7 +88,7 @@ Focus indication remains provided by the shared command-button styling.
 
 ## Ownership
 
-`MainForm` composes application services, registers the persistent workspaces, registers domain commands, binds existing domain buttons to commands, and renders qualification state.
+`MainForm` composes application services, registers persistent workspaces, and renders cross-workspace results and global status. Qualification command registration, qualification button bindings, configuration state, and current Qualification presentation are owned by `QualificationWorkspaceController` and `QualificationWorkspaceState`.
 
 `ApplicationShell` owns shell navigation, contextual sidebar rendering, optional-region visibility, shortcuts, workspace activation, and shell command integration.
 
