@@ -288,6 +288,7 @@ public sealed class MainForm : Form
 	private void RenderInventoryState()
 	{
 		overviewView.UpdateInventory(platformInventoryState);
+		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
 		platformView.UpdateInventory(platformInventoryState);
 
 		if (navigationService.ActiveWorkspace == WorkspaceId.Platform)
