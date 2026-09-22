@@ -4,6 +4,7 @@
 
 namespace Singularity.Core.Validation;
 
+using Singularity.Core.Qualification;
 using Singularity.Core.Reporting;
 using Singularity.Monitoring.Models;
 
@@ -27,6 +28,9 @@ public sealed class QualificationSession
 	public QualificationProfile Profile { get; private set; } =
 		QualificationProfiles.Standard;
 
+	public QualificationExecutionMode ExecutionMode { get; private set; } =
+		QualificationExecutionMode.Unknown;
+
 	public TimeSpan Duration
 	{
 		get
@@ -49,7 +53,9 @@ public sealed class QualificationSession
 		EndTime is not null &&
 		State is QualificationSessionState.Completed or QualificationSessionState.Failed;
 
-	public void Start(QualificationProfile profile)
+	public void Start(
+		QualificationProfile profile,
+		QualificationExecutionMode executionMode = QualificationExecutionMode.Manual)
 	{
 		State = QualificationSessionState.Running;
 		StartTime = DateTime.Now;
@@ -58,6 +64,7 @@ public sealed class QualificationSession
 		telemetryCollector = new SessionTelemetryCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 		Profile = profile;
+		ExecutionMode = executionMode;
 	}
 
 	public void RecordTelemetry(SystemSnapshot snapshot)
@@ -79,6 +86,9 @@ public sealed class QualificationSession
 
 	public void Fail()
 	{
+		if (State != QualificationSessionState.Running)
+			return;
+
 		State = QualificationSessionState.Failed;
 		EndTime = DateTime.Now;
 		Result = ValidationStatus.Fail;
@@ -94,5 +104,6 @@ public sealed class QualificationSession
 		telemetryCollector = new SessionTelemetryCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 		Profile = QualificationProfiles.Standard;
+		ExecutionMode = QualificationExecutionMode.Unknown;
 	}
 }

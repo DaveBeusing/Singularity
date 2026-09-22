@@ -41,7 +41,7 @@ public sealed class QualificationCoordinator
 
 		workloadController.ResetFailure();
 		qualificationRunner.Reset();
-		PrepareSession(profile);
+		PrepareSession(profile, QualificationExecutionMode.Manual);
 		workloadController.Start(options);
 		return true;
 	}
@@ -56,7 +56,7 @@ public sealed class QualificationCoordinator
 
 		qualificationRunner.Reset();
 		QualificationPlan plan = QualificationPlan.CreateStandard(options, profile);
-		PrepareSession(profile);
+		PrepareSession(profile, QualificationExecutionMode.Automated);
 		automatedRunFinalized = false;
 		qualificationRunner.Start(plan);
 		return true;
@@ -112,12 +112,14 @@ public sealed class QualificationCoordinator
 		}
 	}
 
-	private void PrepareSession(QualificationProfile profile)
+	private void PrepareSession(
+		QualificationProfile profile,
+		QualificationExecutionMode executionMode)
 	{
 		LastValidationResult = null;
 		LastReport = null;
 		workloadValidator.Reset();
-		Session.Start(profile);
+		Session.Start(profile, executionMode);
 	}
 
 	private void FinalizeSession(bool forceFailure = false)
@@ -133,9 +135,10 @@ public sealed class QualificationCoordinator
 		if (!Session.CanBeRecorded)
 			return;
 
-		History.Add(Session);
-		if (LastValidationResult is not null)
-			LastReport = reportGenerator.Create(Session, LastValidationResult);
+		LastReport = LastValidationResult is null
+			? null
+			: reportGenerator.Create(Session, LastValidationResult);
+
+		History.Add(Session, LastReport);
 	}
 }
-
