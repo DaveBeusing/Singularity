@@ -82,7 +82,7 @@ public sealed class ApplicationShell : UserControl
 
 		if (!visible)
 			savedSidebarWidth = Math.Max(
-				ThemeMetrics.DefaultSidebarWidth,
+				0,
 				bodySplit.SplitterDistance - ThemeMetrics.ActivityBarWidth);
 
 		LayoutState = LayoutState.WithSidebar(visible);
