@@ -85,7 +85,7 @@ public sealed class QualificationView : Panel
 
 		stateValue.Text = snapshot.OverallState;
 		stateValue.ForeColor = GetStateColor(snapshot);
-		profileValue.Text = snapshot.Configuration.Profile.Name;
+		profileValue.Text = snapshot.SessionProfile;
 		modeValue.Text = snapshot.Mode switch
 		{
 			QualificationMode.Manual => "MANUAL",
