@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using System.ComponentModel;
+
 namespace Singularity.UI.Controls;
 
 public sealed class ActivityButton : CommandButton
@@ -17,6 +19,8 @@ public sealed class ActivityButton : CommandButton
 		TextAlign = ContentAlignment.MiddleCenter;
 	}
 
+	[Browsable(false)]
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public bool Selected
 	{
 		get => selected;
