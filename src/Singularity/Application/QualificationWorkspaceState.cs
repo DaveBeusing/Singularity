@@ -75,6 +75,7 @@ public sealed record QualificationWorkspaceSnapshot(
 	int StepCount,
 	double ProgressPercent,
 	QualificationSessionState SessionState,
+	string SessionProfile,
 	DateTime? StartedAt,
 	TimeSpan Elapsed,
 	string OverallState,
@@ -129,13 +130,13 @@ public sealed class QualificationWorkspaceState
 		if (!Configuration.HasSelectedWorkload)
 			return "Select at least one workload before starting qualification.";
 
-		if (Configuration.CpuThreads <= 0)
+		if (Configuration.EnableCpuWorkload && Configuration.CpuThreads <= 0)
 			return "CPU thread count must be greater than zero.";
 
-		if (Configuration.MemoryGb <= 0)
+		if (Configuration.EnableMemoryWorkload && Configuration.MemoryGb <= 0)
 			return "Memory allocation must be greater than zero.";
 
-		if (Configuration.GpuLoadPercent is < 1 or > 100)
+		if (Configuration.EnableGpuWorkload && Configuration.GpuLoadPercent is < 1 or > 100)
 			return "GPU target load must be between 1 and 100 percent.";
 
 		return null;
@@ -173,6 +174,7 @@ public sealed class QualificationWorkspaceState
 			progress.StepCount,
 			progress.Percent,
 			session.State,
+			session.State == QualificationSessionState.Idle ? Configuration.Profile.Name : session.Profile.Name,
 			session.StartTime,
 			session.Duration,
 			BuildOverallState(workload.State, progress.State, session.State),
