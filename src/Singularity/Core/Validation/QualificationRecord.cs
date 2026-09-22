@@ -19,7 +19,4 @@ public sealed class QualificationRecord
 		SessionTelemetryStatistics.Empty;
 	public QualificationReport? Report { get; init; }
 
-	public string DisplayResult => Result.ToString().ToUpperInvariant();
-	public string DisplayDuration => Duration.ToString(@"hh\:mm\:ss");
-	public string DisplayStarted => StartedAt.ToString("HH:mm:ss");
 }
