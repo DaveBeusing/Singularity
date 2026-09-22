@@ -4,6 +4,7 @@
 
 using Singularity.Application;
 using Singularity.Core.Workloads;
+using Singularity.Hardware.Providers;
 using Singularity.Monitoring.Runtime;
 using Singularity.UI;
 
@@ -19,6 +20,13 @@ internal static class Program
 		using SystemMonitor systemMonitor = new();
 		QualificationCoordinator coordinator = new(workloadManager);
 		ReportExportService reportExportService = new();
-		System.Windows.Forms.Application.Run(new MainForm(coordinator, reportExportService, systemMonitor));
+		HardwareProvider hardwareProvider = new();
+		PlatformInventoryState platformInventoryState = new(hardwareProvider.Read);
+		System.Windows.Forms.Application.Run(
+			new MainForm(
+				coordinator,
+				reportExportService,
+				systemMonitor,
+				platformInventoryState));
 	}
 }
