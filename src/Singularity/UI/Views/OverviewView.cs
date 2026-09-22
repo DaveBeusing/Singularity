@@ -89,9 +89,14 @@ public sealed class OverviewView : Panel
 			return;
 		}
 
+		string platformDetail = state?.Status == PlatformInventoryStatus.Failed
+			? $"Refresh failed • {state.LastError}"
+			: $"{inventory.Os.Name} • {inventory.Os.Architecture}";
+
 		platformTile.SetValue(
 			inventory.Mainboard.Name,
-			$"{inventory.Os.Name} • {inventory.Os.Architecture}");
+			platformDetail,
+			state?.Status == PlatformInventoryStatus.Failed ? Theme.Failure : null);
 
 		cpuDetail = $"{inventory.Cpu.Name} • {inventory.Cpu.CoreThreadInfo}";
 		memoryDetail = $"{inventory.MemoryModules.Count} module{(inventory.MemoryModules.Count == 1 ? "" : "s")}";
@@ -169,7 +174,7 @@ public sealed class OverviewView : Panel
 
 		qualificationTile.SetValue(
 			report.OverallResult.ToString().ToUpperInvariant(),
-			$"{report.Profile.Name} • {report.FinishedAt:g} • {report.Duration.ToString(@"hh\\:mm\\:ss")}",
+			$"{report.Profile.Name} • {report.FinishedAt:g} • {report.Duration.ToString(@"hh\:mm\:ss")}",
 			resultColor);
 	}
 
