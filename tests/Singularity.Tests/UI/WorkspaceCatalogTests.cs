@@ -14,15 +14,18 @@ public sealed class WorkspaceCatalogTests
 	{
 		IReadOnlyList<WorkspaceDefinition> workspaces = WorkspaceCatalog.CreateDefault();
 
+		WorkspaceId[] expected =
+		[
+			WorkspaceId.Overview,
+			WorkspaceId.Platform,
+			WorkspaceId.Qualification,
+			WorkspaceId.Results,
+			WorkspaceId.Reports,
+			WorkspaceId.Settings
+		];
+
 		Assert.Equal(
-			[
-				WorkspaceId.Overview,
-				WorkspaceId.Platform,
-				WorkspaceId.Qualification,
-				WorkspaceId.Results,
-				WorkspaceId.Reports,
-				WorkspaceId.Settings
-			],
+			expected,
 			workspaces.Select(workspace => workspace.Id).ToArray());
 	}
 

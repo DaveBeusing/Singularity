@@ -63,7 +63,6 @@ public sealed class SidebarHost : Panel
 			control.Dispose();
 		}
 
-		int width = Math.Max(120, navigationPanel.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 2);
 		int tabIndex = 0;
 
 		foreach (NavigationItem item in workspace.SidebarItems)
@@ -72,7 +71,6 @@ public sealed class SidebarHost : Panel
 			{
 				Text = item.Label,
 				AccessibleName = item.Label,
-				Width = width,
 				Height = ThemeMetrics.ControlHeight,
 				Margin = new Padding(0, 0, 0, ThemeMetrics.SpacingSmall),
 				TextAlign = ContentAlignment.MiddleLeft,
@@ -86,5 +84,23 @@ public sealed class SidebarHost : Panel
 			button.Click += (_, _) => activateItem(item);
 			navigationPanel.Controls.Add(button);
 		}
+
+		UpdateNavigationButtonWidths();
+	}
+
+	protected override void OnResize(EventArgs eventargs)
+	{
+		base.OnResize(eventargs);
+		UpdateNavigationButtonWidths();
+	}
+
+	private void UpdateNavigationButtonWidths()
+	{
+		int width = Math.Max(
+			120,
+			navigationPanel.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 2);
+
+		foreach (Control control in navigationPanel.Controls)
+			control.Width = width;
 	}
 }

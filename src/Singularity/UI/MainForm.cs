@@ -24,6 +24,7 @@ public sealed class MainForm : Form
 	private readonly CommandRouter commandRouter = new();
 	private readonly List<ButtonCommandBinding> commandBindings = [];
 	private readonly System.Windows.Forms.Timer timer = new();
+	private readonly CancellationTokenSource shutdownCancellation = new();
 	private Icon? applicationIcon;
 	private bool inventoryRefreshInProgress;
 
@@ -84,17 +85,17 @@ public sealed class MainForm : Form
 		commandRouter.Register(
 			CommandId.StartQualification,
 			StartWorkloads,
-			() => !coordinator.WorkloadStatus.IsRunning);
+			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
 
 		commandRouter.Register(
 			CommandId.AutomatedQualification,
 			StartAutomatedQualification,
-			() => !coordinator.WorkloadStatus.IsRunning);
+			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
 
 		commandRouter.Register(
 			CommandId.StopQualification,
 			StopWorkloads,
-			() => coordinator.WorkloadStatus.IsRunning);
+			() => coordinator.WorkloadStatus.State is WorkloadState.Starting or WorkloadState.Running);
 
 		commandRouter.Register(
 			CommandId.ExportJson,
@@ -109,7 +110,10 @@ public sealed class MainForm : Form
 		commandRouter.Register(
 			CommandId.RefreshInventory,
 			RefreshInventory,
-			() => !coordinator.WorkloadStatus.IsRunning && !inventoryRefreshInProgress);
+			() =>
+				navigationService.ActiveWorkspace == WorkspaceId.Platform &&
+				coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed &&
+				!inventoryRefreshInProgress);
 	}
 
 	private void BuildUi()
@@ -216,7 +220,11 @@ public sealed class MainForm : Form
 
 		try
 		{
-			await hardwareView.RefreshInventoryAsync();
+			await hardwareView.RefreshInventoryAsync(shutdownCancellation.Token);
+		}
+		catch (OperationCanceledException) when (shutdownCancellation.IsCancellationRequested)
+		{
+			return;
 		}
 		catch (Exception ex)
 		{
@@ -225,7 +233,8 @@ public sealed class MainForm : Form
 		finally
 		{
 			inventoryRefreshInProgress = false;
-			commandRouter.RefreshStates();
+			if (!IsDisposed)
+				commandRouter.RefreshStates();
 		}
 	}
 
@@ -366,10 +375,13 @@ public sealed class MainForm : Form
 	{
 		if (disposing)
 		{
+			shutdownCancellation.Cancel();
+
 			foreach (ButtonCommandBinding binding in commandBindings)
 				binding.Dispose();
 
 			timer.Dispose();
+			shutdownCancellation.Dispose();
 			applicationIcon?.Dispose();
 		}
 
