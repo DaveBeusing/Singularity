@@ -289,6 +289,12 @@ public sealed class MainForm : Form
 	{
 		overviewView.UpdateInventory(platformInventoryState);
 		platformView.UpdateInventory(platformInventoryState);
+
+		if (navigationService.ActiveWorkspace == WorkspaceId.Platform)
+		{
+			navigationService.SetSelection(null);
+			platformInspectorView.ShowSelection(null);
+		}
 	}
 
 	private void ExportJsonReport()
