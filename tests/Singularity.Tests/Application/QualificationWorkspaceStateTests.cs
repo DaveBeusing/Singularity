@@ -152,7 +152,7 @@ public sealed class QualificationWorkspaceStateTests
 		Assert.True(snapshot.RequiredTelemetryUnavailable);
 		Assert.NotNull(snapshot.Feedback);
 		Assert.Equal(QualificationFeedbackLevel.Warning, snapshot.Feedback!.Level);
-		Assert.Contains("GPU telemetry", snapshot.Feedback.Message, StringComparison.Ordinal);
+		Assert.Contains("GPU telemetry", snapshot.Feedback.Message);
 	}
 
 	private static QualificationConfiguration CpuOnly(QualificationProfile profile)
