@@ -100,13 +100,17 @@ public sealed class OverviewView : Panel
 
 		cpuDetail = $"{inventory.Cpu.Name} • {inventory.Cpu.CoreThreadInfo}";
 		memoryDetail = $"{inventory.MemoryModules.Count} module{(inventory.MemoryModules.Count == 1 ? "" : "s")}";
-		gpuDetail = inventory.Gpus.Count == 0
-			? "No supported GPU inventory"
-			: string.Join(" • ", inventory.Gpus.Select(gpu => gpu.Name));
+		IReadOnlyList<GpuInventory> availableGpus = inventory.Gpus
+			.Where(gpu => !IsUnavailableGpu(gpu))
+			.ToArray();
+
+		gpuDetail = availableGpus.Count == 0
+			? inventory.Gpus.FirstOrDefault()?.Details ?? "No supported GPU inventory"
+			: string.Join(" • ", availableGpus.Select(gpu => gpu.Name));
 
 		cpuTile.SetValue("Ready", cpuDetail);
 		memoryTile.SetValue("Ready", memoryDetail);
-		gpuTile.SetValue(inventory.Gpus.Count == 0 ? "Unavailable" : "Ready", gpuDetail);
+		gpuTile.SetValue(availableGpus.Count == 0 ? "Unavailable" : "Ready", gpuDetail);
 		storageTile.SetValue(
 			$"{inventory.StorageDrives.Count} device{(inventory.StorageDrives.Count == 1 ? "" : "s")}",
 			inventory.StorageDrives.Count == 0
@@ -187,6 +191,11 @@ public sealed class OverviewView : Panel
 			report.OverallResult.ToString().ToUpperInvariant(),
 			$"{report.Profile.Name} • {report.FinishedAt:g} • {report.Duration.ToString(@"hh\:mm\:ss")}",
 			resultColor);
+	}
+
+	private static bool IsUnavailableGpu(GpuInventory gpu)
+	{
+		return string.Equals(gpu.Identifier, "nvml:unavailable", StringComparison.Ordinal);
 	}
 
 	private Panel BuildHeader()
