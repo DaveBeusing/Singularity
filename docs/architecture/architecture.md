@@ -11,7 +11,7 @@ Singularity is a single-project Windows Forms application. The repository separa
 - `Application` coordinates manual and automated qualification workflows and report export without depending on WinForms.
 - `Hardware` inventories the operating system, processor, mainboard, memory, storage, and NVIDIA GPUs. It contains WMI helpers, value decoders, and NVML interop.
 - `Monitoring/Models` defines telemetry snapshots, `Monitoring/Providers` reads CPU and NVIDIA GPU sensors, and `Monitoring/Runtime` schedules sampling into a synchronized cache.
-- `UI` contains the main form, views, sections, controls, layout constants, and theme definitions.
+- `UI` contains the main form, responsive editor shell, views, sections, reusable controls, layout constants, theme roles, and shell metrics.
 
 The main dependencies flow inward from the UI to the core services and platform adapters:
 
@@ -32,15 +32,15 @@ Core validation and reporting do not depend on WinForms. Hardware providers and 
 
 ## Application flow
 
-At startup, `Program` initializes WinForms high-DPI defaults and opens `MainForm`. The form builds the platform and workload views. `HardwareView` obtains the static machine inventory, while `SystemMonitor` begins background sampling.
+At startup, `Program` initializes WinForms high-DPI defaults and opens `MainForm`. The form composes `ApplicationShell`, creates the Platform and Workloads views once, and registers them with the persistent workspace host. `HardwareView` obtains the static machine inventory, while `SystemMonitor` begins background sampling.
 
 The UI timer reads the latest cached snapshot every 500 milliseconds and passes it to `QualificationCoordinator`. While a workload is active, the coordinator records the snapshot in the current session and asks `WorkloadValidator` for CPU, memory, and GPU results. Manual runs stop on user request. Automated runs delegate step transitions to `QualificationRunner`.
 
-When a session finishes, the coordinator freezes its final status and telemetry statistics, adds a record to the in-memory history, and uses `QualificationReportGenerator` to create an exportable report. `ReportExportService` combines that report with the current hardware inventory through the JSON or HTML exporter. `MainForm` retains only UI-specific dialogs, messages, navigation, and rendering.
+When a session finishes, the coordinator freezes its final status and telemetry statistics, adds a record to the in-memory history, and uses `QualificationReportGenerator` to create an exportable report. `ReportExportService` combines that report with the current hardware inventory through the JSON or HTML exporter. `MainForm` retains application interaction, dialogs, messages, and qualification-state rendering, while shell navigation, region visibility, responsive layout, contextual hosting, and global status presentation are owned by `ApplicationShell`.
 
 Related documents:
 
-- [Telemetry](telemetry.md)
+- [UI shell](ui-shell.md)\n- [Telemetry](telemetry.md)
 - [Qualification runner](../qualification/qualification-runner.md)
 - [Validation](../qualification/validation.md)
 - [Reporting](../qualification/reporting.md)

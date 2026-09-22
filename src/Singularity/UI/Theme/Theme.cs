@@ -17,4 +17,21 @@ public static class Theme
 	public static readonly Color TextMain = Color.FromArgb(240, 244, 248);
 	public static readonly Color TextMuted = Color.FromArgb(150, 160, 175);
 
+	public static readonly Color ApplicationBackground = Background;
+	public static readonly Color ActivityBar = Panel;
+	public static readonly Color Sidebar = Panel;
+	public static readonly Color Workspace = Background;
+	public static readonly Color Inspector = Panel;
+	public static readonly Color ToolPanel = Panel;
+	public static readonly Color StatusBar = PanelLight;
+	public static readonly Color Separator = PanelLight;
+
+	public static readonly Color Hover = PanelLight;
+	public static readonly Color Pressed = Panel;
+	public static readonly Color Selected = PanelLight;
+	public static readonly Color Focus = Accent;
+	public static readonly Color PrimaryAction = Accent;
+
+	public static readonly Color Warning = Accent;
+	public static readonly Color Failure = Danger;
 }

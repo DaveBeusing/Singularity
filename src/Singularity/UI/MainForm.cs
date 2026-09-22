@@ -8,7 +8,7 @@ using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
 using Singularity.Monitoring.Runtime;
 using Singularity.UI.Controls;
-using Singularity.UI.Layout;
+using Singularity.UI.Shell;
 using Singularity.UI.Views;
 
 namespace Singularity.UI;
@@ -21,24 +21,9 @@ public sealed class MainForm : Form
 	private readonly System.Windows.Forms.Timer timer = new();
 	private Icon? applicationIcon;
 
-	private readonly Button hardwareTabButton = new();
-	private readonly Button workloadsTabButton = new();
-
-	private readonly Panel tabBarPanel = new();
-	private readonly Panel tabHostPanel = new();
-
-	private readonly Label statusBadge = new();
-
+	private ApplicationShell shell = null!;
 	private HardwareView hardwareView = null!;
 	private WorkloadsView workloadsView = null!;
-
-	private enum ActiveTab
-	{
-		Hardware,
-		Workloads
-	}
-
-	private ActiveTab activeTab = ActiveTab.Hardware;
 
 	public MainForm(
 		QualificationCoordinator coordinator,
@@ -48,16 +33,21 @@ public sealed class MainForm : Form
 		this.coordinator = coordinator;
 		this.reportExportService = reportExportService;
 		this.systemMonitor = systemMonitor;
+
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
-		FormBorderStyle = FormBorderStyle.FixedSingle;
-		MaximizeBox = false;
-		BackColor = Theme.Background;
+		FormBorderStyle = FormBorderStyle.Sizable;
+		MaximizeBox = true;
+		MinimizeBox = true;
+		BackColor = Theme.ApplicationBackground;
 		ForeColor = Theme.TextMain;
-		Font = ThemeFonts.Title;
+		Font = ThemeFonts.Subtitle;
 		AutoScaleMode = AutoScaleMode.Dpi;
-		ConfigureApplicationIcon();
+		ClientSize = new Size(ThemeMetrics.DefaultWindowWidth, ThemeMetrics.DefaultWindowHeight);
+		MinimumSize = new Size(ThemeMetrics.MinimumWindowWidth, ThemeMetrics.MinimumWindowHeight);
+		DoubleBuffered = true;
 
+		ConfigureApplicationIcon();
 		BuildUi();
 
 		timer.Interval = 500;
@@ -82,192 +72,39 @@ public sealed class MainForm : Form
 
 	private void BuildUi()
 	{
-		Controls.Clear();
-
-		Label title = new()
+		SuspendLayout();
+		try
 		{
-			Text = "//Singularity✦",
-			Left = LayoutConstants.HeaderLeft,
-			Top = LayoutConstants.HeaderTop,
-			Width = 490,
-			Height = 64,
-			Font = ThemeFonts.Title,
-			ForeColor = Theme.TextMain,
-			BackColor = Theme.Background
-		};
+			Controls.Clear();
 
-		Label subtitle = new()
+			shell = new ApplicationShell(ApplicationMetadata.Version)
+			{
+				Dock = DockStyle.Fill
+			};
+
+			hardwareView = new HardwareView();
+			workloadsView = new WorkloadsView();
+
+			shell.RegisterWorkspace(ShellSection.Platform, hardwareView);
+			shell.RegisterWorkspace(ShellSection.Workloads, workloadsView);
+			Controls.Add(shell);
+
+			workloadsView.StartButton.Click += (_, _) => StartWorkloads();
+			workloadsView.AutoButton.Click += (_, _) => StartAutomatedQualification();
+			workloadsView.StopButton.Click += (_, _) => StopWorkloads();
+			workloadsView.ExportJsonButton.Click += (_, _) => ExportJsonReport();
+			workloadsView.ExportHtmlButton.Click += (_, _) => ExportHtmlReport();
+
+			shell.ActivateSection(ShellSection.Platform);
+			UpdateWorkloadStatus();
+			workloadsView.UpdateSession(coordinator.Session);
+			workloadsView.UpdateHistory(coordinator.History);
+			workloadsView.ResetReport();
+		}
+		finally
 		{
-			Text = "Platform Qualification Suite",
-			Left = LayoutConstants.HeaderLeft + 2,
-			Top = 80,
-			Width = 520,
-			Height = 28,
-			Font = ThemeFonts.Subtitle,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Background,
-			TextAlign = ContentAlignment.MiddleLeft
-		};
-
-		Label versionLabel = new()
-		{
-			Text = ApplicationMetadata.Version,
-			Left = 750,
-			Top = 32,
-			Width = 130,
-			Height = 24,
-			Font = ThemeFonts.SectionHeader,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.Background,
-			TextAlign = ContentAlignment.MiddleRight
-		};
-
-		ConfigureStatusBadge();
-		BuildTabs();
-		BuildViews();
-
-		Controls.AddRange([
-			title,
-			subtitle,
-			versionLabel,
-			statusBadge,
-			tabBarPanel,
-			tabHostPanel
-		]);
-
-		workloadsView.StartButton.Click += (_, _) => StartWorkloads();
-		workloadsView.AutoButton.Click += (_, _) => StartAutomatedQualification();
-		workloadsView.StopButton.Click += (_, _) => StopWorkloads();
-		workloadsView.ExportJsonButton.Click += (_, _) => ExportJsonReport();
-		workloadsView.ExportHtmlButton.Click += (_, _) => ExportHtmlReport();
-
-		SwitchTab(ActiveTab.Hardware);
-		UpdateWorkloadStatus();
-		workloadsView.UpdateSession(coordinator.Session);
-		workloadsView.UpdateHistory(coordinator.History);
-		workloadsView.ResetReport();
-
-		ClientSize = new Size(
-			LayoutConstants.WindowWidth,
-			tabHostPanel.Bottom + LayoutConstants.SectionGap);
-
-		MinimumSize = Size;
-		MaximumSize = Size;
-	}
-
-	private void ConfigureStatusBadge()
-	{
-		statusBadge.Left = 750;
-		statusBadge.Top = 78;
-		statusBadge.Width = 130;
-		statusBadge.Height = 32;
-		statusBadge.Text = "READY";
-		statusBadge.TextAlign = ContentAlignment.MiddleCenter;
-		statusBadge.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-		statusBadge.BackColor = Theme.PanelLight;
-		statusBadge.ForeColor = Theme.TextMain;
-	}
-
-	private void BuildTabs()
-	{
-		tabBarPanel.Left = LayoutConstants.MainLeft;
-		tabBarPanel.Top = 140;
-		tabBarPanel.Width = LayoutConstants.MainWidth;
-		tabBarPanel.Height = LayoutConstants.TabBarHeight;
-		tabBarPanel.BackColor = Theme.Panel;
-
-		ConfigureTabButton(
-			hardwareTabButton,
-			"PLATFORM",
-			20,
-			ActiveTab.Hardware);
-
-		ConfigureTabButton(
-			workloadsTabButton,
-			"WORKLOADS",
-			250,
-			ActiveTab.Workloads);
-
-		tabBarPanel.Controls.AddRange([
-			hardwareTabButton,
-			workloadsTabButton
-		]);
-	}
-
-	private void BuildViews()
-	{
-		hardwareView = new HardwareView
-		{
-			Left = 0,
-			Top = 0
-		};
-
-		workloadsView = new WorkloadsView
-		{
-			Left = 0,
-			Top = 0
-		};
-
-		int contentHeight = Math.Max(
-			hardwareView.Height,
-			workloadsView.Height);
-
-		tabHostPanel.Left = LayoutConstants.MainLeft;
-		tabHostPanel.Top = tabBarPanel.Bottom + LayoutConstants.SectionGap;
-		tabHostPanel.Width = LayoutConstants.MainWidth;
-		tabHostPanel.Height = contentHeight;
-		tabHostPanel.AutoScroll = true;
-		tabHostPanel.BackColor = Theme.Background;
-
-		tabHostPanel.Controls.AddRange([
-			hardwareView,
-			workloadsView
-		]);
-	}
-
-	private void ConfigureTabButton(
-		Button button,
-		string text,
-		int left,
-		ActiveTab tab)
-	{
-		button.Text = text;
-		button.Left = left;
-		button.Top = 10;
-		button.Width = tab == ActiveTab.Hardware ? 220 : 240;
-		button.Height = 34;
-		button.FlatStyle = FlatStyle.Flat;
-		button.FlatAppearance.BorderSize = 0;
-		button.Font = ThemeFonts.Button;
-		button.Click += (_, _) => SwitchTab(tab);
-	}
-
-	private void SwitchTab(ActiveTab tab)
-	{
-		activeTab = tab;
-
-		hardwareView.Visible = activeTab == ActiveTab.Hardware;
-		workloadsView.Visible = activeTab == ActiveTab.Workloads;
-
-		hardwareTabButton.BackColor =
-			activeTab == ActiveTab.Hardware
-				? Theme.Accent
-				: Theme.PanelLight;
-
-		hardwareTabButton.ForeColor =
-			activeTab == ActiveTab.Hardware
-				? Color.Black
-				: Theme.TextMain;
-
-		workloadsTabButton.BackColor =
-			activeTab == ActiveTab.Workloads
-				? Theme.Accent
-				: Theme.PanelLight;
-
-		workloadsTabButton.ForeColor =
-			activeTab == ActiveTab.Workloads
-				? Color.Black
-				: Theme.TextMain;
+			ResumeLayout(true);
+		}
 	}
 
 	private void StartWorkloads()
@@ -275,7 +112,7 @@ public sealed class MainForm : Form
 		if (coordinator.StartManual(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
 		{
 			RenderQualificationState();
-			SwitchTab(ActiveTab.Workloads);
+			shell.ActivateSection(ShellSection.Workloads);
 		}
 	}
 
@@ -286,7 +123,7 @@ public sealed class MainForm : Form
 			if (coordinator.StartAutomated(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
 			{
 				RenderQualificationState();
-				SwitchTab(ActiveTab.Workloads);
+				shell.ActivateSection(ShellSection.Workloads);
 			}
 		}
 		catch (InvalidOperationException ex)
@@ -391,7 +228,7 @@ public sealed class MainForm : Form
 				? new ValidationSummary(coordinator.LastValidationResult)
 				: null;
 
-		string badgeText = status.State switch
+		string statusText = status.State switch
 		{
 			WorkloadState.Stopped => "READY",
 			WorkloadState.Starting => "STARTING",
@@ -401,46 +238,28 @@ public sealed class MainForm : Form
 			_ => "UNKNOWN"
 		};
 
-		Color badgeBackColor = status.State switch
+		StatusVisualState visualState = status.State switch
 		{
-			WorkloadState.Stopped => Theme.PanelLight,
-			WorkloadState.Starting => Theme.Accent,
-			WorkloadState.Running => Theme.Success,
-			WorkloadState.Stopping => Theme.Accent,
-			WorkloadState.Failed => Theme.Danger,
-			_ => Theme.PanelLight
+			WorkloadState.Stopped => StatusVisualState.Neutral,
+			WorkloadState.Starting => StatusVisualState.Warning,
+			WorkloadState.Running => StatusVisualState.Success,
+			WorkloadState.Stopping => StatusVisualState.Warning,
+			WorkloadState.Failed => StatusVisualState.Failure,
+			_ => StatusVisualState.Neutral
 		};
 
-		Color badgeForeColor = status.State switch
+		if (status.State == WorkloadState.Running && validationSummary is not null)
 		{
-			WorkloadState.Starting => Color.Black,
-			WorkloadState.Stopping => Color.Black,
-			_ => Theme.TextMain
-		};
-
-		if (status.State == WorkloadState.Running &&
-			validationSummary is not null)
-		{
-			switch (validationSummary.OverallStatus)
+			visualState = validationSummary.OverallStatus switch
 			{
-				case ValidationStatus.Pass:
-					badgeBackColor = Theme.Success;
-					break;
-
-				case ValidationStatus.Warning:
-					badgeBackColor = Theme.Accent;
-					badgeForeColor = Color.Black;
-					break;
-
-				case ValidationStatus.Fail:
-					badgeBackColor = Theme.Danger;
-					break;
-			}
+				ValidationStatus.Pass => StatusVisualState.Success,
+				ValidationStatus.Warning => StatusVisualState.Warning,
+				ValidationStatus.Fail => StatusVisualState.Failure,
+				_ => visualState
+			};
 		}
 
-		ControlUpdate.SetText(statusBadge, badgeText);
-		ControlUpdate.SetBackColor(statusBadge, badgeBackColor);
-		ControlUpdate.SetForeColor(statusBadge, badgeForeColor);
+		shell.SetGlobalStatus(statusText, visualState);
 	}
 
 	protected override void Dispose(bool disposing)
@@ -453,5 +272,4 @@ public sealed class MainForm : Form
 
 		base.Dispose(disposing);
 	}
-
 }
