@@ -146,7 +146,7 @@ public sealed class OverviewView : Panel
 			WorkloadState.Starting => ("Starting", Theme.Warning, "Qualification workload is starting"),
 			WorkloadState.Running => ("Running", Theme.Success, "Qualification is collecting evidence"),
 			WorkloadState.Stopping => ("Stopping", Theme.Warning, "Qualification workload is stopping"),
-			WorkloadState.Failed => ("Failed", Theme.Failure, status.Error ?? "Qualification workload failed"),
+			WorkloadState.Failed => ("Failed", Theme.Failure, string.IsNullOrWhiteSpace(status.Message) ? "Qualification workload failed" : status.Message),
 			_ when !inventoryAvailable => ("Waiting", Theme.Warning, "Platform inventory is required"),
 			_ => ("Ready", Theme.Success, "Platform is ready for qualification")
 		};
@@ -169,7 +169,7 @@ public sealed class OverviewView : Panel
 
 		qualificationTile.SetValue(
 			report.OverallResult.ToString().ToUpperInvariant(),
-			$"{report.Profile.Name} • {report.FinishedAt:g} • {report.Duration:hh\:mm\:ss}",
+			$"{report.Profile.Name} • {report.FinishedAt:g} • {report.Duration.ToString(@"hh\\:mm\\:ss")}",
 			resultColor);
 	}
 
