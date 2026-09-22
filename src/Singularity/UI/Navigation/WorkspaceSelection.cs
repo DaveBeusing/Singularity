@@ -2,10 +2,10 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-namespace Singularity.UI.Shell;
+namespace Singularity.UI.Navigation;
 
-public enum ShellSection
-{
-	Platform,
-	Workloads
-}
+public sealed record WorkspaceSelection(
+	WorkspaceId Workspace,
+	string Kind,
+	string Key,
+	string DisplayName);

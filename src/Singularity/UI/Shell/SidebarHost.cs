@@ -2,13 +2,16 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.UI.Controls;
+using Singularity.UI.Navigation;
+
 namespace Singularity.UI.Shell;
 
 public sealed class SidebarHost : Panel
 {
 	private readonly Label titleLabel = new();
 	private readonly Label descriptionLabel = new();
-	private readonly Panel contentHost = new();
+	private readonly FlowLayoutPanel navigationPanel = new();
 
 	public SidebarHost()
 	{
@@ -30,29 +33,74 @@ public sealed class SidebarHost : Panel
 		descriptionLabel.BackColor = Theme.Sidebar;
 		descriptionLabel.TextAlign = ContentAlignment.TopLeft;
 
-		contentHost.Dock = DockStyle.Fill;
-		contentHost.BackColor = Theme.Sidebar;
-		contentHost.Padding = new Padding(0, ThemeMetrics.Spacing, 0, 0);
+		navigationPanel.Dock = DockStyle.Fill;
+		navigationPanel.FlowDirection = FlowDirection.TopDown;
+		navigationPanel.WrapContents = false;
+		navigationPanel.AutoScroll = true;
+		navigationPanel.BackColor = Theme.Sidebar;
+		navigationPanel.Padding = new Padding(0, ThemeMetrics.Spacing, 0, 0);
 
-		Controls.Add(contentHost);
+		Controls.Add(navigationPanel);
 		Controls.Add(descriptionLabel);
 		Controls.Add(titleLabel);
 	}
 
-	public void SetContext(string title, string description)
+	public void SetContext(
+		WorkspaceDefinition workspace,
+		NavigationItem? selectedItem,
+		Action<NavigationItem> activateItem)
 	{
-		titleLabel.Text = title;
-		descriptionLabel.Text = description;
+		ArgumentNullException.ThrowIfNull(workspace);
+		ArgumentNullException.ThrowIfNull(activateItem);
+
+		titleLabel.Text = workspace.Title.ToUpperInvariant();
+		descriptionLabel.Text = workspace.Description;
+
+		while (navigationPanel.Controls.Count > 0)
+		{
+			Control control = navigationPanel.Controls[0];
+			navigationPanel.Controls.RemoveAt(0);
+			control.Dispose();
+		}
+
+		int tabIndex = 0;
+
+		foreach (NavigationItem item in workspace.SidebarItems)
+		{
+			CommandButton button = new()
+			{
+				Text = item.Label,
+				AccessibleName = item.Label,
+				Height = ThemeMetrics.ControlHeight,
+				Margin = new Padding(0, 0, 0, ThemeMetrics.SpacingSmall),
+				TextAlign = ContentAlignment.MiddleLeft,
+				TabIndex = tabIndex++,
+				BackColor = selectedItem?.Id == item.Id ? Theme.Selected : Theme.Sidebar,
+				ForeColor = selectedItem?.Id == item.Id ? Theme.TextMain : Theme.TextMuted
+			};
+
+			button.FlatAppearance.BorderSize = selectedItem?.Id == item.Id ? 1 : 0;
+			button.FlatAppearance.BorderColor = Theme.Accent;
+			button.Click += (_, _) => activateItem(item);
+			navigationPanel.Controls.Add(button);
+		}
+
+		UpdateNavigationButtonWidths();
 	}
 
-	public void SetContent(Control? content)
+	protected override void OnResize(EventArgs eventargs)
 	{
-		contentHost.Controls.Clear();
+		base.OnResize(eventargs);
+		UpdateNavigationButtonWidths();
+	}
 
-		if (content is null)
-			return;
+	private void UpdateNavigationButtonWidths()
+	{
+		int width = Math.Max(
+			120,
+			navigationPanel.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 2);
 
-		content.Dock = DockStyle.Fill;
-		contentHost.Controls.Add(content);
+		foreach (Control control in navigationPanel.Controls)
+			control.Width = width;
 	}
 }

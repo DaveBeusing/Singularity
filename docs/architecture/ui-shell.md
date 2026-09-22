@@ -6,15 +6,15 @@ Singularity uses a responsive editor-style Windows Forms shell while retaining t
 
 The shell is composed under `UI/Shell` and provides stable regions for:
 
-- the application title and version;
-- a left activity bar for primary navigation;
+- the application title, active workspace context, and version;
+- a left activity bar for primary workspace navigation;
 - a contextual sidebar;
 - the central workspace;
 - an optional inspector;
 - a collapsible tool panel;
 - the global application status bar.
 
-`MainForm` owns top-level application interaction and binds qualification state to the shell. It no longer owns fixed tab geometry or fixed window dimensions.
+The canonical workspaces are Overview, Platform, Qualification, Results, Reports, and Settings. Navigation state is owned by `NavigationService`; activity-bar controls only reflect that state.
 
 ## Layout behavior
 
@@ -24,13 +24,31 @@ The sidebar is visible by default. The inspector and tool panel are optional and
 
 The shell preserves a minimum central workspace size when optional regions are expanded. At narrow supported widths, sidebar space may contract so the workspace and inspector remain usable.
 
-The main window is resizable, supports maximize and restore, and uses DPI autoscaling. Legacy workspaces remain scrollable while their individual layouts are migrated incrementally.
+The main window is resizable, supports maximize and restore, and uses DPI autoscaling. Existing domain surfaces remain scrollable while their individual layouts are migrated incrementally.
 
 ## Workspace ownership
 
-`WorkspaceHost` registers workspace controls once and switches visibility without reconstructing the control tree. The current Platform and Workloads views are created once by `MainForm` and hosted through this mechanism.
+`WorkspaceHost` registers workspace controls once and switches visibility without reconstructing the control tree.
 
-This is important for telemetry and qualification rendering: timer-driven state updates target the existing controls and do not recreate the shell or workspace hierarchy.
+Platform, Qualification, Results, and Reports are persistent domain workspaces. Overview and Settings currently use technical placeholder surfaces until their later domain migrations.
+
+The previous Workloads subview navigation is no longer part of the shell architecture. Qualification controls, current results, and reporting/history are separate top-level workspaces.
+
+This is important for telemetry and qualification rendering: timer-driven state updates target existing controls and do not recreate the shell or workspace hierarchy.
+
+## Contextual regions
+
+The sidebar is generated from the active `WorkspaceDefinition`. Context selection is maintained by `NavigationService`, along with a small workspace-scoped selection value for future inspector and contextual-action consumption.
+
+Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework.
+
+## Commands and keyboard access
+
+Global and contextual actions are routed through the lightweight `CommandRouter`. Commands expose enabled state from current application conditions, and existing qualification/report buttons are bound to those commands.
+
+The activity bar and contextual sidebar use focusable buttons with standard Enter/Space activation. The shell also supports Ctrl+1 through Ctrl+6 for workspace navigation and focused shortcuts for optional shell regions.
+
+See [Navigation and command model](navigation-command-model.md) for ownership, command state, prepared sidebar contexts, and keyboard mappings.
 
 ## Design system
 
@@ -53,10 +71,12 @@ Reusable shell controls live under `UI/Controls`, including command, activity, t
 
 ## High-DPI and performance rules
 
-The shell uses WinForms DPI autoscaling and docking/splitting rather than global absolute coordinates. Hardware discovery and telemetry acquisition must remain outside paint and layout paths.
+The shell uses WinForms DPI autoscaling and docking/splitting rather than global absolute coordinates. Hardware discovery and telemetry acquisition remain outside paint and layout paths.
 
-Hardware inventory remains a startup or explicit-refresh concern. Telemetry refreshes update existing controls and cached application state only. Expensive hardware enumeration must not be introduced into shell resize, repaint, navigation, or timer-rendering paths.
+Hardware inventory remains a startup or explicit-refresh concern. Explicit refresh is scheduled away from the UI thread. Telemetry refreshes update existing controls and cached application state only. Expensive hardware enumeration must not be introduced into shell resize, repaint, navigation, or timer-rendering paths.
 
 ## Migration boundary
 
-The shell is the foundation for later workspace-specific UI migrations. Platform and Workloads currently retain their established internal layouts so this change does not redesign qualification, telemetry, workload, validation, reporting, or hardware-provider behavior.
+This shell and navigation model are infrastructure for later workspace-specific UI migrations. Placeholder content in Overview, Settings, and contextual sidebar destinations does not represent completed domain functionality.
+
+The change does not redesign qualification business rules, telemetry sampling, workload execution, validation rules, reporting contracts, or hardware-provider behavior.
