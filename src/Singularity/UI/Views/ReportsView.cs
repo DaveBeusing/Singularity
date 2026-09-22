@@ -213,7 +213,6 @@ public sealed class ReportsView : Panel
 		previewPanel.Controls.Add(previewGrid);
 		previewPanel.Controls.Add(exports);
 		previewPanel.Controls.Add(title);
-		previewGrid.BringToFront();
 		return previewPanel;
 	}
 
