@@ -29,14 +29,6 @@ public sealed class ApplicationShell : UserControl
 	private int savedSidebarWidth = ThemeMetrics.DefaultSidebarWidth;
 	private bool applyingLayoutState;
 
-	public ApplicationShell(string version)
-		: this(
-			version,
-			new NavigationService(WorkspaceCatalog.CreateDefault()),
-			new CommandRouter())
-	{
-	}
-
 	public ApplicationShell(
 		string version,
 		NavigationService navigationService,
@@ -66,8 +58,6 @@ public sealed class ApplicationShell : UserControl
 	public InspectorHost Inspector => inspectorHost;
 	public ToolPanelHost ToolPanel => toolPanelHost;
 
-	public event Action<ShellSection>? ActiveSectionChanged;
-
 	public void RegisterWorkspace(WorkspaceId workspace, Control content)
 	{
 		workspaceHost.Register(workspace, content);
@@ -92,17 +82,6 @@ public sealed class ApplicationShell : UserControl
 
 		if (workspace == navigationService.ActiveWorkspace)
 			toolPanelHost.SetContent(content);
-	}
-
-	public void RegisterWorkspace(ShellSection section, Control content)
-	{
-		RegisterWorkspace(MapLegacySection(section), content);
-	}
-
-	public void ActivateSection(ShellSection section)
-	{
-		navigationService.Navigate(MapLegacySection(section));
-		ActiveSectionChanged?.Invoke(section);
 	}
 
 	public void SetGlobalStatus(string text, StatusVisualState state)
@@ -167,6 +146,8 @@ public sealed class ApplicationShell : UserControl
 			Keys.Control | Keys.B => commandRouter.Execute(CommandId.ToggleSidebar),
 			Keys.Control | Keys.Alt | Keys.I => commandRouter.Execute(CommandId.ToggleInspector),
 			Keys.Control | Keys.J => commandRouter.Execute(CommandId.ToggleToolPanel),
+			Keys.Control | Keys.R when navigationService.ActiveWorkspace == WorkspaceId.Platform =>
+				commandRouter.Execute(CommandId.RefreshInventory),
 			_ => false
 		};
 	}
@@ -437,15 +418,5 @@ public sealed class ApplicationShell : UserControl
 			ThemeMetrics.ToolPanelHeight,
 			availableHeight - toolSplit.Panel1MinSize);
 		toolSplit.SplitterDistance = availableHeight - Math.Max(toolSplit.Panel2MinSize, toolPanelHeight);
-	}
-
-	private static WorkspaceId MapLegacySection(ShellSection section)
-	{
-		return section switch
-		{
-			ShellSection.Platform => WorkspaceId.Platform,
-			ShellSection.Workloads => WorkspaceId.Qualification,
-			_ => throw new ArgumentOutOfRangeException(nameof(section), section, null)
-		};
 	}
 }

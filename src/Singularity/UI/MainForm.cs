@@ -3,11 +3,13 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Application;
+using Singularity.Application.Commands;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
 using Singularity.Monitoring.Runtime;
 using Singularity.UI.Controls;
+using Singularity.UI.Navigation;
 using Singularity.UI.Shell;
 using Singularity.UI.Views;
 
@@ -18,12 +20,18 @@ public sealed class MainForm : Form
 	private readonly QualificationCoordinator coordinator;
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
+	private readonly NavigationService navigationService = new(WorkspaceCatalog.CreateDefault());
+	private readonly CommandRouter commandRouter = new();
+	private readonly List<ButtonCommandBinding> commandBindings = [];
 	private readonly System.Windows.Forms.Timer timer = new();
 	private Icon? applicationIcon;
+	private bool inventoryRefreshInProgress;
 
 	private ApplicationShell shell = null!;
 	private HardwareView hardwareView = null!;
-	private WorkloadsView workloadsView = null!;
+	private QualificationView qualificationView = null!;
+	private ResultsView resultsView = null!;
+	private ReportsView reportsView = null!;
 
 	public MainForm(
 		QualificationCoordinator coordinator,
@@ -48,6 +56,7 @@ public sealed class MainForm : Form
 		DoubleBuffered = true;
 
 		ConfigureApplicationIcon();
+		RegisterApplicationCommands();
 		BuildUi();
 
 		timer.Interval = 500;
@@ -70,6 +79,39 @@ public sealed class MainForm : Form
 		}
 	}
 
+	private void RegisterApplicationCommands()
+	{
+		commandRouter.Register(
+			CommandId.StartQualification,
+			StartWorkloads,
+			() => !coordinator.WorkloadStatus.IsRunning);
+
+		commandRouter.Register(
+			CommandId.AutomatedQualification,
+			StartAutomatedQualification,
+			() => !coordinator.WorkloadStatus.IsRunning);
+
+		commandRouter.Register(
+			CommandId.StopQualification,
+			StopWorkloads,
+			() => coordinator.WorkloadStatus.IsRunning);
+
+		commandRouter.Register(
+			CommandId.ExportJson,
+			ExportJsonReport,
+			() => coordinator.LastReport is not null);
+
+		commandRouter.Register(
+			CommandId.ExportHtml,
+			ExportHtmlReport,
+			() => coordinator.LastReport is not null);
+
+		commandRouter.Register(
+			CommandId.RefreshInventory,
+			RefreshInventory,
+			() => !coordinator.WorkloadStatus.IsRunning && !inventoryRefreshInProgress);
+	}
+
 	private void BuildUi()
 	{
 		SuspendLayout();
@@ -77,29 +119,42 @@ public sealed class MainForm : Form
 		{
 			Controls.Clear();
 
-			shell = new ApplicationShell(ApplicationMetadata.Version)
+			shell = new ApplicationShell(
+				ApplicationMetadata.Version,
+				navigationService,
+				commandRouter)
 			{
 				Dock = DockStyle.Fill
 			};
 
 			hardwareView = new HardwareView();
-			workloadsView = new WorkloadsView();
+			qualificationView = new QualificationView();
+			resultsView = new ResultsView();
+			reportsView = new ReportsView();
 
-			shell.RegisterWorkspace(ShellSection.Platform, hardwareView);
-			shell.RegisterWorkspace(ShellSection.Workloads, workloadsView);
+			shell.RegisterWorkspace(
+				WorkspaceId.Overview,
+				new WorkspacePlaceholderView(
+					"Overview",
+					"Use this workspace as the platform qualification entry point. Detailed overview content will be migrated in a later workspace package."));
+			shell.RegisterWorkspace(WorkspaceId.Platform, hardwareView);
+			shell.RegisterWorkspace(WorkspaceId.Qualification, qualificationView);
+			shell.RegisterWorkspace(WorkspaceId.Results, resultsView);
+			shell.RegisterWorkspace(WorkspaceId.Reports, reportsView);
+			shell.RegisterWorkspace(
+				WorkspaceId.Settings,
+				new WorkspacePlaceholderView(
+					"Settings",
+					"Application settings are prepared as a dedicated workspace. Domain-specific settings will be migrated when their ownership is defined."));
+
 			Controls.Add(shell);
+			BindCommandButtons();
 
-			workloadsView.StartButton.Click += (_, _) => StartWorkloads();
-			workloadsView.AutoButton.Click += (_, _) => StartAutomatedQualification();
-			workloadsView.StopButton.Click += (_, _) => StopWorkloads();
-			workloadsView.ExportJsonButton.Click += (_, _) => ExportJsonReport();
-			workloadsView.ExportHtmlButton.Click += (_, _) => ExportHtmlReport();
-
-			shell.ActivateSection(ShellSection.Platform);
 			UpdateWorkloadStatus();
-			workloadsView.UpdateSession(coordinator.Session);
-			workloadsView.UpdateHistory(coordinator.History);
-			workloadsView.ResetReport();
+			resultsView.UpdateSession(coordinator.Session);
+			reportsView.UpdateHistory(coordinator.History);
+			reportsView.ResetReport();
+			commandRouter.RefreshStates();
 		}
 		finally
 		{
@@ -107,12 +162,25 @@ public sealed class MainForm : Form
 		}
 	}
 
+	private void BindCommandButtons()
+	{
+		foreach (ButtonCommandBinding binding in commandBindings)
+			binding.Dispose();
+
+		commandBindings.Clear();
+		commandBindings.Add(new ButtonCommandBinding(qualificationView.StartButton, commandRouter, CommandId.StartQualification));
+		commandBindings.Add(new ButtonCommandBinding(qualificationView.AutoButton, commandRouter, CommandId.AutomatedQualification));
+		commandBindings.Add(new ButtonCommandBinding(qualificationView.StopButton, commandRouter, CommandId.StopQualification));
+		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportJsonButton, commandRouter, CommandId.ExportJson));
+		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportHtmlButton, commandRouter, CommandId.ExportHtml));
+	}
+
 	private void StartWorkloads()
 	{
-		if (coordinator.StartManual(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
+		if (coordinator.StartManual(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
 		{
 			RenderQualificationState();
-			shell.ActivateSection(ShellSection.Workloads);
+			navigationService.Navigate(WorkspaceId.Qualification);
 		}
 	}
 
@@ -120,10 +188,10 @@ public sealed class MainForm : Form
 	{
 		try
 		{
-			if (coordinator.StartAutomated(workloadsView.CreateOptions(), workloadsView.SelectedProfile))
+			if (coordinator.StartAutomated(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
 			{
 				RenderQualificationState();
-				shell.ActivateSection(ShellSection.Workloads);
+				navigationService.Navigate(WorkspaceId.Qualification);
 			}
 		}
 		catch (InvalidOperationException ex)
@@ -136,6 +204,29 @@ public sealed class MainForm : Form
 	{
 		if (coordinator.Stop())
 			RenderQualificationState();
+	}
+
+	private async void RefreshInventory()
+	{
+		if (inventoryRefreshInProgress)
+			return;
+
+		inventoryRefreshInProgress = true;
+		commandRouter.RefreshStates();
+
+		try
+		{
+			await hardwareView.RefreshInventoryAsync();
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show(this, ex.Message, "Inventory refresh failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+		finally
+		{
+			inventoryRefreshInProgress = false;
+			commandRouter.RefreshStates();
+		}
 	}
 
 	private void ExportJsonReport()
@@ -196,7 +287,7 @@ public sealed class MainForm : Form
 	{
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
-		workloadsView.UpdateMetrics(snapshot);
+		qualificationView.UpdateMetrics(snapshot);
 		coordinator.Update(snapshot);
 		RenderQualificationState();
 	}
@@ -204,18 +295,18 @@ public sealed class MainForm : Form
 	private void RenderQualificationState()
 	{
 		if (coordinator.LastValidationResult is { } validation)
-			workloadsView.UpdateValidation(validation);
+			resultsView.UpdateValidation(validation);
 		else
-			workloadsView.ResetValidation();
+			resultsView.ResetValidation();
 
 		if (coordinator.LastReport is { } report)
-			workloadsView.UpdateReport(report);
+			reportsView.UpdateReport(report);
 		else
-			workloadsView.ResetReport();
+			reportsView.ResetReport();
 
-		workloadsView.UpdateQualificationProgress(coordinator.Progress);
-		workloadsView.UpdateSession(coordinator.Session);
-		workloadsView.UpdateHistory(coordinator.History);
+		qualificationView.UpdateQualificationProgress(coordinator.Progress);
+		resultsView.UpdateSession(coordinator.Session);
+		reportsView.UpdateHistory(coordinator.History);
 		UpdateWorkloadStatus();
 	}
 
@@ -260,12 +351,24 @@ public sealed class MainForm : Form
 		}
 
 		shell.SetGlobalStatus(statusText, visualState);
+		commandRouter.RefreshStates();
+	}
+
+	protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+	{
+		if (shell.HandleShortcut(keyData))
+			return true;
+
+		return base.ProcessCmdKey(ref msg, keyData);
 	}
 
 	protected override void Dispose(bool disposing)
 	{
 		if (disposing)
 		{
+			foreach (ButtonCommandBinding binding in commandBindings)
+				binding.Dispose();
+
 			timer.Dispose();
 			applicationIcon?.Dispose();
 		}

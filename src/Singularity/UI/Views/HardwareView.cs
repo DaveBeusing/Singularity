@@ -22,16 +22,26 @@ public sealed class HardwareView : Panel
 		Width = LayoutConstants.MainWidth;
 		BackColor = Theme.Background;
 
-		RefreshInventory();
+		ApplyInventory(hardwareProvider.Read());
 	}
 
-	public void RefreshInventory()
+	public async Task RefreshInventoryAsync(CancellationToken cancellationToken = default)
+	{
+		HardwareInventory inventory = await Task.Run(
+			hardwareProvider.Read,
+			cancellationToken);
+
+		cancellationToken.ThrowIfCancellationRequested();
+		ApplyInventory(inventory);
+	}
+
+	private void ApplyInventory(HardwareInventory inventory)
 	{
 		SuspendLayout();
 		try
 		{
 			Controls.Clear();
-			Inventory = hardwareProvider.Read();
+			Inventory = inventory;
 
 			OsSection osSection = new(Inventory.Os)
 			{
