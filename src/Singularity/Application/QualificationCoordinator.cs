@@ -71,11 +71,12 @@ public sealed class QualificationCoordinator
 			return true;
 		}
 
-		if (!workloadController.IsRunning && workloadController.Status.State != WorkloadState.Failed)
+		WorkloadState workloadState = workloadController.Status.State;
+		if (!workloadController.IsRunning && workloadState != WorkloadState.Failed)
 			return false;
 
 		workloadController.Stop();
-		FinalizeSession();
+		FinalizeSession(forceFailure: workloadState == WorkloadState.Failed);
 		return true;
 	}
 
