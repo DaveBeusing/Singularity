@@ -8,6 +8,7 @@ public sealed class InspectorHost : Panel
 {
 	private readonly Label titleLabel = new();
 	private readonly Label placeholderLabel = new();
+	private readonly Panel contentHost = new();
 
 	public InspectorHost()
 	{
@@ -30,23 +31,25 @@ public sealed class InspectorHost : Panel
 		placeholderLabel.BackColor = Theme.Inspector;
 		placeholderLabel.TextAlign = ContentAlignment.TopLeft;
 
-		Controls.Add(placeholderLabel);
+		contentHost.Dock = DockStyle.Fill;
+		contentHost.BackColor = Theme.Inspector;
+		contentHost.Controls.Add(placeholderLabel);
+
+		Controls.Add(contentHost);
 		Controls.Add(titleLabel);
 	}
 
 	public void SetContent(Control? content)
 	{
-		if (Controls.Count > 1 && Controls[0] != placeholderLabel)
-			Controls.RemoveAt(0);
-
-		placeholderLabel.Visible = content is null;
+		contentHost.Controls.Clear();
 
 		if (content is null)
+		{
+			contentHost.Controls.Add(placeholderLabel);
 			return;
+		}
 
 		content.Dock = DockStyle.Fill;
-		Controls.Add(content);
-		content.BringToFront();
-		titleLabel.BringToFront();
+		contentHost.Controls.Add(content);
 	}
 }
