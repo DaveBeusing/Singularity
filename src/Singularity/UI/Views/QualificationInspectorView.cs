@@ -85,7 +85,7 @@ public sealed class QualificationInspectorView : Panel
 		detailsLabel.Text =
 			$"State: {snapshot.OverallState}\r\n" +
 			$"Mode: {snapshot.Mode}\r\n" +
-			$"Profile: {snapshot.Configuration.Profile.Name}\r\n" +
+			$"Profile: {snapshot.SessionProfile}\r\n" +
 			$"Started: {snapshot.StartedAt?.ToString("G") ?? "Not started"}\r\n" +
 			$"Elapsed: {snapshot.Elapsed:hh\\:mm\\:ss}\r\n" +
 			$"Automated state: {snapshot.AutomatedState}\r\n" +
