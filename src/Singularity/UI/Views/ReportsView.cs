@@ -261,13 +261,13 @@ public sealed class ReportsView : Panel
 	{
 		CommandButton button = new()
 		{
-			Width = Math.Max(180, historyList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ThemeMetrics.Spacing),
+			Width = Math.Max(100, historyList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ThemeMetrics.SpacingSmall),
 			Height = 58,
 			Margin = new Padding(0, 0, 0, ThemeMetrics.SpacingSmall),
 			TextAlign = ContentAlignment.MiddleLeft,
 			AutoEllipsis = true,
-			Text = $"{record.DisplayResult}  •  {record.ProfileName}\r\n{record.StartedAt:g}  •  {record.DisplayDuration}",
-			AccessibleName = $"Qualification {record.DisplayResult}, {record.StartedAt:g}"
+			Text = $"{StatusStyle.Format(record.Result)}  •  {record.ProfileName}\r\n{record.StartedAt:g}  •  {record.Duration:hh\\:mm\\:ss}",
+			AccessibleName = $"Qualification {StatusStyle.Format(record.Result)}, {record.StartedAt:g}"
 		};
 		button.Click += (_, _) => HistorySelectionRequested?.Invoke(index);
 		historyButtons.Add(button);
@@ -277,8 +277,8 @@ public sealed class ReportsView : Panel
 	private void UpdateHistoryButtonWidths()
 	{
 		int width = Math.Max(
-			180,
-			historyList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ThemeMetrics.Spacing);
+			100,
+			historyList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ThemeMetrics.SpacingSmall);
 
 		foreach (CommandButton button in historyButtons)
 			button.Width = width;
