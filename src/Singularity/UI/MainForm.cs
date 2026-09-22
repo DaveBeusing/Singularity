@@ -21,6 +21,7 @@ public sealed class MainForm : Form
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
 	private readonly PlatformInventoryState platformInventoryState;
+	private readonly QualificationWorkspaceState qualificationWorkspaceState;
 	private readonly NavigationService navigationService = new(WorkspaceCatalog.CreateDefault());
 	private readonly CommandRouter commandRouter = new();
 	private readonly List<ButtonCommandBinding> commandBindings = [];
@@ -33,6 +34,9 @@ public sealed class MainForm : Form
 	private PlatformView platformView = null!;
 	private PlatformInspectorView platformInspectorView = null!;
 	private QualificationView qualificationView = null!;
+	private QualificationToolPanelView qualificationToolPanelView = null!;
+	private QualificationInspectorView qualificationInspectorView = null!;
+	private QualificationWorkspaceController qualificationWorkspaceController = null!;
 	private ResultsView resultsView = null!;
 	private ReportsView reportsView = null!;
 
@@ -40,12 +44,14 @@ public sealed class MainForm : Form
 		QualificationCoordinator coordinator,
 		ReportExportService reportExportService,
 		SystemMonitor systemMonitor,
-		PlatformInventoryState platformInventoryState)
+		PlatformInventoryState platformInventoryState,
+		QualificationWorkspaceState qualificationWorkspaceState)
 	{
 		this.coordinator = coordinator;
 		this.reportExportService = reportExportService;
 		this.systemMonitor = systemMonitor;
 		this.platformInventoryState = platformInventoryState;
+		this.qualificationWorkspaceState = qualificationWorkspaceState;
 
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
@@ -88,21 +94,6 @@ public sealed class MainForm : Form
 	private void RegisterApplicationCommands()
 	{
 		commandRouter.Register(
-			CommandId.StartQualification,
-			StartWorkloads,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
-
-		commandRouter.Register(
-			CommandId.AutomatedQualification,
-			StartAutomatedQualification,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
-
-		commandRouter.Register(
-			CommandId.StopQualification,
-			StopWorkloads,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Starting or WorkloadState.Running);
-
-		commandRouter.Register(
 			CommandId.ExportJson,
 			ExportJsonReport,
 			() => coordinator.LastReport is not null && platformInventoryState.Current is not null);
@@ -140,6 +131,8 @@ public sealed class MainForm : Form
 			platformView = new PlatformView();
 			platformInspectorView = new PlatformInspectorView();
 			qualificationView = new QualificationView();
+			qualificationToolPanelView = new QualificationToolPanelView();
+			qualificationInspectorView = new QualificationInspectorView();
 			resultsView = new ResultsView();
 			reportsView = new ReportsView();
 
@@ -147,6 +140,8 @@ public sealed class MainForm : Form
 			shell.RegisterWorkspace(WorkspaceId.Platform, platformView);
 			shell.RegisterInspectorContent(WorkspaceId.Platform, platformInspectorView);
 			shell.RegisterWorkspace(WorkspaceId.Qualification, qualificationView);
+			shell.RegisterInspectorContent(WorkspaceId.Qualification, qualificationInspectorView);
+			shell.RegisterToolPanelContent(WorkspaceId.Qualification, qualificationToolPanelView);
 			shell.RegisterWorkspace(WorkspaceId.Results, resultsView);
 			shell.RegisterWorkspace(WorkspaceId.Reports, reportsView);
 			shell.RegisterWorkspace(
@@ -156,6 +151,16 @@ public sealed class MainForm : Form
 					"Application settings are prepared as a dedicated workspace. Domain-specific settings will be migrated when their ownership is defined."));
 
 			Controls.Add(shell);
+
+			qualificationWorkspaceController = new QualificationWorkspaceController(
+				coordinator,
+				qualificationWorkspaceState,
+				qualificationView,
+				qualificationToolPanelView,
+				qualificationInspectorView,
+				navigationService,
+				commandRouter,
+				shell);
 
 			overviewView.QualificationRequested += OpenQualification;
 			platformView.DeviceSelected += OnPlatformDeviceSelected;
@@ -181,43 +186,9 @@ public sealed class MainForm : Form
 			binding.Dispose();
 
 		commandBindings.Clear();
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.StartButton, commandRouter, CommandId.StartQualification));
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.AutoButton, commandRouter, CommandId.AutomatedQualification));
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.StopButton, commandRouter, CommandId.StopQualification));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportJsonButton, commandRouter, CommandId.ExportJson));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportHtmlButton, commandRouter, CommandId.ExportHtml));
 		commandBindings.Add(new ButtonCommandBinding(platformView.RefreshButton, commandRouter, CommandId.RefreshInventory));
-	}
-
-	private void StartWorkloads()
-	{
-		if (coordinator.StartManual(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
-		{
-			RenderQualificationState();
-			navigationService.Navigate(WorkspaceId.Qualification);
-		}
-	}
-
-	private void StartAutomatedQualification()
-	{
-		try
-		{
-			if (coordinator.StartAutomated(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
-			{
-				RenderQualificationState();
-				navigationService.Navigate(WorkspaceId.Qualification);
-			}
-		}
-		catch (InvalidOperationException ex)
-		{
-			MessageBox.Show(this, ex.Message, "Automated qualification", MessageBoxButtons.OK, MessageBoxIcon.Information);
-		}
-	}
-
-	private void StopWorkloads()
-	{
-		if (coordinator.Stop())
-			RenderQualificationState();
 	}
 
 	private async void OnShown(object? sender, EventArgs e)
@@ -363,8 +334,7 @@ public sealed class MainForm : Form
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
 		overviewView.UpdateTelemetry(snapshot);
-		qualificationView.UpdateMetrics(snapshot);
-		coordinator.Update(snapshot);
+		qualificationWorkspaceController.Update(snapshot);
 		RenderQualificationState();
 	}
 
@@ -381,7 +351,6 @@ public sealed class MainForm : Form
 			reportsView.ResetReport();
 
 		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
-		qualificationView.UpdateQualificationProgress(coordinator.Progress);
 		resultsView.UpdateSession(coordinator.Session);
 		reportsView.UpdateHistory(coordinator.History);
 		UpdateWorkloadStatus();
@@ -389,45 +358,17 @@ public sealed class MainForm : Form
 
 	private void UpdateWorkloadStatus()
 	{
-		WorkloadStatus status = coordinator.WorkloadStatus;
+		QualificationWorkspaceSnapshot snapshot = qualificationWorkspaceController.CurrentSnapshot;
 
-		ValidationSummary? validationSummary =
-			coordinator.LastValidationResult is not null
-				? new ValidationSummary(coordinator.LastValidationResult)
-				: null;
-
-		string statusText = status.State switch
+		StatusVisualState visualState = snapshot.OverallState switch
 		{
-			WorkloadState.Stopped => "READY",
-			WorkloadState.Starting => "STARTING",
-			WorkloadState.Running => "RUNNING",
-			WorkloadState.Stopping => "STOPPING",
-			WorkloadState.Failed => "FAILED",
-			_ => "UNKNOWN"
-		};
-
-		StatusVisualState visualState = status.State switch
-		{
-			WorkloadState.Stopped => StatusVisualState.Neutral,
-			WorkloadState.Starting => StatusVisualState.Warning,
-			WorkloadState.Running => StatusVisualState.Success,
-			WorkloadState.Stopping => StatusVisualState.Warning,
-			WorkloadState.Failed => StatusVisualState.Failure,
+			"FAILED" => StatusVisualState.Failure,
+			"STARTING" or "STOPPING" or "CANCELLED" => StatusVisualState.Warning,
+			"RUNNING" or "COMPLETED" => StatusVisualState.Success,
 			_ => StatusVisualState.Neutral
 		};
 
-		if (status.State == WorkloadState.Running && validationSummary is not null)
-		{
-			visualState = validationSummary.OverallStatus switch
-			{
-				ValidationStatus.Pass => StatusVisualState.Success,
-				ValidationStatus.Warning => StatusVisualState.Warning,
-				ValidationStatus.Fail => StatusVisualState.Failure,
-				_ => visualState
-			};
-		}
-
-		shell.SetGlobalStatus(statusText, visualState);
+		shell.SetGlobalStatus(snapshot.OverallState, visualState);
 		commandRouter.RefreshStates();
 	}
 
@@ -450,6 +391,8 @@ public sealed class MainForm : Form
 				overviewView.QualificationRequested -= OpenQualification;
 			if (platformView is not null)
 				platformView.DeviceSelected -= OnPlatformDeviceSelected;
+
+			qualificationWorkspaceController?.Dispose();
 
 			foreach (ButtonCommandBinding binding in commandBindings)
 				binding.Dispose();
