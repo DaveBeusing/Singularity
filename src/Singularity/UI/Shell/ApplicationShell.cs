@@ -36,13 +36,13 @@ public sealed class ApplicationShell : UserControl
 	{
 		this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
 		this.commandRouter = commandRouter ?? throw new ArgumentNullException(nameof(commandRouter));
-		activityBar = new ActivityBar(navigationService.Definitions);
+		RegisterShellCommands();
+		activityBar = new ActivityBar(navigationService.Definitions, commandRouter);
 
 		AutoScaleMode = AutoScaleMode.Inherit;
 		BackColor = Theme.ApplicationBackground;
 		Size = new Size(ThemeMetrics.DefaultWindowWidth, ThemeMetrics.DefaultWindowHeight);
 
-		RegisterShellCommands();
 		BuildLayout(version);
 		WireInteractions();
 
@@ -300,9 +300,6 @@ public sealed class ApplicationShell : UserControl
 	private void WireInteractions()
 	{
 		activityBar.NavigationRequested += workspace => navigationService.Navigate(workspace);
-		activityBar.ToggleSidebarRequested += () => commandRouter.Execute(CommandId.ToggleSidebar);
-		activityBar.ToggleInspectorRequested += () => commandRouter.Execute(CommandId.ToggleInspector);
-		activityBar.ToggleToolPanelRequested += () => commandRouter.Execute(CommandId.ToggleToolPanel);
 		navigationService.WorkspaceChanged += ApplyNavigationState;
 		navigationService.ContextItemChanged += _ => RefreshSidebar();
 		navigationService.SelectionChanged += inspectorHost.SetSelection;

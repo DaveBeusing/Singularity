@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Application.Commands;
 using Singularity.UI.Controls;
 using Singularity.UI.Navigation;
 
@@ -10,14 +11,18 @@ namespace Singularity.UI.Shell;
 public sealed class ActivityBar : Panel
 {
 	private readonly Dictionary<WorkspaceId, ActivityButton> navigationButtons = [];
+	private readonly List<ButtonCommandBinding> commandBindings = [];
 	private readonly ToolButton sidebarButton = new();
 	private readonly ToolButton inspectorButton = new();
 	private readonly ToolButton toolsButton = new();
 	private readonly ToolTip toolTip = new();
 
-	public ActivityBar(IReadOnlyList<WorkspaceDefinition> workspaces)
+	public ActivityBar(
+		IReadOnlyList<WorkspaceDefinition> workspaces,
+		CommandRouter commandRouter)
 	{
 		ArgumentNullException.ThrowIfNull(workspaces);
+		ArgumentNullException.ThrowIfNull(commandRouter);
 
 		Dock = DockStyle.Left;
 		Width = ThemeMetrics.ActivityBarWidth;
@@ -52,9 +57,9 @@ public sealed class ActivityBar : Panel
 			BackColor = Theme.ActivityBar
 		};
 
-		ConfigureToolButton(sidebarButton, "S", "Toggle sidebar", tabIndex++, () => ToggleSidebarRequested?.Invoke());
-		ConfigureToolButton(inspectorButton, "I", "Toggle inspector", tabIndex++, () => ToggleInspectorRequested?.Invoke());
-		ConfigureToolButton(toolsButton, "T", "Toggle tools", tabIndex, () => ToggleToolPanelRequested?.Invoke());
+		ConfigureToolButton(sidebarButton, "S", "Toggle sidebar", tabIndex++);
+		ConfigureToolButton(inspectorButton, "I", "Toggle inspector", tabIndex++);
+		ConfigureToolButton(toolsButton, "T", "Toggle tools", tabIndex);
 
 		tools.Controls.Add(sidebarButton);
 		tools.Controls.Add(inspectorButton);
@@ -62,12 +67,13 @@ public sealed class ActivityBar : Panel
 
 		Controls.Add(tools);
 		Controls.Add(navigation);
+
+		commandBindings.Add(new ButtonCommandBinding(sidebarButton, commandRouter, CommandId.ToggleSidebar));
+		commandBindings.Add(new ButtonCommandBinding(inspectorButton, commandRouter, CommandId.ToggleInspector));
+		commandBindings.Add(new ButtonCommandBinding(toolsButton, commandRouter, CommandId.ToggleToolPanel));
 	}
 
 	public event Action<WorkspaceId>? NavigationRequested;
-	public event Action? ToggleSidebarRequested;
-	public event Action? ToggleInspectorRequested;
-	public event Action? ToggleToolPanelRequested;
 
 	public void SetActive(WorkspaceId workspace)
 	{
@@ -94,21 +100,24 @@ public sealed class ActivityBar : Panel
 		ToolButton button,
 		string text,
 		string accessibleName,
-		int tabIndex,
-		Action action)
+		int tabIndex)
 	{
 		button.Text = text;
 		button.AccessibleName = accessibleName;
 		button.Margin = new Padding(0, 0, 0, 4);
 		button.TabIndex = tabIndex;
-		button.Click += (_, _) => action();
 		toolTip.SetToolTip(button, accessibleName);
 	}
 
 	protected override void Dispose(bool disposing)
 	{
 		if (disposing)
+		{
+			foreach (ButtonCommandBinding binding in commandBindings)
+				binding.Dispose();
+
 			toolTip.Dispose();
+		}
 
 		base.Dispose(disposing);
 	}
