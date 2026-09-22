@@ -112,6 +112,9 @@ public sealed class ApplicationShell : UserControl
 	{
 		Panel header = BuildHeader(version);
 
+		bodySplit.Size = new Size(
+			ThemeMetrics.DefaultWindowWidth,
+			ThemeMetrics.DefaultWindowHeight - ThemeMetrics.HeaderHeight - ThemeMetrics.StatusBarHeight);
 		bodySplit.Dock = DockStyle.Fill;
 		bodySplit.Orientation = Orientation.Vertical;
 		bodySplit.BorderStyle = BorderStyle.None;
@@ -132,6 +135,9 @@ public sealed class ApplicationShell : UserControl
 		navigationRegion.Controls.Add(activityBar);
 		bodySplit.Panel1.Controls.Add(navigationRegion);
 
+		inspectorSplit.Size = new Size(
+			ThemeMetrics.DefaultWindowWidth - ThemeMetrics.ActivityBarWidth - ThemeMetrics.DefaultSidebarWidth,
+			bodySplit.Height);
 		inspectorSplit.Dock = DockStyle.Fill;
 		inspectorSplit.Orientation = Orientation.Vertical;
 		inspectorSplit.BorderStyle = BorderStyle.None;
@@ -143,6 +149,7 @@ public sealed class ApplicationShell : UserControl
 		inspectorHost.Dock = DockStyle.Fill;
 		inspectorSplit.Panel2.Controls.Add(inspectorHost);
 
+		toolSplit.Size = inspectorSplit.Size;
 		toolSplit.Dock = DockStyle.Fill;
 		toolSplit.Orientation = Orientation.Horizontal;
 		toolSplit.BorderStyle = BorderStyle.None;
@@ -259,6 +266,7 @@ public sealed class ApplicationShell : UserControl
 				ThemeMetrics.ActivityBarWidth,
 				bodySplit.ClientSize.Width - bodySplit.SplitterWidth - requiredContentWidth);
 			bodySplit.SplitterDistance = Math.Min(desiredNavigationWidth, maximumNavigationWidth);
+			bodySplit.PerformLayout();
 
 			inspectorSplit.Panel2Collapsed = !LayoutState.InspectorVisible;
 			if (LayoutState.InspectorVisible)
