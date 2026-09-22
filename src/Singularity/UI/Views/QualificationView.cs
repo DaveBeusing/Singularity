@@ -78,6 +78,10 @@ public sealed class QualificationView : Panel
 		ArgumentNullException.ThrowIfNull(snapshot);
 
 		ApplyConfiguration(snapshot.Configuration);
+		SetConfigurationEnabled(
+			snapshot.SessionState != QualificationSessionState.Running &&
+			snapshot.AutomatedState != QualificationRunState.Running &&
+			snapshot.WorkloadState is WorkloadState.Stopped or WorkloadState.Failed);
 
 		stateValue.Text = snapshot.OverallState;
 		stateValue.ForeColor = GetStateColor(snapshot);
@@ -469,9 +473,20 @@ public sealed class QualificationView : Panel
 
 	private void UpdateInputEnabledStates()
 	{
-		cpuThreadsInput.Enabled = cpuCheck.Checked;
-		memoryGbInput.Enabled = memoryCheck.Checked;
-		gpuLoadInput.Enabled = gpuCheck.Checked;
+		bool editable = cpuCheck.Enabled;
+		cpuThreadsInput.Enabled = editable && cpuCheck.Checked;
+		memoryGbInput.Enabled = editable && memoryCheck.Checked;
+		gpuLoadInput.Enabled = editable && gpuCheck.Checked;
+	}
+
+	private void SetConfigurationEnabled(bool enabled)
+	{
+		cpuCheck.Enabled = enabled;
+		memoryCheck.Enabled = enabled;
+		gpuCheck.Enabled = enabled;
+		foreach (CommandButton button in profileButtons.Values)
+			button.Enabled = enabled;
+		UpdateInputEnabledStates();
 	}
 
 	private void UpdateProfileButtonStyles()
