@@ -17,7 +17,9 @@ The current unit suite exercises deterministic behavior in:
 - CPU, memory, and GPU validation thresholds and GPU warm-up behavior;
 - report generation and invalid-session rejection;
 - streaming minimum, average, maximum, sample count, and non-finite filtering;
-- workload status states;\n- deterministic shell region visibility state.
+- workload status states;
+- qualification workspace command availability, progress, session, navigation, telemetry-unavailable, and failure-state mapping;
+- deterministic shell region visibility state.
 
 The tests do not launch WinForms and do not require administrator privileges. They intentionally avoid NVML, real GPU workloads, Direct3D, LibreHardwareMonitor sensors, WMI inventory, and other hardware-dependent paths.
 
