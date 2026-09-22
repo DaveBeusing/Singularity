@@ -30,6 +30,7 @@ public sealed class QualificationHistory
 				Result = session.Result,
 				ExecutionMode = session.ExecutionMode,
 				ProfileName = session.Profile.Name,
+				TelemetryStatistics = session.TelemetryStatistics,
 				Report = report
 			});
 
