@@ -24,7 +24,7 @@ public sealed class ApplicationShell : UserControl
 
 	public ApplicationShell(string version)
 	{
-		AutoScaleMode = AutoScaleMode.Dpi;
+		AutoScaleMode = AutoScaleMode.Inherit;
 		BackColor = Theme.ApplicationBackground;
 		Size = new Size(ThemeMetrics.DefaultWindowWidth, ThemeMetrics.DefaultWindowHeight);
 
