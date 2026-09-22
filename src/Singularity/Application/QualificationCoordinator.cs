@@ -96,6 +96,13 @@ public sealed class QualificationCoordinator
 		if (qualificationRunner.IsRunning)
 			qualificationRunner.Update(LastValidationResult);
 
+		if (Session.State == QualificationSessionState.Running &&
+			qualificationRunner.State == QualificationRunState.Idle &&
+			workloadController.Status.State == WorkloadState.Failed)
+		{
+			FinalizeSession(forceFailure: true);
+		}
+
 		if (!automatedRunFinalized &&
 			qualificationRunner.State is QualificationRunState.Completed or QualificationRunState.Failed)
 		{
