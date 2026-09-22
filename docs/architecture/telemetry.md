@@ -26,7 +26,7 @@ System CPU load comes from the Windows `GetSystemTimes` API. Process utilization
 
 `TelemetryCache` protects the mutable snapshot with a lock. Writers update it inside the lock; readers receive a copy, so UI and validation code cannot mutate cached state.
 
-The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting snapshot updates the metrics view. During an active workload it is also added to `QualificationSession` statistics and passed to `WorkloadValidator`.
+The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting cached snapshot updates Overview and is passed to `QualificationWorkspaceController`. The Qualification workspace and its Tool Panel render that same snapshot; they do not start additional polling. During an active workload the coordinator also adds it to `QualificationSession` statistics and passes it to `WorkloadValidator`.
 
 
 
