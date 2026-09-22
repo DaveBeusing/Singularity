@@ -105,6 +105,30 @@ public sealed class QualificationWorkspaceStateTests
 		Assert.Equal(configuration, state.Configuration);
 	}
 
+
+	[Fact]
+	public void CompletedSession_KeepsProfileUsedForRunAfterConfigurationChanges()
+	{
+		FakeWorkloadController workloads = new();
+		QualificationCoordinator coordinator = new(workloads);
+		QualificationWorkspaceState state = new();
+		QualificationConfiguration quick = CpuOnly(QualificationProfiles.Quick);
+		state.SetConfiguration(quick);
+
+		Assert.True(coordinator.StartManual(quick.ToWorkloadOptions(), quick.Profile));
+		state.MarkStarted(QualificationMode.Manual);
+		coordinator.Update(new SystemSnapshot { CpuLoadPercent = 100 });
+		Assert.True(coordinator.Stop());
+
+		state.SetConfiguration(CpuOnly(QualificationProfiles.BurnIn));
+		QualificationWorkspaceSnapshot snapshot = state.CreateSnapshot(
+			coordinator,
+			new SystemSnapshot { CpuLoadPercent = 0 });
+
+		Assert.Equal("Quick", snapshot.SessionProfile);
+		Assert.Equal(QualificationProfiles.BurnIn, snapshot.Configuration.Profile);
+	}
+
 	[Fact]
 	public void WorkloadFailure_MapsFailureStateAndMessage()
 	{
