@@ -23,12 +23,13 @@ Unknown workspace identifiers and unknown contextual items fail without mutating
 
 The current domain mapping is:
 
-- Platform -> `HardwareView`
+- Overview -> `OverviewView`
+- Platform -> `PlatformView`
 - Qualification -> `QualificationView`
 - Results -> `ResultsView`
 - Reports -> `ReportsView`
 
-Overview and Settings intentionally use placeholder surfaces until their domain content is migrated. The placeholder surfaces are infrastructure only and must not be interpreted as completed domain implementations.
+Settings intentionally uses a placeholder surface until its domain content is migrated. The placeholder surface is infrastructure only and must not be interpreted as a completed domain implementation.
 
 The previous nested `RUN / RESULTS / HISTORY` navigation is removed. Qualification controls, current results, and report/history surfaces now belong to separate top-level workspaces.
 
@@ -43,7 +44,7 @@ Each `WorkspaceDefinition` supplies contextual navigation items. The current pre
 
 Overview and Settings also provide small placeholder context sets.
 
-Context selection is owned by `NavigationService`. It also publishes a small `WorkspaceSelection` value that can be consumed by future inspector content without introducing a generic event bus.
+Context selection is owned by `NavigationService`. Platform context switches the central explorer between System, CPU, Memory, GPU, and Storage. Device selection publishes a workspace-scoped `WorkspaceSelection`, while `PlatformInspectorView` renders detailed metadata for selectable memory, GPU, and storage devices.
 
 ## Inspector and tool panel
 
@@ -69,7 +70,7 @@ Current commands include:
 
 Each command exposes current enabled state through its registered `CanExecute` function. Qualification controls and report export buttons are bound through `ButtonCommandBinding`, so invalid actions are disabled instead of relying on error dialogs.
 
-The explicit hardware inventory refresh runs outside the UI thread. Normal telemetry and layout refresh paths do not perform hardware enumeration.
+The explicit hardware inventory refresh uses the application-lifetime `PlatformInventoryState`, runs outside the UI thread, rejects duplicate concurrent refreshes, and preserves the previous valid inventory on failure. Normal telemetry, navigation, layout, and paint paths do not perform hardware enumeration.
 
 ## Keyboard behavior
 
