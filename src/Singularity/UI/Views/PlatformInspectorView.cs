@@ -45,11 +45,11 @@ public sealed class PlatformInspectorView : Panel
 
 	public void ShowSelection(PlatformDeviceSelection? selection)
 	{
-		while (rowsHost.Controls.Count > 0)
+		foreach (Control control in rowsHost.Controls.Cast<Control>().ToArray())
 		{
-			Control control = rowsHost.Controls[0];
-			rowsHost.Controls.RemoveAt(0);
-			control.Dispose();
+			rowsHost.Controls.Remove(control);
+			if (!ReferenceEquals(control, emptyLabel))
+				control.Dispose();
 		}
 
 		if (selection is null)
