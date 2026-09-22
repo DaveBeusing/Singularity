@@ -28,8 +28,9 @@ The current domain mapping is:
 - Qualification -> `QualificationView`
 - Results -> `ResultsView`
 - Reports -> `ReportsView`
+- Settings -> `SettingsView`
 
-Settings intentionally uses a placeholder surface until its domain content is migrated. The placeholder surface is infrastructure only and must not be interpreted as a completed domain implementation.
+Settings is intentionally narrow: it controls sidebar, inspector, and tool-panel visibility for the current application session and can reset the shell layout to defaults. It does not create a general preferences subsystem and does not persist values across application restarts.
 
 The previous nested `RUN / RESULTS / HISTORY` navigation is removed. Qualification controls, current results, and report/history surfaces now belong to separate top-level workspaces.
 
@@ -40,9 +41,10 @@ Each `WorkspaceDefinition` supplies contextual navigation items. The current pre
 - Platform: System, CPU, Memory, GPU, Storage
 - Qualification: Profile, Workloads, Session
 - Results: Latest, Validation, Statistics
-- Reports: History, Preview, Export
+- Reports: History, Report, Export
+- Settings: Layout
 
-Overview and Settings also provide small placeholder context sets.
+Overview retains its summary/status contexts. Results and Reports use their context selection to update inspector or focus behavior without reconstructing workspace controls.
 
 Context selection is owned by `NavigationService`. Platform context switches the central explorer between System, CPU, Memory, GPU, and Storage. Device selection publishes a workspace-scoped `WorkspaceSelection`, while `PlatformInspectorView` renders detailed metadata for selectable memory, GPU, and storage devices.
 
@@ -50,7 +52,7 @@ Context selection is owned by `NavigationService`. Platform context switches the
 
 Workspace definitions declare whether inspector and tool-panel activation is supported.
 
-`ApplicationShell` exposes explicit registration points for optional inspector and tool-panel content. Unsupported regions are collapsed when navigation moves to a workspace that does not opt into them. Qualification registers a contextual inspector for Profile, Workloads, and Session and a Tool Panel surface for cached telemetry and automated-run progress.
+`ApplicationShell` exposes explicit registration points for optional inspector and tool-panel content. Unsupported regions are collapsed visually without discarding the user's session layout preference. Qualification registers a contextual inspector for Profile, Workloads, and Session and a Tool Panel surface for cached telemetry and automated-run progress. Results and Reports register inspectors for evidence and selected-report details.
 
 ## Command routing
 
@@ -68,7 +70,7 @@ Current commands include:
 - toggle inspector;
 - toggle tool panel.
 
-Each command exposes current enabled state through its registered `CanExecute` function. Qualification controls and report export buttons are bound through `ButtonCommandBinding`, so invalid actions are disabled instead of relying on error dialogs.
+Each command exposes current enabled state through its registered `CanExecute` function. Qualification controls and report export buttons are bound through `ButtonCommandBinding`, so invalid actions are disabled instead of relying on error dialogs. Report export is enabled only when the selected history entry contains report evidence and platform inventory is available.
 
 The explicit hardware inventory refresh uses the application-lifetime `PlatformInventoryState`, runs outside the UI thread, rejects duplicate concurrent refreshes, and preserves the previous valid inventory on failure. Normal telemetry, navigation, layout, and paint paths do not perform hardware enumeration.
 
@@ -84,7 +86,7 @@ The shell additionally provides:
 - Ctrl+J -> toggle tool panel where supported
 - Ctrl+R -> refresh hardware inventory while Platform is active and refresh is enabled
 
-Focus indication remains provided by the shared command-button styling.
+Focus indication remains provided by the shared command-button styling. The custom Singularity checkbox is also keyboard-focusable and supports Space/Enter activation for Qualification and Settings workflows.
 
 ## Ownership
 

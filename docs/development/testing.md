@@ -19,7 +19,10 @@ The current unit suite exercises deterministic behavior in:
 - streaming minimum, average, maximum, sample count, and non-finite filtering;
 - workload status states;
 - qualification workspace command availability, progress, session, navigation, telemetry-unavailable, and failure-state mapping;
-- deterministic shell region visibility state.
+- Results empty/latest-evidence mapping, including failed-session telemetry without an exportable report;
+- Reports selection and export-availability mapping;
+- bounded history retention of profile, execution mode, telemetry, and report evidence;
+- deterministic shell region visibility and reset state.
 
 The tests do not launch WinForms and do not require administrator privileges. They intentionally avoid NVML, real GPU workloads, Direct3D, LibreHardwareMonitor sensors, WMI inventory, and other hardware-dependent paths.
 
@@ -28,4 +31,4 @@ Those integrations require manual validation on representative Windows hardware.
 
 ## UI shell validation
 
-The deterministic test suite covers shell visibility-state transitions without creating WinForms handles. Interactive validation is still required for resize behavior, maximize/restore, sidebar and optional-region resizing, legacy workspace reachability, and Windows display scaling at 100%, 125%, 150%, and 200% where practical.
+The deterministic test suite covers shell visibility-state transitions without creating WinForms handles. Interactive validation is still required for minimum-window resize behavior, 1080p/1440p/4K layouts, maximize/restore, sidebar and optional-region resizing, keyboard focus/activation, Results/Reports empty and selection states, Settings layout toggles, export permission failures, active qualification while navigating, clean shutdown, and Windows display scaling at 100%, 125%, 150%, and 200% where practical.

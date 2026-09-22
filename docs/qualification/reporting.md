@@ -30,3 +30,23 @@ A metric is absent when it received no usable samples.
 `QualificationHtmlExporter` uses the same intermediate document as JSON export. It produces a standalone responsive dark-theme HTML file containing session and profile details, validation cards, a telemetry table, hardware inventory, schema version, and generation timestamp. Dynamic text is HTML encoded.
 
 Both exporters write to a path chosen through the WinForms save dialog. `ReportExportService` supplies the same assembly-derived application version displayed by the UI. Export is available only after a report has been generated; file-system errors are shown in the UI. Reports contain summary statistics rather than the raw telemetry time series.
+
+## Results and history evidence
+
+The Results workspace presents the newest completed qualification record rather than the mutable currently configured profile. Each bounded history record retains:
+
+- start and finish time;
+- duration;
+- final result;
+- qualification profile name;
+- manual or automated execution mode;
+- frozen session telemetry statistics;
+- the generated qualification report when one is available.
+
+The history remains in memory only and is capped at ten records. A failed session can therefore remain visible in Results even when no exportable report exists; missing component validation evidence stays `UNKNOWN`/unavailable rather than being fabricated.
+
+## Reports workspace
+
+Reports presents the bounded history as selectable entries. Selection drives the central report preview and inspector. A newly completed session becomes the current selection, while older records remain selectable for the lifetime of the application session.
+
+JSON and HTML export operate on the selected history record's existing `QualificationReport`. Export commands remain disabled when the selected record has no report evidence or platform inventory is unavailable. Export does not create a second report model and does not add a web server or external web dependency.

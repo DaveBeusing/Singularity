@@ -20,7 +20,7 @@ The canonical workspaces are Overview, Platform, Qualification, Results, Reports
 
 `ApplicationShell` uses nested WinForms `SplitContainer` controls and docked child controls. The activity bar has a fixed compact width, while the sidebar, workspace, inspector, and tool panel participate in resizable layout.
 
-The sidebar is visible by default. The inspector and tool panel are optional and collapsed by default. Their visibility is represented by the immutable `ShellLayoutState`, which lets layout behavior be tested without creating WinForms handles.
+The sidebar is visible by default. The inspector and tool panel are optional and collapsed by default. Their requested visibility is represented by the immutable `ShellLayoutState`, which lets layout behavior be tested without creating WinForms handles. A region that is unsupported by the active workspace is collapsed visually while its session preference is retained for the next supporting workspace.
 
 The shell preserves a minimum central workspace size when optional regions are expanded. At narrow supported widths, sidebar space may contract so the workspace and inspector remain usable.
 
@@ -30,7 +30,7 @@ The main window is resizable, supports maximize and restore, and uses DPI autosc
 
 `WorkspaceHost` registers workspace controls once and switches visibility without reconstructing the control tree.
 
-Overview, Platform, Qualification, Results, and Reports are persistent domain workspaces. Settings currently uses a technical placeholder surface until its domain migration.
+Overview, Platform, Qualification, Results, Reports, and Settings are persistent workspaces. Settings is deliberately restricted to shell layout preferences for the current application session.
 
 The previous Workloads subview navigation is no longer part of the shell architecture. Qualification controls, current results, and reporting/history are separate top-level workspaces.
 
@@ -40,13 +40,13 @@ This is important for telemetry, qualification, and inventory rendering: timer-d
 
 The sidebar is generated from the active `WorkspaceDefinition`. Context selection is maintained by `NavigationService`, along with a small workspace-scoped selection value for future inspector and contextual-action consumption.
 
-Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework. Platform uses the inspector for selection-driven metadata from memory modules, GPUs, and storage devices. Qualification uses the inspector for Profile, Workloads, and Session context and the Tool Panel for cached telemetry and automated qualification progress.
+Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework. Platform uses the inspector for selection-driven metadata from memory modules, GPUs, and storage devices. Qualification uses the inspector for Profile, Workloads, and Session context and the Tool Panel for cached telemetry and automated qualification progress. Results uses an evidence inspector, while Reports uses an inspector for the selected history/report entry.
 
 ## Commands and keyboard access
 
 Global and contextual actions are routed through the lightweight `CommandRouter`. Commands expose enabled state from current application conditions, and existing qualification/report buttons are bound to those commands.
 
-The activity bar and contextual sidebar use focusable buttons with standard Enter/Space activation. The shell also supports Ctrl+1 through Ctrl+6 for workspace navigation and focused shortcuts for optional shell regions.
+The activity bar and contextual sidebar use focusable buttons with standard Enter/Space activation. Custom checkboxes expose keyboard focus and Space/Enter activation. The shell also supports Ctrl+1 through Ctrl+6 for workspace navigation and focused shortcuts for optional shell regions.
 
 See [Navigation and command model](navigation-command-model.md) for ownership, command state, prepared sidebar contexts, and keyboard mappings.
 
@@ -77,6 +77,6 @@ Hardware inventory remains a startup or explicit-refresh concern owned by `Platf
 
 ## Migration boundary
 
-Overview, Platform, and Qualification are complete domain workspaces on the shell. Settings remains placeholder content and does not represent completed domain functionality.
+The editor-style migration is complete for Overview, Platform, Qualification, Results, Reports, and the intentionally narrow Settings surface. Superseded Session, Validation, History, Report, Workload, Monitoring, and Control section wrappers are no longer part of the active workflow.
 
-Qualification presentation state is application-owned and survives workspace navigation. The workspace reuses existing qualification business rules, telemetry sampling, workload execution, validation rules, and reporting contracts rather than duplicating them.
+Qualification presentation state is application-owned and survives workspace navigation. Results and Reports consume the bounded qualification history and existing reporting contracts rather than maintaining parallel domain state. Timer-driven refresh updates existing control instances rather than rebuilding large workspace control trees.
