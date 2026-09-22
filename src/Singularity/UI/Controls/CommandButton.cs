@@ -18,4 +18,15 @@ public class CommandButton : Button
 		UseVisualStyleBackColor = false;
 		TabStop = true;
 	}
+
+	protected override void OnPaint(PaintEventArgs pevent)
+	{
+		base.OnPaint(pevent);
+
+		if (!Focused || !ShowFocusCues || Width < 3 || Height < 3)
+			return;
+
+		using Pen pen = new(Theme.Focus);
+		pevent.Graphics.DrawRectangle(pen, 1, 1, Width - 3, Height - 3);
+	}
 }
