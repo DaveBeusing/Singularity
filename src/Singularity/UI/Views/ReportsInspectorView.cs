@@ -51,12 +51,12 @@ public sealed class ReportsInspectorView : Panel
 			: record.ExecutionMode.ToString();
 
 		bodyLabel.Text =
-			$"Result\r\n{record.DisplayResult}\r\n\r\n" +
+			$"Result\r\n{StatusStyle.Format(record.Result)}\r\n\r\n" +
 			$"Profile\r\n{record.ProfileName}\r\n\r\n" +
 			$"Mode\r\n{mode}\r\n\r\n" +
 			$"Started\r\n{record.StartedAt:G}\r\n\r\n" +
 			$"Finished\r\n{record.FinishedAt:G}\r\n\r\n" +
-			$"Duration\r\n{record.DisplayDuration}\r\n\r\n" +
+			$"Duration\r\n{record.Duration:hh\\:mm\\:ss}\r\n\r\n" +
 			$"Export evidence\r\n{(snapshot.SelectedReport is null ? "Unavailable" : "JSON / HTML available")}";
 	}
 }
