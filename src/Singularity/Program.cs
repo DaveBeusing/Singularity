@@ -22,11 +22,13 @@ internal static class Program
 		ReportExportService reportExportService = new();
 		HardwareProvider hardwareProvider = new();
 		PlatformInventoryState platformInventoryState = new(hardwareProvider.Read);
+		QualificationWorkspaceState qualificationWorkspaceState = new();
 		System.Windows.Forms.Application.Run(
 			new MainForm(
 				coordinator,
 				reportExportService,
 				systemMonitor,
-				platformInventoryState));
+				platformInventoryState,
+				qualificationWorkspaceState));
 	}
 }
