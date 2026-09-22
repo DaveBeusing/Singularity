@@ -5,6 +5,7 @@
 using Singularity.Application;
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
+using Singularity.Core.Workloads;
 using Singularity.UI.Controls;
 
 namespace Singularity.UI.Views;
@@ -586,20 +587,20 @@ public sealed class QualificationView : Panel
 
 	private static Color GetStateColor(QualificationWorkspaceSnapshot snapshot)
 	{
-		if (snapshot.WorkloadState == Core.Workloads.WorkloadState.Failed ||
+		if (snapshot.WorkloadState == WorkloadState.Failed ||
 			snapshot.SessionState == QualificationSessionState.Failed ||
 			snapshot.AutomatedState == QualificationRunState.Failed)
 		{
 			return Theme.Failure;
 		}
 
-		if (snapshot.WorkloadState is Core.Workloads.WorkloadState.Starting or Core.Workloads.WorkloadState.Stopping ||
+		if (snapshot.WorkloadState is WorkloadState.Starting or WorkloadState.Stopping ||
 			snapshot.AutomatedState == QualificationRunState.Cancelled)
 		{
 			return Theme.Warning;
 		}
 
-		if (snapshot.WorkloadState == Core.Workloads.WorkloadState.Running ||
+		if (snapshot.WorkloadState == WorkloadState.Running ||
 			snapshot.SessionState == QualificationSessionState.Completed ||
 			snapshot.AutomatedState == QualificationRunState.Completed)
 		{
