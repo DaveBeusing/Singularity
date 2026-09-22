@@ -40,7 +40,7 @@ This is important for telemetry, qualification, and inventory rendering: timer-d
 
 The sidebar is generated from the active `WorkspaceDefinition`. Context selection is maintained by `NavigationService`, along with a small workspace-scoped selection value for future inspector and contextual-action consumption.
 
-Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework. Platform uses the inspector for selection-driven metadata from memory modules, GPUs, and storage devices. With no detailed device selection, the inspector presents an explicit empty state.
+Workspace definitions also declare whether inspector and tool-panel activation is supported. `ApplicationShell` can host workspace-specific content in those regions without introducing a docking framework. Platform uses the inspector for selection-driven metadata from memory modules, GPUs, and storage devices. Qualification uses the inspector for Profile, Workloads, and Session context and the Tool Panel for cached telemetry and automated qualification progress.
 
 ## Commands and keyboard access
 
@@ -77,6 +77,6 @@ Hardware inventory remains a startup or explicit-refresh concern owned by `Platf
 
 ## Migration boundary
 
-Overview and Platform are complete domain workspaces on the shell. Settings remains placeholder content and does not represent completed domain functionality.
+Overview, Platform, and Qualification are complete domain workspaces on the shell. Settings remains placeholder content and does not represent completed domain functionality.
 
-The change does not redesign qualification business rules, telemetry sampling, workload execution, validation rules, reporting contracts, or hardware-provider behavior.
+Qualification presentation state is application-owned and survives workspace navigation. The workspace reuses existing qualification business rules, telemetry sampling, workload execution, validation rules, and reporting contracts rather than duplicating them.
