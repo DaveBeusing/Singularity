@@ -2,38 +2,62 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Application.Commands;
 using Singularity.UI.Controls;
+using Singularity.UI.Navigation;
 
 namespace Singularity.UI.Shell;
 
 public sealed class ApplicationShell : UserControl
 {
-	private readonly ActivityBar activityBar = new();
+	private readonly NavigationService navigationService;
+	private readonly CommandRouter commandRouter;
+	private readonly ActivityBar activityBar;
 	private readonly SidebarHost sidebarHost = new();
 	private readonly WorkspaceHost workspaceHost = new();
 	private readonly InspectorHost inspectorHost = new();
 	private readonly ToolPanelHost toolPanelHost = new();
 	private readonly ApplicationStatusBar statusBar = new();
+	private readonly Dictionary<WorkspaceId, Control> inspectorContent = [];
+	private readonly Dictionary<WorkspaceId, Control> toolPanelContent = [];
 
 	private readonly SplitContainer bodySplit = new();
 	private readonly SplitContainer inspectorSplit = new();
 	private readonly SplitContainer toolSplit = new();
+	private readonly Label workspaceTitleLabel = new();
 
 	private int savedSidebarWidth = ThemeMetrics.DefaultSidebarWidth;
 	private bool applyingLayoutState;
 
 	public ApplicationShell(string version)
+		: this(
+			version,
+			new NavigationService(WorkspaceCatalog.CreateDefault()),
+			new CommandRouter())
 	{
+	}
+
+	public ApplicationShell(
+		string version,
+		NavigationService navigationService,
+		CommandRouter commandRouter)
+	{
+		this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+		this.commandRouter = commandRouter ?? throw new ArgumentNullException(nameof(commandRouter));
+		activityBar = new ActivityBar(navigationService.Definitions);
+
 		AutoScaleMode = AutoScaleMode.Inherit;
 		BackColor = Theme.ApplicationBackground;
 		Size = new Size(ThemeMetrics.DefaultWindowWidth, ThemeMetrics.DefaultWindowHeight);
 
+		RegisterShellCommands();
 		BuildLayout(version);
 		WireInteractions();
 
 		LayoutState = ShellLayoutState.Default;
 		PerformLayout();
 		ApplyLayoutState();
+		ApplyNavigationState(navigationService.ActiveDefinition);
 	}
 
 	public ShellLayoutState LayoutState { get; private set; }
@@ -44,29 +68,40 @@ public sealed class ApplicationShell : UserControl
 
 	public event Action<ShellSection>? ActiveSectionChanged;
 
+	public void RegisterWorkspace(WorkspaceId workspace, Control content)
+	{
+		workspaceHost.Register(workspace, content);
+
+		if (workspace == navigationService.ActiveWorkspace)
+			workspaceHost.TryActivate(workspace);
+	}
+
+	public void RegisterInspectorContent(WorkspaceId workspace, Control content)
+	{
+		ArgumentNullException.ThrowIfNull(content);
+		inspectorContent.Add(workspace, content);
+
+		if (workspace == navigationService.ActiveWorkspace)
+			inspectorHost.SetContent(content);
+	}
+
+	public void RegisterToolPanelContent(WorkspaceId workspace, Control content)
+	{
+		ArgumentNullException.ThrowIfNull(content);
+		toolPanelContent.Add(workspace, content);
+
+		if (workspace == navigationService.ActiveWorkspace)
+			toolPanelHost.SetContent(content);
+	}
+
 	public void RegisterWorkspace(ShellSection section, Control content)
 	{
-		workspaceHost.Register(section, content);
+		RegisterWorkspace(MapLegacySection(section), content);
 	}
 
 	public void ActivateSection(ShellSection section)
 	{
-		workspaceHost.Activate(section);
-		activityBar.SetActive(section);
-
-		switch (section)
-		{
-			case ShellSection.Platform:
-				sidebarHost.SetContext("PLATFORM", "Hardware inventory and platform details.");
-				statusBar.SetContext("Platform");
-				break;
-
-			case ShellSection.Workloads:
-				sidebarHost.SetContext("WORKLOADS", "Qualification controls, telemetry, results, and history.");
-				statusBar.SetContext("Workloads");
-				break;
-		}
-
+		navigationService.Navigate(MapLegacySection(section));
 		ActiveSectionChanged?.Invoke(section);
 	}
 
@@ -87,24 +122,79 @@ public sealed class ApplicationShell : UserControl
 
 		LayoutState = LayoutState.WithSidebar(visible);
 		ApplyLayoutState();
+		commandRouter.RefreshStates();
 	}
 
 	public void SetInspectorVisible(bool visible)
 	{
+		if (visible && !navigationService.ActiveDefinition.SupportsInspector)
+			return;
+
 		if (LayoutState.InspectorVisible == visible)
 			return;
 
 		LayoutState = LayoutState.WithInspector(visible);
 		ApplyLayoutState();
+		commandRouter.RefreshStates();
 	}
 
 	public void SetToolPanelVisible(bool visible)
 	{
+		if (visible && !navigationService.ActiveDefinition.SupportsToolPanel)
+			return;
+
 		if (LayoutState.ToolPanelVisible == visible)
 			return;
 
 		LayoutState = LayoutState.WithToolPanel(visible);
 		ApplyLayoutState();
+		commandRouter.RefreshStates();
+	}
+
+	public bool HandleShortcut(Keys keyData)
+	{
+		if ((keyData & Keys.Control) != Keys.Control)
+			return false;
+
+		return keyData switch
+		{
+			Keys.Control | Keys.D1 => navigationService.Navigate(WorkspaceId.Overview),
+			Keys.Control | Keys.D2 => navigationService.Navigate(WorkspaceId.Platform),
+			Keys.Control | Keys.D3 => navigationService.Navigate(WorkspaceId.Qualification),
+			Keys.Control | Keys.D4 => navigationService.Navigate(WorkspaceId.Results),
+			Keys.Control | Keys.D5 => navigationService.Navigate(WorkspaceId.Reports),
+			Keys.Control | Keys.D6 => navigationService.Navigate(WorkspaceId.Settings),
+			Keys.Control | Keys.B => commandRouter.Execute(CommandId.ToggleSidebar),
+			Keys.Control | Keys.Alt | Keys.I => commandRouter.Execute(CommandId.ToggleInspector),
+			Keys.Control | Keys.J => commandRouter.Execute(CommandId.ToggleToolPanel),
+			_ => false
+		};
+	}
+
+	private void RegisterShellCommands()
+	{
+		if (!commandRouter.IsRegistered(CommandId.ToggleSidebar))
+		{
+			commandRouter.Register(
+				CommandId.ToggleSidebar,
+				() => SetSidebarVisible(!LayoutState.SidebarVisible));
+		}
+
+		if (!commandRouter.IsRegistered(CommandId.ToggleInspector))
+		{
+			commandRouter.Register(
+				CommandId.ToggleInspector,
+				() => SetInspectorVisible(!LayoutState.InspectorVisible),
+				() => navigationService.ActiveDefinition.SupportsInspector);
+		}
+
+		if (!commandRouter.IsRegistered(CommandId.ToggleToolPanel))
+		{
+			commandRouter.Register(
+				CommandId.ToggleToolPanel,
+				() => SetToolPanelVisible(!LayoutState.ToolPanelVisible),
+				() => navigationService.ActiveDefinition.SupportsToolPanel);
+		}
 	}
 
 	private void BuildLayout(string version)
@@ -176,7 +266,7 @@ public sealed class ApplicationShell : UserControl
 		Controls.Add(header);
 	}
 
-	private static Panel BuildHeader(string version)
+	private Panel BuildHeader(string version)
 	{
 		Panel header = new()
 		{
@@ -208,22 +298,18 @@ public sealed class ApplicationShell : UserControl
 			TextAlign = ContentAlignment.MiddleRight
 		};
 
-		Label subtitle = new()
-		{
-			Dock = DockStyle.Fill,
-			Text = "Platform Qualification Suite",
-			Font = ThemeFonts.Subtitle,
-			ForeColor = Theme.TextMuted,
-			BackColor = Theme.ApplicationBackground,
-			TextAlign = ContentAlignment.MiddleLeft
-		};
+		workspaceTitleLabel.Dock = DockStyle.Fill;
+		workspaceTitleLabel.Font = ThemeFonts.Subtitle;
+		workspaceTitleLabel.ForeColor = Theme.TextMuted;
+		workspaceTitleLabel.BackColor = Theme.ApplicationBackground;
+		workspaceTitleLabel.TextAlign = ContentAlignment.MiddleLeft;
 
 		SectionSeparator separator = new()
 		{
 			Dock = DockStyle.Bottom
 		};
 
-		header.Controls.Add(subtitle);
+		header.Controls.Add(workspaceTitleLabel);
 		header.Controls.Add(versionLabel);
 		header.Controls.Add(title);
 		header.Controls.Add(separator);
@@ -232,10 +318,14 @@ public sealed class ApplicationShell : UserControl
 
 	private void WireInteractions()
 	{
-		activityBar.NavigationRequested += ActivateSection;
-		activityBar.ToggleSidebarRequested += () => SetSidebarVisible(!LayoutState.SidebarVisible);
-		activityBar.ToggleInspectorRequested += () => SetInspectorVisible(!LayoutState.InspectorVisible);
-		activityBar.ToggleToolPanelRequested += () => SetToolPanelVisible(!LayoutState.ToolPanelVisible);
+		activityBar.NavigationRequested += workspace => navigationService.Navigate(workspace);
+		activityBar.ToggleSidebarRequested += () => commandRouter.Execute(CommandId.ToggleSidebar);
+		activityBar.ToggleInspectorRequested += () => commandRouter.Execute(CommandId.ToggleInspector);
+		activityBar.ToggleToolPanelRequested += () => commandRouter.Execute(CommandId.ToggleToolPanel);
+		navigationService.WorkspaceChanged += ApplyNavigationState;
+		navigationService.ContextItemChanged += _ => RefreshSidebar();
+		navigationService.SelectionChanged += inspectorHost.SetSelection;
+
 		bodySplit.SplitterMoved += (_, _) =>
 		{
 			if (!applyingLayoutState && LayoutState.SidebarVisible)
@@ -245,6 +335,36 @@ public sealed class ApplicationShell : UserControl
 					bodySplit.SplitterDistance - ThemeMetrics.ActivityBarWidth);
 			}
 		};
+	}
+
+	private void ApplyNavigationState(WorkspaceDefinition workspace)
+	{
+		activityBar.SetActive(workspace.Id);
+		workspaceTitleLabel.Text = workspace.Title;
+		statusBar.SetContext(workspace.Title);
+		RefreshSidebar();
+		workspaceHost.TryActivate(workspace.Id);
+
+		inspectorHost.SetContent(
+			inspectorContent.TryGetValue(workspace.Id, out Control? inspector) ? inspector : null);
+		toolPanelHost.SetContent(
+			toolPanelContent.TryGetValue(workspace.Id, out Control? tools) ? tools : null);
+
+		if (!workspace.SupportsInspector && LayoutState.InspectorVisible)
+			SetInspectorVisible(false);
+
+		if (!workspace.SupportsToolPanel && LayoutState.ToolPanelVisible)
+			SetToolPanelVisible(false);
+
+		commandRouter.RefreshStates();
+	}
+
+	private void RefreshSidebar()
+	{
+		sidebarHost.SetContext(
+			navigationService.ActiveDefinition,
+			navigationService.ActiveContextItem,
+			item => navigationService.SelectContextItem(item.Id));
 	}
 
 	private void ApplyLayoutState()
@@ -317,5 +437,15 @@ public sealed class ApplicationShell : UserControl
 			ThemeMetrics.ToolPanelHeight,
 			availableHeight - toolSplit.Panel1MinSize);
 		toolSplit.SplitterDistance = availableHeight - Math.Max(toolSplit.Panel2MinSize, toolPanelHeight);
+	}
+
+	private static WorkspaceId MapLegacySection(ShellSection section)
+	{
+		return section switch
+		{
+			ShellSection.Platform => WorkspaceId.Platform,
+			ShellSection.Workloads => WorkspaceId.Qualification,
+			_ => throw new ArgumentOutOfRangeException(nameof(section), section, null)
+		};
 	}
 }

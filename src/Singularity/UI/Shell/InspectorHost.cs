@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.UI.Navigation;
+
 namespace Singularity.UI.Shell;
 
 public sealed class InspectorHost : Panel
@@ -51,5 +53,15 @@ public sealed class InspectorHost : Panel
 
 		content.Dock = DockStyle.Fill;
 		contentHost.Controls.Add(content);
+	}
+
+	public void SetSelection(WorkspaceSelection? selection)
+	{
+		if (contentHost.Controls.Count != 1 || contentHost.Controls[0] != placeholderLabel)
+			return;
+
+		placeholderLabel.Text = selection is null
+			? "No contextual details available."
+			: $"{selection.Kind}: {selection.DisplayName}";
 	}
 }
