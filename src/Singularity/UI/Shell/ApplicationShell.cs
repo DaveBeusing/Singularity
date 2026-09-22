@@ -26,7 +26,6 @@ public sealed class ApplicationShell : UserControl
 	{
 		AutoScaleMode = AutoScaleMode.Dpi;
 		BackColor = Theme.ApplicationBackground;
-		MinimumSize = new Size(ThemeMetrics.MinimumWindowWidth, ThemeMetrics.MinimumWindowHeight);
 		Size = new Size(ThemeMetrics.DefaultWindowWidth, ThemeMetrics.DefaultWindowHeight);
 
 		BuildLayout(version);
@@ -121,6 +120,7 @@ public sealed class ApplicationShell : UserControl
 		bodySplit.SplitterWidth = ThemeMetrics.SplitterWidth;
 		bodySplit.BackColor = Theme.Separator;
 		bodySplit.FixedPanel = FixedPanel.Panel1;
+		bodySplit.SplitterDistance = ThemeMetrics.ActivityBarWidth + ThemeMetrics.DefaultSidebarWidth;
 		bodySplit.Panel1MinSize = ThemeMetrics.ActivityBarWidth;
 		bodySplit.Panel2MinSize = ThemeMetrics.MinimumWorkspaceWidth;
 
@@ -144,6 +144,7 @@ public sealed class ApplicationShell : UserControl
 		inspectorSplit.SplitterWidth = ThemeMetrics.SplitterWidth;
 		inspectorSplit.BackColor = Theme.Separator;
 		inspectorSplit.FixedPanel = FixedPanel.Panel2;
+		inspectorSplit.SplitterDistance = inspectorSplit.Width - ThemeMetrics.InspectorWidth - inspectorSplit.SplitterWidth;
 		inspectorSplit.Panel1MinSize = ThemeMetrics.MinimumWorkspaceWidth;
 		inspectorSplit.Panel2MinSize = 180;
 		inspectorHost.Dock = DockStyle.Fill;
@@ -156,6 +157,7 @@ public sealed class ApplicationShell : UserControl
 		toolSplit.SplitterWidth = ThemeMetrics.SplitterWidth;
 		toolSplit.BackColor = Theme.Separator;
 		toolSplit.FixedPanel = FixedPanel.Panel2;
+		toolSplit.SplitterDistance = toolSplit.Height - ThemeMetrics.ToolPanelHeight - toolSplit.SplitterWidth;
 		toolSplit.Panel1MinSize = ThemeMetrics.MinimumWorkspaceHeight;
 		toolSplit.Panel2MinSize = 100;
 		workspaceHost.Dock = DockStyle.Fill;
@@ -165,6 +167,9 @@ public sealed class ApplicationShell : UserControl
 
 		inspectorSplit.Panel1.Controls.Add(toolSplit);
 		bodySplit.Panel2.Controls.Add(inspectorSplit);
+
+		inspectorSplit.Panel2Collapsed = true;
+		toolSplit.Panel2Collapsed = true;
 
 		Controls.Add(bodySplit);
 		Controls.Add(statusBar);
