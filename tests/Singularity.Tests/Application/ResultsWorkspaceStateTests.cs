@@ -6,6 +6,7 @@ using Singularity.Application;
 using Singularity.Core.Qualification;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
+using Singularity.Monitoring.Models;
 
 namespace Singularity.Tests.Application;
 
@@ -59,5 +60,28 @@ public sealed class ResultsWorkspaceStateTests
 		Assert.Equal(ValidationStatus.Warning, snapshot.OverallStatus);
 		Assert.Equal(ValidationStatus.Pass, snapshot.CpuStatus);
 		Assert.Equal(90, snapshot.TelemetryStatistics.CpuLoadPercent!.Average);
+	}
+
+	[Fact]
+	public void Create_WhenReportIsUnavailable_PreservesFrozenSessionTelemetry()
+	{
+		QualificationHistory history = new();
+		QualificationSession session = new();
+		session.Start(QualificationProfiles.Quick);
+		session.RecordTelemetry(new SystemSnapshot
+		{
+			CpuLoadPercent = 72,
+			UsedPhysicalMemoryPercent = 48
+		});
+		session.Fail();
+		history.Add(session);
+
+		ResultsWorkspaceSnapshot snapshot = ResultsWorkspaceState.Create(history);
+
+		Assert.True(snapshot.HasResult);
+		Assert.Equal(ValidationStatus.Fail, snapshot.OverallStatus);
+		Assert.Equal(72, snapshot.TelemetryStatistics.CpuLoadPercent!.Average);
+		Assert.Equal(48, snapshot.TelemetryStatistics.SystemMemoryUsagePercent!.Average);
+		Assert.Equal(ValidationStatus.Unknown, snapshot.CpuStatus);
 	}
 }

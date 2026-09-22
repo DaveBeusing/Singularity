@@ -37,4 +37,20 @@ public sealed class ShellLayoutStateTests
 		Assert.False(initial.InspectorVisible);
 		Assert.False(initial.ToolPanelVisible);
 	}
+
+	[Fact]
+	public void DefaultStateCanRestoreSessionLayoutPreferences()
+	{
+		ShellLayoutState changed = ShellLayoutState.Default
+			.WithSidebar(false)
+			.WithInspector(true)
+			.WithToolPanel(true);
+
+		ShellLayoutState restored = ShellLayoutState.Default;
+
+		Assert.NotEqual(changed, restored);
+		Assert.True(restored.SidebarVisible);
+		Assert.False(restored.InspectorVisible);
+		Assert.False(restored.ToolPanelVisible);
+	}
 }

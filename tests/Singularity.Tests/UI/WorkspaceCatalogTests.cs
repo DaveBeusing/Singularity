@@ -34,6 +34,7 @@ public sealed class WorkspaceCatalogTests
 	[InlineData(WorkspaceId.Qualification, "profile")]
 	[InlineData(WorkspaceId.Results, "latest")]
 	[InlineData(WorkspaceId.Reports, "history")]
+	[InlineData(WorkspaceId.Settings, "layout")]
 	public void WorkspaceProvidesExpectedInitialContext(
 		WorkspaceId workspaceId,
 		string contextId)
