@@ -118,14 +118,25 @@ public sealed class OverviewView : Panel
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
 
-		string cpuTemperature = snapshot.CpuTemperatureAvailable
-			? $"{snapshot.CpuTemperatureCelsius:0} °C"
-			: snapshot.CpuTemperatureStatus;
-		cpuTile.SetValue($"{snapshot.CpuLoadPercent:0.0} %", $"{cpuDetail} • {cpuTemperature}");
+		if (snapshot.TotalPhysicalMemoryMb > 0)
+		{
+			string cpuTemperature = snapshot.CpuTemperatureAvailable
+				? $"{snapshot.CpuTemperatureCelsius:0} °C"
+				: snapshot.CpuTemperatureStatus;
 
-		memoryTile.SetValue(
-			$"{snapshot.UsedPhysicalMemoryPercent:0.0} %",
-			$"{memoryDetail} • {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB");
+			cpuTile.SetValue(
+				$"{snapshot.CpuLoadPercent:0.0} %",
+				$"{cpuDetail} • {cpuTemperature}");
+
+			memoryTile.SetValue(
+				$"{snapshot.UsedPhysicalMemoryPercent:0.0} %",
+				$"{memoryDetail} • {snapshot.UsedPhysicalMemoryMb:N0} / {snapshot.TotalPhysicalMemoryMb:N0} MB");
+		}
+		else
+		{
+			cpuTile.SetValue("Unavailable", $"{cpuDetail} • telemetry pending");
+			memoryTile.SetValue("Unavailable", $"{memoryDetail} • telemetry pending");
+		}
 
 		if (snapshot.GpuTelemetryAvailable)
 		{
