@@ -71,6 +71,25 @@ public sealed class QualificationCoordinatorTests
 		Assert.Equal(WorkloadState.Stopped, coordinator.WorkloadStatus.State);
 	}
 
+
+	[Fact]
+	public void ManualWorkloadFailure_FinalizesActiveSession()
+	{
+		FakeWorkloadController workloads = new();
+		QualificationCoordinator coordinator = new(workloads);
+		WorkloadOptions options = new() { EnableCpuWorkload = true, CpuThreads = 4 };
+
+		Assert.True(coordinator.StartManual(options, QualificationProfiles.Quick));
+		workloads.Fail("CPU workload failed");
+
+		coordinator.Update(new SystemSnapshot());
+
+		Assert.Equal(QualificationSessionState.Failed, coordinator.Session.State);
+		Assert.Equal(ValidationStatus.Fail, coordinator.Session.Result);
+		Assert.Single(coordinator.History.Records);
+		Assert.Null(coordinator.LastReport);
+	}
+
 	[Fact]
 	public void StartAutomated_RejectsEmptyPlanWithoutStartingSession()
 	{
@@ -109,6 +128,15 @@ public sealed class QualificationCoordinatorTests
 		}
 
 		public void Stop() => status = new WorkloadStatus();
+
+		public void Fail(string message)
+		{
+			status = new WorkloadStatus
+			{
+				State = WorkloadState.Failed,
+				Message = message
+			};
+		}
 
 		public void ResetFailure()
 		{
