@@ -77,8 +77,7 @@ public static class WorkspaceCatalog
 				"S",
 				"Application settings and presentation preferences.",
 				[
-					new("general", "General"),
-					new("appearance", "Appearance")
+					new("layout", "Layout")
 				],
 				SupportsInspector: false,
 				SupportsToolPanel: false)
