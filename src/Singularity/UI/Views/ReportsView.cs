@@ -14,6 +14,7 @@ public sealed class ReportsView : Panel
 {
 	private readonly FlowLayoutPanel historyList = new();
 	private readonly Panel previewPanel = new();
+	private readonly TableLayoutPanel previewGrid = new();
 	private readonly Label emptyPreviewLabel = new();
 	private readonly Label overallValue = CreateValueLabel();
 	private readonly Label profileValue = CreateValueLabel();
@@ -38,6 +39,7 @@ public sealed class ReportsView : Panel
 		Dock = DockStyle.Fill;
 		BackColor = Theme.Workspace;
 		BuildUi();
+		historyList.ClientSizeChanged += (_, _) => UpdateHistoryButtonWidths();
 		UpdateState(ReportsWorkspaceSnapshot.Empty);
 	}
 
@@ -178,30 +180,27 @@ public sealed class ReportsView : Panel
 		exports.Controls.Add(ExportJsonButton);
 		exports.Controls.Add(ExportHtmlButton);
 
-		TableLayoutPanel grid = new()
-		{
-			Dock = DockStyle.Top,
-			AutoSize = true,
-			AutoSizeMode = AutoSizeMode.GrowAndShrink,
-			ColumnCount = 2,
-			RowCount = 10,
-			BackColor = Theme.Panel
-		};
-		grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-		grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+		previewGrid.Dock = DockStyle.Top;
+		previewGrid.AutoSize = true;
+		previewGrid.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+		previewGrid.ColumnCount = 2;
+		previewGrid.RowCount = 10;
+		previewGrid.BackColor = Theme.Panel;
+		previewGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+		previewGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
 		for (int row = 0; row < 10; row++)
-			grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+			previewGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
 
-		AddRow(grid, 0, "Overall", overallValue);
-		AddRow(grid, 1, "Profile", profileValue);
-		AddRow(grid, 2, "Mode", modeValue);
-		AddRow(grid, 3, "Started", startedValue);
-		AddRow(grid, 4, "Finished", finishedValue);
-		AddRow(grid, 5, "Duration", durationValue);
-		AddRow(grid, 6, "CPU", cpuValue);
-		AddRow(grid, 7, "Memory", memoryValue);
-		AddRow(grid, 8, "GPU", gpuValue);
-		AddRow(grid, 9, "Telemetry", statisticsValue);
+		AddRow(previewGrid, 0, "Overall", overallValue);
+		AddRow(previewGrid, 1, "Profile", profileValue);
+		AddRow(previewGrid, 2, "Mode", modeValue);
+		AddRow(previewGrid, 3, "Started", startedValue);
+		AddRow(previewGrid, 4, "Finished", finishedValue);
+		AddRow(previewGrid, 5, "Duration", durationValue);
+		AddRow(previewGrid, 6, "CPU", cpuValue);
+		AddRow(previewGrid, 7, "Memory", memoryValue);
+		AddRow(previewGrid, 8, "GPU", gpuValue);
+		AddRow(previewGrid, 9, "Telemetry", statisticsValue);
 
 		emptyPreviewLabel.Dock = DockStyle.Fill;
 		emptyPreviewLabel.Text = "Select a qualification history entry to review its report evidence.";
@@ -211,10 +210,10 @@ public sealed class ReportsView : Panel
 		emptyPreviewLabel.TextAlign = ContentAlignment.MiddleCenter;
 
 		previewPanel.Controls.Add(emptyPreviewLabel);
-		previewPanel.Controls.Add(grid);
+		previewPanel.Controls.Add(previewGrid);
 		previewPanel.Controls.Add(exports);
 		previewPanel.Controls.Add(title);
-		grid.BringToFront();
+		previewGrid.BringToFront();
 		return previewPanel;
 	}
 
@@ -276,10 +275,21 @@ public sealed class ReportsView : Panel
 		historyList.Controls.Add(button);
 	}
 
+	private void UpdateHistoryButtonWidths()
+	{
+		int width = Math.Max(
+			180,
+			historyList.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ThemeMetrics.Spacing);
+
+		foreach (CommandButton button in historyButtons)
+			button.Width = width;
+	}
+
 	private void RenderPreview(ReportsWorkspaceSnapshot snapshot)
 	{
 		bool hasRecord = snapshot.SelectedRecord is not null;
 		emptyPreviewLabel.Visible = !hasRecord;
+		previewGrid.Visible = hasRecord;
 
 		if (snapshot.SelectedRecord is not { } record)
 		{
