@@ -166,15 +166,20 @@ public sealed class PlatformView : Panel
 
 	private void AddGpus(IReadOnlyList<GpuInventory> gpus)
 	{
-		if (gpus.Count == 0)
+		IReadOnlyList<GpuInventory> availableGpus = gpus
+			.Where(gpu => !IsUnavailableGpu(gpu))
+			.ToArray();
+
+		if (availableGpus.Count == 0)
 		{
-			AddEmptyState("No supported GPU inventory is available.");
+			string detail = gpus.FirstOrDefault()?.Details ?? "No supported GPU inventory is available.";
+			AddEmptyState($"GPU inventory unavailable • {detail}");
 			return;
 		}
 
-		for (int index = 0; index < gpus.Count; index++)
+		for (int index = 0; index < availableGpus.Count; index++)
 		{
-			GpuInventory gpu = gpus[index];
+			GpuInventory gpu = availableGpus[index];
 			AddSelectableCard(
 				new GpuInfoPanel(gpu, LayoutConstants.HardwareCardWidth, LayoutConstants.LargeCardHeight),
 				PlatformSelectionMapper.FromGpu(gpu, index));
@@ -294,6 +299,11 @@ public sealed class PlatformView : Panel
 		{
 			control.Width = availableWidth;
 		}
+	}
+
+	private static bool IsUnavailableGpu(GpuInventory gpu)
+	{
+		return string.Equals(gpu.Identifier, "nvml:unavailable", StringComparison.Ordinal);
 	}
 
 	private static string CategoryTitle(string categoryId)
