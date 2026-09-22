@@ -5,6 +5,7 @@
 using Singularity.Application;
 using Singularity.Application.Commands;
 using Singularity.Core.Reporting;
+using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
 using Singularity.Monitoring.Runtime;
@@ -404,15 +405,31 @@ public sealed class MainForm : Form
 	{
 		QualificationWorkspaceSnapshot snapshot = qualificationWorkspaceController.CurrentSnapshot;
 
-		StatusVisualState visualState = snapshot.OverallState switch
+		string statusText = snapshot.OverallState;
+		StatusVisualState visualState = statusText switch
 		{
 			"FAILED" => StatusVisualState.Failure,
 			"STARTING" or "STOPPING" or "CANCELLED" => StatusVisualState.Warning,
-			"RUNNING" or "COMPLETED" => StatusVisualState.Success,
+			"RUNNING" => StatusVisualState.Active,
+			"COMPLETED" => StatusVisualState.Success,
 			_ => StatusVisualState.Neutral
 		};
 
-		shell.SetGlobalStatus(snapshot.OverallState, visualState);
+		if (snapshot.SessionState is QualificationSessionState.Completed or QualificationSessionState.Failed &&
+			coordinator.History.Records.Count > 0)
+		{
+			ValidationStatus result = coordinator.History.Records[0].Result;
+			statusText = StatusStyle.Format(result);
+			visualState = result switch
+			{
+				ValidationStatus.Pass => StatusVisualState.Success,
+				ValidationStatus.Warning => StatusVisualState.Warning,
+				ValidationStatus.Fail => StatusVisualState.Failure,
+				_ => StatusVisualState.Neutral
+			};
+		}
+
+		shell.SetGlobalStatus(statusText, visualState);
 		shell.SetStatusDetails(
 			$"{snapshot.SessionProfile} • CPU {CompactTelemetry(snapshot.CpuTelemetry)} • RAM {CompactTelemetry(snapshot.MemoryTelemetry)} • GPU {CompactTelemetry(snapshot.GpuTelemetry)}");
 		commandRouter.RefreshStates();
