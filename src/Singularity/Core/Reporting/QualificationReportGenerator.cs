@@ -13,14 +13,10 @@ public sealed class QualificationReportGenerator
 		ValidationResult validationResult)
 	{
 		if (session.StartTime is null)
-		{
 			throw new InvalidOperationException("Session has no start time.");
-		}
 
 		if (session.EndTime is null)
-		{
 			throw new InvalidOperationException("Session has no end time.");
-		}
 
 		return new QualificationReport
 		{
@@ -28,6 +24,7 @@ public sealed class QualificationReportGenerator
 			FinishedAt = session.EndTime.Value,
 			Duration = session.Duration,
 			Profile = session.Profile,
+			ExecutionMode = session.ExecutionMode,
 			CpuResult = validationResult.CpuStatus,
 			MemoryResult = validationResult.MemoryStatus,
 			GpuResult = validationResult.GpuStatus,
@@ -35,5 +32,4 @@ public sealed class QualificationReportGenerator
 			TelemetryStatistics = session.TelemetryStatistics
 		};
 	}
-
 }

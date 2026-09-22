@@ -9,6 +9,7 @@ namespace Singularity.UI.Shell;
 public sealed class ApplicationStatusBar : Panel
 {
 	private readonly Label contextLabel = new();
+	private readonly Label detailsLabel = new();
 	private readonly StatusIndicator statusIndicator = new();
 
 	public ApplicationStatusBar()
@@ -24,16 +25,32 @@ public sealed class ApplicationStatusBar : Panel
 		contextLabel.ForeColor = Theme.TextMuted;
 		contextLabel.BackColor = Theme.StatusBar;
 		contextLabel.TextAlign = ContentAlignment.MiddleLeft;
+		contextLabel.AutoEllipsis = true;
+
+		detailsLabel.Dock = DockStyle.Right;
+		detailsLabel.Width = 500;
+		detailsLabel.Padding = new Padding(ThemeMetrics.Spacing, 0, ThemeMetrics.Spacing, 0);
+		detailsLabel.Font = ThemeFonts.SectionHeader;
+		detailsLabel.ForeColor = Theme.TextMuted;
+		detailsLabel.BackColor = Theme.StatusBar;
+		detailsLabel.TextAlign = ContentAlignment.MiddleRight;
+		detailsLabel.AutoEllipsis = true;
 
 		statusIndicator.Dock = DockStyle.Right;
 
 		Controls.Add(contextLabel);
+		Controls.Add(detailsLabel);
 		Controls.Add(statusIndicator);
 	}
 
 	public void SetContext(string context)
 	{
 		ControlUpdate.SetText(contextLabel, context);
+	}
+
+	public void SetDetails(string details)
+	{
+		ControlUpdate.SetText(detailsLabel, details);
 	}
 
 	public void SetStatus(string text, StatusVisualState state)

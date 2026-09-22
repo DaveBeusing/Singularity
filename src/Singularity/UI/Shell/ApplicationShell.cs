@@ -58,6 +58,8 @@ public sealed class ApplicationShell : UserControl
 	public InspectorHost Inspector => inspectorHost;
 	public ToolPanelHost ToolPanel => toolPanelHost;
 
+	public event Action<ShellLayoutState>? LayoutStateChanged;
+
 	public void RegisterWorkspace(WorkspaceId workspace, Control content)
 	{
 		workspaceHost.Register(workspace, content);
@@ -89,6 +91,11 @@ public sealed class ApplicationShell : UserControl
 		statusBar.SetStatus(text, state);
 	}
 
+	public void SetStatusDetails(string details)
+	{
+		statusBar.SetDetails(details);
+	}
+
 	public void SetSidebarVisible(bool visible)
 	{
 		if (LayoutState.SidebarVisible == visible)
@@ -101,32 +108,38 @@ public sealed class ApplicationShell : UserControl
 
 		LayoutState = LayoutState.WithSidebar(visible);
 		ApplyLayoutState();
+		LayoutStateChanged?.Invoke(LayoutState);
 		commandRouter.RefreshStates();
 	}
 
 	public void SetInspectorVisible(bool visible)
 	{
-		if (visible && !navigationService.ActiveDefinition.SupportsInspector)
-			return;
-
 		if (LayoutState.InspectorVisible == visible)
 			return;
 
 		LayoutState = LayoutState.WithInspector(visible);
 		ApplyLayoutState();
+		LayoutStateChanged?.Invoke(LayoutState);
 		commandRouter.RefreshStates();
 	}
 
 	public void SetToolPanelVisible(bool visible)
 	{
-		if (visible && !navigationService.ActiveDefinition.SupportsToolPanel)
-			return;
-
 		if (LayoutState.ToolPanelVisible == visible)
 			return;
 
 		LayoutState = LayoutState.WithToolPanel(visible);
 		ApplyLayoutState();
+		LayoutStateChanged?.Invoke(LayoutState);
+		commandRouter.RefreshStates();
+	}
+
+	public void ResetLayout()
+	{
+		savedSidebarWidth = ThemeMetrics.DefaultSidebarWidth;
+		LayoutState = ShellLayoutState.Default;
+		ApplyLayoutState();
+		LayoutStateChanged?.Invoke(LayoutState);
 		commandRouter.RefreshStates();
 	}
 
@@ -328,12 +341,7 @@ public sealed class ApplicationShell : UserControl
 		toolPanelHost.SetContent(
 			toolPanelContent.TryGetValue(workspace.Id, out Control? tools) ? tools : null);
 
-		if (!workspace.SupportsInspector && LayoutState.InspectorVisible)
-			SetInspectorVisible(false);
-
-		if (!workspace.SupportsToolPanel && LayoutState.ToolPanelVisible)
-			SetToolPanelVisible(false);
-
+		ApplyLayoutState();
 		commandRouter.RefreshStates();
 	}
 
@@ -353,6 +361,13 @@ public sealed class ApplicationShell : UserControl
 		applyingLayoutState = true;
 		try
 		{
+			bool inspectorVisible =
+				LayoutState.InspectorVisible &&
+				navigationService.ActiveDefinition.SupportsInspector;
+			bool toolPanelVisible =
+				LayoutState.ToolPanelVisible &&
+				navigationService.ActiveDefinition.SupportsToolPanel;
+
 			sidebarHost.Visible = LayoutState.SidebarVisible;
 
 			int desiredNavigationWidth = ThemeMetrics.ActivityBarWidth;
@@ -360,7 +375,7 @@ public sealed class ApplicationShell : UserControl
 				desiredNavigationWidth += savedSidebarWidth;
 
 			int requiredContentWidth = ThemeMetrics.MinimumWorkspaceWidth;
-			if (LayoutState.InspectorVisible)
+			if (inspectorVisible)
 			{
 				requiredContentWidth += inspectorSplit.SplitterWidth + inspectorSplit.Panel2MinSize;
 			}
@@ -374,17 +389,17 @@ public sealed class ApplicationShell : UserControl
 				bodySplit.ClientSize.Width - bodySplit.SplitterWidth - requiredContentWidth);
 			bodySplit.SplitterDistance = Math.Min(desiredNavigationWidth, maximumNavigationWidth);
 
-			if (LayoutState.InspectorVisible)
+			if (inspectorVisible)
 				bodySplit.Panel2MinSize = requiredContentWidth;
 
 			bodySplit.PerformLayout();
 
-			inspectorSplit.Panel2Collapsed = !LayoutState.InspectorVisible;
-			if (LayoutState.InspectorVisible)
+			inspectorSplit.Panel2Collapsed = !inspectorVisible;
+			if (inspectorVisible)
 				ApplyInspectorWidth();
 
-			toolSplit.Panel2Collapsed = !LayoutState.ToolPanelVisible;
-			if (LayoutState.ToolPanelVisible)
+			toolSplit.Panel2Collapsed = !toolPanelVisible;
+			if (toolPanelVisible)
 				ApplyToolPanelHeight();
 		}
 		finally

@@ -4,6 +4,7 @@
 
 using Singularity.Application;
 using Singularity.Application.Commands;
+using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
@@ -21,6 +22,8 @@ public sealed class MainForm : Form
 	private readonly ReportExportService reportExportService;
 	private readonly SystemMonitor systemMonitor;
 	private readonly PlatformInventoryState platformInventoryState;
+	private readonly QualificationWorkspaceState qualificationWorkspaceState;
+	private readonly ReportsWorkspaceState reportsWorkspaceState = new();
 	private readonly NavigationService navigationService = new(WorkspaceCatalog.CreateDefault());
 	private readonly CommandRouter commandRouter = new();
 	private readonly List<ButtonCommandBinding> commandBindings = [];
@@ -33,19 +36,27 @@ public sealed class MainForm : Form
 	private PlatformView platformView = null!;
 	private PlatformInspectorView platformInspectorView = null!;
 	private QualificationView qualificationView = null!;
+	private QualificationToolPanelView qualificationToolPanelView = null!;
+	private QualificationInspectorView qualificationInspectorView = null!;
+	private QualificationWorkspaceController qualificationWorkspaceController = null!;
 	private ResultsView resultsView = null!;
+	private ResultsInspectorView resultsInspectorView = null!;
 	private ReportsView reportsView = null!;
+	private ReportsInspectorView reportsInspectorView = null!;
+	private SettingsView settingsView = null!;
 
 	public MainForm(
 		QualificationCoordinator coordinator,
 		ReportExportService reportExportService,
 		SystemMonitor systemMonitor,
-		PlatformInventoryState platformInventoryState)
+		PlatformInventoryState platformInventoryState,
+		QualificationWorkspaceState qualificationWorkspaceState)
 	{
 		this.coordinator = coordinator;
 		this.reportExportService = reportExportService;
 		this.systemMonitor = systemMonitor;
 		this.platformInventoryState = platformInventoryState;
+		this.qualificationWorkspaceState = qualificationWorkspaceState;
 
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
@@ -70,6 +81,11 @@ public sealed class MainForm : Form
 		timer.Start();
 	}
 
+	private ReportsWorkspaceSnapshot CurrentReportsSnapshot =>
+		reportsWorkspaceState.CreateSnapshot(
+			coordinator.History,
+			platformInventoryState.Current is not null);
+
 	private void ConfigureApplicationIcon()
 	{
 		try
@@ -88,29 +104,14 @@ public sealed class MainForm : Form
 	private void RegisterApplicationCommands()
 	{
 		commandRouter.Register(
-			CommandId.StartQualification,
-			StartWorkloads,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
-
-		commandRouter.Register(
-			CommandId.AutomatedQualification,
-			StartAutomatedQualification,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Stopped or WorkloadState.Failed);
-
-		commandRouter.Register(
-			CommandId.StopQualification,
-			StopWorkloads,
-			() => coordinator.WorkloadStatus.State is WorkloadState.Starting or WorkloadState.Running);
-
-		commandRouter.Register(
 			CommandId.ExportJson,
 			ExportJsonReport,
-			() => coordinator.LastReport is not null && platformInventoryState.Current is not null);
+			() => CurrentReportsSnapshot.CanExport);
 
 		commandRouter.Register(
 			CommandId.ExportHtml,
 			ExportHtmlReport,
-			() => coordinator.LastReport is not null && platformInventoryState.Current is not null);
+			() => CurrentReportsSnapshot.CanExport);
 
 		commandRouter.Register(
 			CommandId.RefreshInventory,
@@ -140,33 +141,52 @@ public sealed class MainForm : Form
 			platformView = new PlatformView();
 			platformInspectorView = new PlatformInspectorView();
 			qualificationView = new QualificationView();
+			qualificationToolPanelView = new QualificationToolPanelView();
+			qualificationInspectorView = new QualificationInspectorView();
 			resultsView = new ResultsView();
+			resultsInspectorView = new ResultsInspectorView();
 			reportsView = new ReportsView();
+			reportsInspectorView = new ReportsInspectorView();
+			settingsView = new SettingsView();
 
 			shell.RegisterWorkspace(WorkspaceId.Overview, overviewView);
 			shell.RegisterWorkspace(WorkspaceId.Platform, platformView);
 			shell.RegisterInspectorContent(WorkspaceId.Platform, platformInspectorView);
 			shell.RegisterWorkspace(WorkspaceId.Qualification, qualificationView);
+			shell.RegisterInspectorContent(WorkspaceId.Qualification, qualificationInspectorView);
+			shell.RegisterToolPanelContent(WorkspaceId.Qualification, qualificationToolPanelView);
 			shell.RegisterWorkspace(WorkspaceId.Results, resultsView);
+			shell.RegisterInspectorContent(WorkspaceId.Results, resultsInspectorView);
 			shell.RegisterWorkspace(WorkspaceId.Reports, reportsView);
-			shell.RegisterWorkspace(
-				WorkspaceId.Settings,
-				new WorkspacePlaceholderView(
-					"Settings",
-					"Application settings are prepared as a dedicated workspace. Domain-specific settings will be migrated when their ownership is defined."));
+			shell.RegisterInspectorContent(WorkspaceId.Reports, reportsInspectorView);
+			shell.RegisterWorkspace(WorkspaceId.Settings, settingsView);
 
 			Controls.Add(shell);
 
+			qualificationWorkspaceController = new QualificationWorkspaceController(
+				coordinator,
+				qualificationWorkspaceState,
+				qualificationView,
+				qualificationToolPanelView,
+				qualificationInspectorView,
+				navigationService,
+				commandRouter,
+				shell);
+
 			overviewView.QualificationRequested += OpenQualification;
 			platformView.DeviceSelected += OnPlatformDeviceSelected;
+			reportsView.HistorySelectionRequested += OnHistorySelectionRequested;
+			settingsView.SidebarVisibilityChanged += shell.SetSidebarVisible;
+			settingsView.InspectorVisibilityChanged += shell.SetInspectorVisible;
+			settingsView.ToolPanelVisibilityChanged += shell.SetToolPanelVisible;
+			settingsView.ResetLayoutRequested += shell.ResetLayout;
+			shell.LayoutStateChanged += settingsView.UpdateState;
 			navigationService.ContextItemChanged += OnContextItemChanged;
 
+			settingsView.UpdateState(shell.LayoutState);
 			BindCommandButtons();
 			RenderInventoryState();
-			UpdateWorkloadStatus();
-			resultsView.UpdateSession(coordinator.Session);
-			reportsView.UpdateHistory(coordinator.History);
-			reportsView.ResetReport();
+			RenderQualificationState();
 			commandRouter.RefreshStates();
 		}
 		finally
@@ -181,43 +201,9 @@ public sealed class MainForm : Form
 			binding.Dispose();
 
 		commandBindings.Clear();
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.StartButton, commandRouter, CommandId.StartQualification));
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.AutoButton, commandRouter, CommandId.AutomatedQualification));
-		commandBindings.Add(new ButtonCommandBinding(qualificationView.StopButton, commandRouter, CommandId.StopQualification));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportJsonButton, commandRouter, CommandId.ExportJson));
 		commandBindings.Add(new ButtonCommandBinding(reportsView.ExportHtmlButton, commandRouter, CommandId.ExportHtml));
 		commandBindings.Add(new ButtonCommandBinding(platformView.RefreshButton, commandRouter, CommandId.RefreshInventory));
-	}
-
-	private void StartWorkloads()
-	{
-		if (coordinator.StartManual(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
-		{
-			RenderQualificationState();
-			navigationService.Navigate(WorkspaceId.Qualification);
-		}
-	}
-
-	private void StartAutomatedQualification()
-	{
-		try
-		{
-			if (coordinator.StartAutomated(qualificationView.CreateOptions(), qualificationView.SelectedProfile))
-			{
-				RenderQualificationState();
-				navigationService.Navigate(WorkspaceId.Qualification);
-			}
-		}
-		catch (InvalidOperationException ex)
-		{
-			MessageBox.Show(this, ex.Message, "Automated qualification", MessageBoxButtons.OK, MessageBoxIcon.Information);
-		}
-	}
-
-	private void StopWorkloads()
-	{
-		if (coordinator.Stop())
-			RenderQualificationState();
 	}
 
 	private async void OnShown(object? sender, EventArgs e)
@@ -233,11 +219,24 @@ public sealed class MainForm : Form
 
 	private void OnContextItemChanged(NavigationItem? item)
 	{
-		if (navigationService.ActiveWorkspace != WorkspaceId.Platform)
-			return;
+		switch (navigationService.ActiveWorkspace)
+		{
+			case WorkspaceId.Platform:
+				platformView.SetCategory(item?.Id ?? "system");
+				platformInspectorView.ShowSelection(null);
+				break;
 
-		platformView.SetCategory(item?.Id ?? "system");
-		platformInspectorView.ShowSelection(null);
+			case WorkspaceId.Results:
+				resultsInspectorView.UpdateState(
+					item?.Id,
+					ResultsWorkspaceState.Create(coordinator.History));
+				break;
+
+			case WorkspaceId.Reports:
+				reportsView.FocusContext(item?.Id);
+				reportsInspectorView.UpdateState(CurrentReportsSnapshot);
+				break;
+		}
 	}
 
 	private void OnPlatformDeviceSelected(PlatformDeviceSelection selection)
@@ -251,6 +250,15 @@ public sealed class MainForm : Form
 
 		platformInspectorView.ShowSelection(selection);
 		shell.SetInspectorVisible(true);
+	}
+
+	private void OnHistorySelectionRequested(int index)
+	{
+		ReportsWorkspaceSnapshot snapshot = reportsWorkspaceState.Select(
+			index,
+			coordinator.History,
+			platformInventoryState.Current is not null);
+		RenderReports(snapshot);
 	}
 
 	private async void RefreshInventory()
@@ -290,6 +298,7 @@ public sealed class MainForm : Form
 		overviewView.UpdateInventory(platformInventoryState);
 		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
 		platformView.UpdateInventory(platformInventoryState);
+		RenderReports(CurrentReportsSnapshot);
 
 		if (navigationService.ActiveWorkspace == WorkspaceId.Platform)
 		{
@@ -300,7 +309,8 @@ public sealed class MainForm : Form
 
 	private void ExportJsonReport()
 	{
-		if (coordinator.LastReport is not { } report)
+		QualificationReport? report = CurrentReportsSnapshot.SelectedReport;
+		if (report is null || platformInventoryState.Current is not { } inventory)
 			return;
 
 		using SaveFileDialog dialog = new()
@@ -315,22 +325,15 @@ public sealed class MainForm : Form
 		if (dialog.ShowDialog(this) != DialogResult.OK)
 			return;
 
-		if (platformInventoryState.Current is not { } inventory)
-			return;
-
-		try
-		{
-			reportExportService.ExportJson(dialog.FileName, report, inventory);
-		}
-		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-		{
-			MessageBox.Show(this, ex.Message, "Report export failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-		}
+		ExportReport(
+			() => reportExportService.ExportJson(dialog.FileName, report, inventory),
+			"JSON");
 	}
 
 	private void ExportHtmlReport()
 	{
-		if (coordinator.LastReport is not { } report)
+		QualificationReport? report = CurrentReportsSnapshot.SelectedReport;
+		if (report is null || platformInventoryState.Current is not { } inventory)
 			return;
 
 		using SaveFileDialog dialog = new()
@@ -345,16 +348,25 @@ public sealed class MainForm : Form
 		if (dialog.ShowDialog(this) != DialogResult.OK)
 			return;
 
-		if (platformInventoryState.Current is not { } inventory)
-			return;
+		ExportReport(
+			() => reportExportService.ExportHtml(dialog.FileName, report, inventory),
+			"HTML");
+	}
 
+	private void ExportReport(Action export, string format)
+	{
 		try
 		{
-			reportExportService.ExportHtml(dialog.FileName, report, inventory);
+			export();
 		}
 		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 		{
-			MessageBox.Show(this, ex.Message, "Report export failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			MessageBox.Show(
+				this,
+				$"{format} report export failed.\r\n\r\n{ex.Message}",
+				"Report export failed",
+				MessageBoxButtons.OK,
+				MessageBoxIcon.Error);
 		}
 	}
 
@@ -363,72 +375,70 @@ public sealed class MainForm : Form
 		SystemSnapshot snapshot = systemMonitor.GetSnapshot();
 
 		overviewView.UpdateTelemetry(snapshot);
-		qualificationView.UpdateMetrics(snapshot);
-		coordinator.Update(snapshot);
+		qualificationWorkspaceController.Update(snapshot);
 		RenderQualificationState();
 	}
 
 	private void RenderQualificationState()
 	{
-		if (coordinator.LastValidationResult is { } validation)
-			resultsView.UpdateValidation(validation);
-		else
-			resultsView.ResetValidation();
+		ResultsWorkspaceSnapshot results = ResultsWorkspaceState.Create(coordinator.History);
+		resultsView.UpdateState(results);
+		resultsInspectorView.UpdateState(
+			navigationService.ActiveWorkspace == WorkspaceId.Results
+				? navigationService.ActiveContextItem?.Id
+				: null,
+			results);
 
-		if (coordinator.LastReport is { } report)
-			reportsView.UpdateReport(report);
-		else
-			reportsView.ResetReport();
-
+		RenderReports(CurrentReportsSnapshot);
 		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
-		qualificationView.UpdateQualificationProgress(coordinator.Progress);
-		resultsView.UpdateSession(coordinator.Session);
-		reportsView.UpdateHistory(coordinator.History);
 		UpdateWorkloadStatus();
+	}
+
+	private void RenderReports(ReportsWorkspaceSnapshot snapshot)
+	{
+		reportsView.UpdateState(snapshot);
+		reportsInspectorView.UpdateState(snapshot);
+		commandRouter.RefreshStates();
 	}
 
 	private void UpdateWorkloadStatus()
 	{
-		WorkloadStatus status = coordinator.WorkloadStatus;
+		QualificationWorkspaceSnapshot snapshot = qualificationWorkspaceController.CurrentSnapshot;
 
-		ValidationSummary? validationSummary =
-			coordinator.LastValidationResult is not null
-				? new ValidationSummary(coordinator.LastValidationResult)
-				: null;
-
-		string statusText = status.State switch
+		string statusText = snapshot.OverallState;
+		StatusVisualState visualState = statusText switch
 		{
-			WorkloadState.Stopped => "READY",
-			WorkloadState.Starting => "STARTING",
-			WorkloadState.Running => "RUNNING",
-			WorkloadState.Stopping => "STOPPING",
-			WorkloadState.Failed => "FAILED",
-			_ => "UNKNOWN"
-		};
-
-		StatusVisualState visualState = status.State switch
-		{
-			WorkloadState.Stopped => StatusVisualState.Neutral,
-			WorkloadState.Starting => StatusVisualState.Warning,
-			WorkloadState.Running => StatusVisualState.Success,
-			WorkloadState.Stopping => StatusVisualState.Warning,
-			WorkloadState.Failed => StatusVisualState.Failure,
+			"FAILED" => StatusVisualState.Failure,
+			"STARTING" or "STOPPING" or "CANCELLED" => StatusVisualState.Warning,
+			"RUNNING" => StatusVisualState.Active,
+			"COMPLETED" => StatusVisualState.Success,
 			_ => StatusVisualState.Neutral
 		};
 
-		if (status.State == WorkloadState.Running && validationSummary is not null)
+		if (snapshot.SessionState is QualificationSessionState.Completed or QualificationSessionState.Failed &&
+			coordinator.History.Records.Count > 0)
 		{
-			visualState = validationSummary.OverallStatus switch
+			ValidationStatus result = coordinator.History.Records[0].Result;
+			statusText = StatusStyle.Format(result);
+			visualState = result switch
 			{
 				ValidationStatus.Pass => StatusVisualState.Success,
 				ValidationStatus.Warning => StatusVisualState.Warning,
 				ValidationStatus.Fail => StatusVisualState.Failure,
-				_ => visualState
+				_ => StatusVisualState.Neutral
 			};
 		}
 
 		shell.SetGlobalStatus(statusText, visualState);
+		shell.SetStatusDetails(
+			$"{snapshot.SessionProfile} • CPU {CompactTelemetry(snapshot.CpuTelemetry)} • RAM {CompactTelemetry(snapshot.MemoryTelemetry)} • GPU {CompactTelemetry(snapshot.GpuTelemetry)}");
 		commandRouter.RefreshStates();
+	}
+
+	private static string CompactTelemetry(string value)
+	{
+		int separator = value.IndexOf(" | ", StringComparison.Ordinal);
+		return separator < 0 ? value : value[..separator].Trim();
 	}
 
 	protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -450,6 +460,18 @@ public sealed class MainForm : Form
 				overviewView.QualificationRequested -= OpenQualification;
 			if (platformView is not null)
 				platformView.DeviceSelected -= OnPlatformDeviceSelected;
+			if (reportsView is not null)
+				reportsView.HistorySelectionRequested -= OnHistorySelectionRequested;
+			if (settingsView is not null && shell is not null)
+			{
+				settingsView.SidebarVisibilityChanged -= shell.SetSidebarVisible;
+				settingsView.InspectorVisibilityChanged -= shell.SetInspectorVisible;
+				settingsView.ToolPanelVisibilityChanged -= shell.SetToolPanelVisible;
+				settingsView.ResetLayoutRequested -= shell.ResetLayout;
+				shell.LayoutStateChanged -= settingsView.UpdateState;
+			}
+
+			qualificationWorkspaceController?.Dispose();
 
 			foreach (ButtonCommandBinding binding in commandBindings)
 				binding.Dispose();

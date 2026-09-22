@@ -2,15 +2,10 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-
 using System.ComponentModel;
 
 namespace Singularity.UI.Controls;
 
-/// <summary>
-/// Eigene Checkbox für Singularity.
-/// Zeichnet sich selbst und ersetzt die Standard-Windows-Checkbox.
-/// </summary>
 public sealed class SingularityCheckBox : Control
 {
 	private bool isHovered;
@@ -22,6 +17,9 @@ public sealed class SingularityCheckBox : Control
 		get => isChecked;
 		set
 		{
+			if (isChecked == value)
+				return;
+
 			isChecked = value;
 			Invalidate();
 			CheckedChanged?.Invoke(this, EventArgs.Empty);
@@ -36,16 +34,24 @@ public sealed class SingularityCheckBox : Control
 		Height = 30;
 		Cursor = Cursors.Hand;
 		BackColor = Theme.PanelLight;
+		TabStop = true;
+		AccessibleRole = AccessibleRole.CheckButton;
 
-		SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+		SetStyle(
+			ControlStyles.AllPaintingInWmPaint |
+			ControlStyles.UserPaint |
+			ControlStyles.OptimizedDoubleBuffer |
+			ControlStyles.ResizeRedraw |
+			ControlStyles.Selectable,
+			true);
 	}
 
 	protected override void OnPaint(PaintEventArgs e)
 	{
 		base.OnPaint(e);
 
-		Graphics g = e.Graphics;
-		g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+		Graphics graphics = e.Graphics;
+		graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
 		Rectangle outer = new(0, 0, Width - 1, Height - 1);
 
@@ -53,8 +59,8 @@ public sealed class SingularityCheckBox : Control
 		using SolidBrush hoverBrush = new(Color.FromArgb(48, 58, 78));
 		using Pen borderPen = new(isChecked ? Theme.Accent : Color.FromArgb(80, 92, 115), 2);
 
-		g.FillRectangle(isHovered ? hoverBrush : backgroundBrush, outer);
-		g.DrawRectangle(borderPen, outer);
+		graphics.FillRectangle(isHovered ? hoverBrush : backgroundBrush, outer);
+		graphics.DrawRectangle(borderPen, outer);
 
 		if (isChecked)
 		{
@@ -71,7 +77,13 @@ public sealed class SingularityCheckBox : Control
 				new Point(20, 8)
 			];
 
-			g.DrawLines(checkPen, checkMark);
+			graphics.DrawLines(checkPen, checkMark);
+		}
+
+		if (Focused && ShowFocusCues && Width > 6 && Height > 6)
+		{
+			using Pen focusPen = new(Theme.Focus);
+			graphics.DrawRectangle(focusPen, 3, 3, Width - 7, Height - 7);
 		}
 	}
 
@@ -89,10 +101,34 @@ public sealed class SingularityCheckBox : Control
 		base.OnMouseLeave(e);
 	}
 
+	protected override void OnGotFocus(EventArgs e)
+	{
+		Invalidate();
+		base.OnGotFocus(e);
+	}
+
+	protected override void OnLostFocus(EventArgs e)
+	{
+		Invalidate();
+		base.OnLostFocus(e);
+	}
+
+	protected override void OnKeyDown(KeyEventArgs e)
+	{
+		if (e.KeyCode is Keys.Space or Keys.Enter)
+		{
+			Checked = !Checked;
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+		}
+
+		base.OnKeyDown(e);
+	}
+
 	protected override void OnClick(EventArgs e)
 	{
+		Focus();
 		Checked = !Checked;
 		base.OnClick(e);
 	}
-
 }

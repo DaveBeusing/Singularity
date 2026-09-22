@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Core.Qualification;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 
@@ -13,7 +14,7 @@ public sealed class QualificationReportGeneratorTests
 	public void Create_MapsFinalizedSessionAndValidation()
 	{
 		QualificationSession session = new();
-		session.Start(QualificationProfiles.Standard);
+		session.Start(QualificationProfiles.Standard, QualificationExecutionMode.Automated);
 		session.Complete(ValidationStatus.Warning);
 		ValidationResult validation = new()
 		{
@@ -25,6 +26,7 @@ public sealed class QualificationReportGeneratorTests
 		QualificationReport report = new QualificationReportGenerator().Create(session, validation);
 
 		Assert.Equal("Standard", report.Profile.Name);
+		Assert.Equal(QualificationExecutionMode.Automated, report.ExecutionMode);
 		Assert.Equal(ValidationStatus.Pass, report.CpuResult);
 		Assert.Equal(ValidationStatus.Warning, report.MemoryResult);
 		Assert.Equal(ValidationStatus.Warning, report.OverallResult);

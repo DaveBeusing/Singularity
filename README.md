@@ -15,10 +15,13 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 - Includes Quick, Standard, and Burn-in qualification profiles.
 - Evaluates CPU, memory, and GPU checks as PASS, WARNING, or FAIL.
 - Records qualification sessions with validation results and minimum, average, and maximum telemetry statistics.
-- Keeps the ten most recent sessions in an in-memory history.
+- Keeps the ten most recent sessions in a bounded in-memory history with frozen profile, run mode, result, telemetry statistics, and report evidence where available.
 - Runs automated qualification plans with dedicated and combined workload steps.
-- Exports qualification results as JSON or standalone HTML reports, including profile, validation, statistics, hardware inventory, and application version.
-- Uses a resizable editor-style WinForms shell with persistent Overview, Platform, Qualification, Results, and Reports workspaces, contextual navigation, optional inspector/tool regions, and a global status bar.
+- Exports the selected qualification report as JSON or standalone HTML, including profile, validation, statistics, hardware inventory, and application version.
+- Uses a resizable editor-style WinForms shell with persistent Overview, Platform, Qualification, Results, Reports, and Settings workspaces, contextual navigation, optional inspector/tool regions, and a global status bar.
+- Provides a dedicated Qualification workspace with state-aware commands, persistent-in-session configuration, current-session state, automated progress, failure feedback, contextual inspection, and live cached telemetry in the Tool Panel.
+- Presents the latest completed qualification evidence in Results and bounded selectable history with report preview/export in Reports.
+- Provides session-only Settings for sidebar, inspector, and tool-panel layout visibility without implying persistence across application restarts.
 - Caches platform inventory outside the UI lifecycle, supports explicit non-blocking refresh, and provides component-level Platform navigation with selection-driven device inspection.
 
 ## Repository Structure
@@ -131,10 +134,12 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 
 - [Architecture overview](docs/architecture/architecture.md)
 - [UI shell](docs/architecture/ui-shell.md)
+- [Results, Reports, and Settings workspaces](docs/architecture/results-reports-settings.md)
 - [Navigation and command model](docs/architecture/navigation-command-model.md)
 - [Telemetry design](docs/architecture/telemetry.md)
 - [Building](docs/development/building.md)
 - [Testing](docs/development/testing.md)
+- [Qualification workspace](docs/qualification/qualification-workspace.md)
 - [Qualification runner](docs/qualification/qualification-runner.md)
 - [Validation](docs/qualification/validation.md)
 - [Reporting](docs/qualification/reporting.md)

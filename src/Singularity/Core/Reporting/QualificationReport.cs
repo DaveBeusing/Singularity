@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 
 namespace Singularity.Core.Reporting;
@@ -17,6 +18,9 @@ public sealed class QualificationReport
 	public QualificationProfile Profile { get; init; } =
 		QualificationProfiles.Standard;
 
+	public QualificationExecutionMode ExecutionMode { get; init; } =
+		QualificationExecutionMode.Unknown;
+
 	public ValidationStatus CpuResult { get; init; } = ValidationStatus.Unknown;
 
 	public ValidationStatus MemoryResult { get; init; } = ValidationStatus.Unknown;
@@ -27,5 +31,4 @@ public sealed class QualificationReport
 
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
 		SessionTelemetryStatistics.Empty;
-
 }

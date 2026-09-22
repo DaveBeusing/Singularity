@@ -41,7 +41,7 @@ public sealed class QualificationCoordinator
 
 		workloadController.ResetFailure();
 		qualificationRunner.Reset();
-		PrepareSession(profile);
+		PrepareSession(profile, QualificationExecutionMode.Manual);
 		workloadController.Start(options);
 		return true;
 	}
@@ -56,7 +56,7 @@ public sealed class QualificationCoordinator
 
 		qualificationRunner.Reset();
 		QualificationPlan plan = QualificationPlan.CreateStandard(options, profile);
-		PrepareSession(profile);
+		PrepareSession(profile, QualificationExecutionMode.Automated);
 		automatedRunFinalized = false;
 		qualificationRunner.Start(plan);
 		return true;
@@ -71,11 +71,12 @@ public sealed class QualificationCoordinator
 			return true;
 		}
 
-		if (!workloadController.IsRunning && workloadController.Status.State != WorkloadState.Failed)
+		WorkloadState workloadState = workloadController.Status.State;
+		if (!workloadController.IsRunning && workloadState != WorkloadState.Failed)
 			return false;
 
 		workloadController.Stop();
-		FinalizeSession();
+		FinalizeSession(forceFailure: workloadState == WorkloadState.Failed);
 		return true;
 	}
 
@@ -96,6 +97,13 @@ public sealed class QualificationCoordinator
 		if (qualificationRunner.IsRunning)
 			qualificationRunner.Update(LastValidationResult);
 
+		if (Session.State == QualificationSessionState.Running &&
+			qualificationRunner.State == QualificationRunState.Idle &&
+			workloadController.Status.State == WorkloadState.Failed)
+		{
+			FinalizeSession(forceFailure: true);
+		}
+
 		if (!automatedRunFinalized &&
 			qualificationRunner.State is QualificationRunState.Completed or QualificationRunState.Failed)
 		{
@@ -104,12 +112,14 @@ public sealed class QualificationCoordinator
 		}
 	}
 
-	private void PrepareSession(QualificationProfile profile)
+	private void PrepareSession(
+		QualificationProfile profile,
+		QualificationExecutionMode executionMode)
 	{
 		LastValidationResult = null;
 		LastReport = null;
 		workloadValidator.Reset();
-		Session.Start(profile);
+		Session.Start(profile, executionMode);
 	}
 
 	private void FinalizeSession(bool forceFailure = false)
@@ -125,9 +135,10 @@ public sealed class QualificationCoordinator
 		if (!Session.CanBeRecorded)
 			return;
 
-		History.Add(Session);
-		if (LastValidationResult is not null)
-			LastReport = reportGenerator.Create(Session, LastValidationResult);
+		LastReport = LastValidationResult is null
+			? null
+			: reportGenerator.Create(Session, LastValidationResult);
+
+		History.Add(Session, LastReport);
 	}
 }
-
