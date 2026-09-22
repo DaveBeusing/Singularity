@@ -32,8 +32,6 @@ public sealed class PlatformInventoryState
 	public bool HasInventory => Current is not null;
 	public bool IsRefreshing => Status == PlatformInventoryStatus.Refreshing;
 
-	public event Action<PlatformInventoryState>? Changed;
-
 	public async Task<bool> RefreshAsync(CancellationToken cancellationToken = default)
 	{
 		if (!await refreshGate.WaitAsync(0, cancellationToken).ConfigureAwait(false))
@@ -43,8 +41,6 @@ public sealed class PlatformInventoryState
 		{
 			Status = PlatformInventoryStatus.Refreshing;
 			LastError = null;
-			Changed?.Invoke(this);
-
 			HardwareInventory inventory = await Task.Run(readInventory, cancellationToken).ConfigureAwait(false);
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -68,8 +64,6 @@ public sealed class PlatformInventoryState
 		}
 		finally
 		{
-			refreshGate.Release();
-			Changed?.Invoke(this);
-		}
+			refreshGate.Release();		}
 	}
 }
