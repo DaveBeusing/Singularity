@@ -6,7 +6,6 @@ using Singularity.Application;
 using Singularity.Application.Commands;
 using Singularity.Core.Reporting;
 using Singularity.Core.Workloads;
-using Singularity.Hardware.Models;
 using Singularity.Monitoring.Models;
 using Singularity.Monitoring.Runtime;
 using Singularity.UI.Controls;
@@ -43,6 +42,7 @@ public sealed class MainForm : Form
 	private ResultsInspectorView resultsInspectorView = null!;
 	private ReportsView reportsView = null!;
 	private ReportsInspectorView reportsInspectorView = null!;
+	private SettingsView settingsView = null!;
 
 	public MainForm(
 		QualificationCoordinator coordinator,
@@ -146,6 +146,7 @@ public sealed class MainForm : Form
 			resultsInspectorView = new ResultsInspectorView();
 			reportsView = new ReportsView();
 			reportsInspectorView = new ReportsInspectorView();
+			settingsView = new SettingsView();
 
 			shell.RegisterWorkspace(WorkspaceId.Overview, overviewView);
 			shell.RegisterWorkspace(WorkspaceId.Platform, platformView);
@@ -157,11 +158,7 @@ public sealed class MainForm : Form
 			shell.RegisterInspectorContent(WorkspaceId.Results, resultsInspectorView);
 			shell.RegisterWorkspace(WorkspaceId.Reports, reportsView);
 			shell.RegisterInspectorContent(WorkspaceId.Reports, reportsInspectorView);
-			shell.RegisterWorkspace(
-				WorkspaceId.Settings,
-				new WorkspacePlaceholderView(
-					"Settings",
-					"Application settings are prepared as a dedicated workspace. Domain-specific settings will be migrated when their ownership is defined."));
+			shell.RegisterWorkspace(WorkspaceId.Settings, settingsView);
 
 			Controls.Add(shell);
 
@@ -178,8 +175,14 @@ public sealed class MainForm : Form
 			overviewView.QualificationRequested += OpenQualification;
 			platformView.DeviceSelected += OnPlatformDeviceSelected;
 			reportsView.HistorySelectionRequested += OnHistorySelectionRequested;
+			settingsView.SidebarVisibilityChanged += shell.SetSidebarVisible;
+			settingsView.InspectorVisibilityChanged += shell.SetInspectorVisible;
+			settingsView.ToolPanelVisibilityChanged += shell.SetToolPanelVisible;
+			settingsView.ResetLayoutRequested += shell.ResetLayout;
+			shell.LayoutStateChanged += settingsView.UpdateState;
 			navigationService.ContextItemChanged += OnContextItemChanged;
 
+			settingsView.UpdateState(shell.LayoutState);
 			BindCommandButtons();
 			RenderInventoryState();
 			RenderQualificationState();
@@ -410,7 +413,15 @@ public sealed class MainForm : Form
 		};
 
 		shell.SetGlobalStatus(snapshot.OverallState, visualState);
+		shell.SetStatusDetails(
+			$"{snapshot.SessionProfile} • CPU {CompactTelemetry(snapshot.CpuTelemetry)} • RAM {CompactTelemetry(snapshot.MemoryTelemetry)} • GPU {CompactTelemetry(snapshot.GpuTelemetry)}");
 		commandRouter.RefreshStates();
+	}
+
+	private static string CompactTelemetry(string value)
+	{
+		int separator = value.IndexOf(" | ", StringComparison.Ordinal);
+		return separator < 0 ? value : value[..separator].Trim();
 	}
 
 	protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -434,6 +445,14 @@ public sealed class MainForm : Form
 				platformView.DeviceSelected -= OnPlatformDeviceSelected;
 			if (reportsView is not null)
 				reportsView.HistorySelectionRequested -= OnHistorySelectionRequested;
+			if (settingsView is not null && shell is not null)
+			{
+				settingsView.SidebarVisibilityChanged -= shell.SetSidebarVisible;
+				settingsView.InspectorVisibilityChanged -= shell.SetInspectorVisible;
+				settingsView.ToolPanelVisibilityChanged -= shell.SetToolPanelVisible;
+				settingsView.ResetLayoutRequested -= shell.ResetLayout;
+				shell.LayoutStateChanged -= settingsView.UpdateState;
+			}
 
 			qualificationWorkspaceController?.Dispose();
 
