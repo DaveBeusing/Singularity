@@ -60,6 +60,6 @@ public static class ResultsWorkspaceState
 			CpuStatus: report?.CpuResult ?? ValidationStatus.Unknown,
 			MemoryStatus: report?.MemoryResult ?? ValidationStatus.Unknown,
 			GpuStatus: report?.GpuResult ?? ValidationStatus.Unknown,
-			TelemetryStatistics: report?.TelemetryStatistics ?? SessionTelemetryStatistics.Empty);
+			TelemetryStatistics: report?.TelemetryStatistics ?? record.TelemetryStatistics);
 	}
 }
