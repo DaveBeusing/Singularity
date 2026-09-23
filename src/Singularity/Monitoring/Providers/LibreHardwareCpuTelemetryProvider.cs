@@ -162,7 +162,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 
 	private static ISensor? FindAnyCpuTemperatureSensor(Computer computer)
 	{
-		foreach (ISensor sensor in EnumerateSensors())
+		foreach (ISensor sensor in EnumerateSensors(computer))
 		{
 			if (sensor.SensorType != SensorType.Temperature)
 				continue;
