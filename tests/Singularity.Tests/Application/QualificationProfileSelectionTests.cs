@@ -32,6 +32,25 @@ public sealed class QualificationProfileSelectionTests
 	}
 
 	[Fact]
+	public void Workspace_CannotReplaceCanonicalBuiltInProfile()
+	{
+		QualificationProfile spoofedQuick = QualificationProfiles.Quick with
+		{
+			Name = "Changed",
+			CpuMinimumLoadPercent = 1
+		};
+		QualificationWorkspaceState state = new();
+
+		state.SetAvailableProfiles([spoofedQuick]);
+
+		QualificationProfile quick = state.AvailableProfiles.Single(
+			profile => profile.Id == QualificationProfiles.Quick.Id);
+		Assert.Equal("Quick", quick.Name);
+		Assert.Equal(75, quick.CpuMinimumLoadPercent);
+		Assert.True(quick.IsBuiltIn);
+	}
+
+	[Fact]
 	public void Workspace_WhenSelectedCustomProfileIsRemoved_FallsBackToStandard()
 	{
 		QualificationProfile custom = QualificationProfiles.Standard with

@@ -141,22 +141,20 @@ public sealed class QualificationWorkspaceState
 	{
 		ArgumentNullException.ThrowIfNull(profiles);
 
-		QualificationProfile[] validProfiles = profiles
-			.Where(profile => QualificationProfileValidator.Validate(profile).IsValid)
+		QualificationProfile[] validCustomProfiles = profiles
+			.Where(profile =>
+				profile.Origin == QualificationProfileOrigin.Custom &&
+				!QualificationProfiles.IsBuiltInId(profile.Id) &&
+				QualificationProfileValidator.Validate(profile).IsValid)
 			.GroupBy(profile => profile.Id, StringComparer.Ordinal)
 			.Select(group => group.First().Snapshot())
 			.ToArray();
 
-		foreach (QualificationProfile builtIn in QualificationProfiles.All)
-		{
-			if (!validProfiles.Any(profile =>
-				string.Equals(profile.Id, builtIn.Id, StringComparison.Ordinal)))
-			{
-				validProfiles = validProfiles.Append(builtIn.Snapshot()).ToArray();
-			}
-		}
-
-		availableProfiles = Array.AsReadOnly(validProfiles);
+		availableProfiles = Array.AsReadOnly(
+			QualificationProfiles.All
+				.Select(profile => profile.Snapshot())
+				.Concat(validCustomProfiles)
+				.ToArray());
 		QualificationProfile? selected = availableProfiles.FirstOrDefault(
 			profile => string.Equals(
 				profile.Id,
