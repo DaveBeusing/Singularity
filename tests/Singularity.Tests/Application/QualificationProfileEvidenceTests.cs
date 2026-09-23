@@ -37,10 +37,12 @@ public sealed class QualificationProfileEvidenceTests
 			};
 
 			using (QualificationArchiveService writer = new(path))
-				await writer.SaveAsync(record);
+			{
+				await writer.SaveAsync(record, TestContext.Current.CancellationToken);
+			}
 
 			using QualificationArchiveService reader = new(path);
-			await reader.LoadAsync();
+			await reader.LoadAsync(TestContext.Current.CancellationToken);
 
 			QualificationRecord loaded = Assert.Single(reader.Records);
 			Assert.Equal(profile.Id, loaded.Profile.Id);
