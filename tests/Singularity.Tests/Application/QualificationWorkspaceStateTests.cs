@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using System.Globalization;
+
 using Singularity.Application;
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
@@ -265,7 +267,8 @@ public sealed class QualificationWorkspaceStateTests
 			});
 
 		Assert.False(snapshot.RequiredTelemetryUnavailable);
-		Assert.StartsWith("73.0 %", snapshot.GpuTelemetry, StringComparison.Ordinal);
+		string expectedLoad = 73d.ToString("0.0", CultureInfo.CurrentCulture);
+		Assert.StartsWith($"{expectedLoad} %", snapshot.GpuTelemetry, StringComparison.Ordinal);
 		Assert.Equal("GPU-B", snapshot.Configuration.SelectedGpuIdentifier);
 	}
 
