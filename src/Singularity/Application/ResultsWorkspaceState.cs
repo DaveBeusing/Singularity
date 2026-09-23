@@ -20,6 +20,7 @@ public sealed record ResultsWorkspaceSnapshot(
 	ValidationStatus MemoryStatus,
 	ValidationStatus GpuStatus,
 	SessionTelemetryStatistics TelemetryStatistics,
+	QualificationTelemetryTimeline TelemetryTimeline,
 	IReadOnlyList<GpuQualificationEvidence> GpuEvidence)
 {
 	public static ResultsWorkspaceSnapshot Empty { get; } = new(
@@ -34,6 +35,7 @@ public sealed record ResultsWorkspaceSnapshot(
 		MemoryStatus: ValidationStatus.Unknown,
 		GpuStatus: ValidationStatus.Unknown,
 		TelemetryStatistics: SessionTelemetryStatistics.Empty,
+		TelemetryTimeline: QualificationTelemetryTimeline.Empty,
 		GpuEvidence: Array.Empty<GpuQualificationEvidence>());
 }
 
@@ -69,6 +71,7 @@ public static class ResultsWorkspaceState
 			MemoryStatus: report?.MemoryResult ?? ValidationStatus.Unknown,
 			GpuStatus: report?.GpuResult ?? ValidationStatus.Unknown,
 			TelemetryStatistics: report?.TelemetryStatistics ?? record.TelemetryStatistics,
+			TelemetryTimeline: report?.TelemetryTimeline ?? record.TelemetryTimeline,
 			GpuEvidence: report?.GpuEvidence ?? record.GpuEvidence);
 	}
 }
