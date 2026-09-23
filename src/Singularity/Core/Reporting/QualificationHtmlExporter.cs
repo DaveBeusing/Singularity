@@ -34,14 +34,14 @@ public sealed class QualificationHtmlExporter
 </head>
 <body><main class="page">
 """);
-		html.Append("<header><h1>//Singularity<span>✦</span></h1><div class="subtitle">Platform Qualification Report · ")
+		html.Append("<header><h1>//Singularity<span>✦</span></h1><div class='subtitle'>Platform Qualification Report · ")
 			.Append(H(document.SingularityVersion)).Append("</div></header>");
 		AppendSession(html, document);
 		AppendValidation(html, document.Validation);
 		AppendGpuEvidence(html, document.GpuEvidence);
 		AppendTelemetry(html, document.TelemetryStatistics);
 		AppendHardware(html, document.Hardware);
-		html.Append("<div class="footer">Schema ").Append(H(document.SchemaVersion))
+		html.Append("<div class='footer'>Schema ").Append(H(document.SchemaVersion))
 			.Append(" · Generated ").Append(H(document.Timestamp.ToString("O", CultureInfo.InvariantCulture)))
 			.Append("</div></main></body></html>");
 		return html.ToString();
@@ -56,11 +56,11 @@ public sealed class QualificationHtmlExporter
 	private static void AppendSession(StringBuilder html, QualificationJsonDocument document)
 	{
 		QualificationProfile profile = document.QualificationProfile;
-		html.Append("<div class="grid"><section class="card"><h2>SESSION</h2><dl>")
+		html.Append("<div class='grid'><section class='card'><h2>SESSION</h2><dl>")
 			.Append(Row("Timestamp", document.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)))
-			.Append(Row("Duration", document.SessionDuration.ToString(@"hh:mm:ss")))
+			.Append(Row("Duration", document.SessionDuration.ToString(@"hh\:mm\:ss")))
 			.Append(Row("Profile", profile.Name)).Append("</dl></section>")
-			.Append("<section class="card"><h2>PROFILE</h2><dl>")
+			.Append("<section class='card'><h2>PROFILE</h2><dl>")
 			.Append(Row("CPU minimum", $"{profile.CpuMinimumLoadPercent:0}%"))
 			.Append(Row("Memory tolerance", $"{profile.MemoryAllocationTolerancePercent:0}%"))
 			.Append(Row("GPU minimum", $"{profile.GpuMinimumLoadPercent:0}%"))
@@ -70,7 +70,7 @@ public sealed class QualificationHtmlExporter
 
 	private static void AppendValidation(StringBuilder html, QualificationValidationJson validation)
 	{
-		html.Append("<section class="card wide" style="margin-top:16px"><h2>VALIDATION</h2><div class="results">");
+		html.Append("<section class='card wide' style='margin-top:16px'><h2>VALIDATION</h2><div class='results'>");
 		AppendResult(html, "CPU", validation.Cpu);
 		AppendResult(html, "MEMORY", validation.Memory);
 		AppendResult(html, "GPU", validation.Gpu);
@@ -81,7 +81,7 @@ public sealed class QualificationHtmlExporter
 	private static void AppendResult(StringBuilder html, string name, ValidationStatus status)
 	{
 		string value = status.ToString().ToUpperInvariant();
-		html.Append("<div class="result ").Append(value.ToLowerInvariant()).Append(""><span class="muted">")
+		html.Append("<div class='result ").Append(value.ToLowerInvariant()).Append("'><span class='muted'>")
 			.Append(name).Append("</span><strong>").Append(value).Append("</strong></div>");
 	}
 
@@ -92,12 +92,12 @@ public sealed class QualificationHtmlExporter
 		if (evidence.Count == 0)
 			return;
 
-		html.Append("<section class="card wide" style="margin-top:16px"><h2>GPU DEVICE EVIDENCE</h2><div class="gpu-grid">");
+		html.Append("<section class='card wide' style='margin-top:16px'><h2>GPU DEVICE EVIDENCE</h2><div class='gpu-grid'>");
 		foreach (GpuQualificationEvidenceJson gpu in evidence)
 		{
 			string status = gpu.Validation.ToString().ToLowerInvariant();
-			html.Append("<article class="gpu-card ").Append(status).Append(""><h3>")
-				.Append(H(gpu.Name)).Append("</h3><div class="identifier">")
+			html.Append("<article class='gpu-card ").Append(status).Append("'><h3>")
+				.Append(H(gpu.Name)).Append("</h3><div class='identifier'>")
 				.Append(H(gpu.Identifier)).Append("</div><dl>")
 				.Append(Row("Validation", gpu.Validation.ToString().ToUpperInvariant()))
 				.Append(Row("Message", gpu.ValidationMessage))
@@ -116,7 +116,7 @@ public sealed class QualificationHtmlExporter
 
 	private static void AppendTelemetry(StringBuilder html, SessionTelemetryStatistics statistics)
 	{
-		html.Append("<section class="card wide" style="margin-top:16px"><h2>SESSION TELEMETRY</h2><table><thead><tr><th>Metric</th><th>Min</th><th>Average</th><th>Max</th><th>Samples</th></tr></thead><tbody>");
+		html.Append("<section class='card wide' style='margin-top:16px'><h2>SESSION TELEMETRY</h2><table><thead><tr><th>Metric</th><th>Min</th><th>Average</th><th>Max</th><th>Samples</th></tr></thead><tbody>");
 		AppendMetric(html, "CPU load", statistics.CpuLoadPercent, "%");
 		AppendMetric(html, "GPU load (single-GPU compatibility)", statistics.GpuLoadPercent, "%");
 		AppendMetric(html, "GPU temperature (single-GPU compatibility)", statistics.GpuTemperatureCelsius, "°C");
@@ -130,9 +130,10 @@ public sealed class QualificationHtmlExporter
 	{
 		if (metric is null)
 		{
-			html.Append("<tr><td>").Append(H(name)).Append("</td><td colspan="4">Unavailable</td></tr>");
+			html.Append("<tr><td>").Append(H(name)).Append("</td><td colspan='4'>Unavailable</td></tr>");
 			return;
 		}
+
 		html.Append("<tr><td>").Append(H(name)).Append("</td><td>").Append(Number(metric.Minimum, unit))
 			.Append("</td><td>").Append(Number(metric.Average, unit)).Append("</td><td>")
 			.Append(Number(metric.Maximum, unit)).Append("</td><td>").Append(metric.SampleCount).Append("</td></tr>");
@@ -140,11 +141,11 @@ public sealed class QualificationHtmlExporter
 
 	private static void AppendHardware(StringBuilder html, HardwareSummaryJson hardware)
 	{
-		html.Append("<div class="grid"><section class="card"><h2>MACHINE</h2><dl>")
+		html.Append("<div class='grid'><section class='card'><h2>MACHINE</h2><dl>")
 			.Append(Row("Computer", hardware.ComputerName)).Append(Row("Operating system", hardware.OperatingSystem))
 			.Append(Row("Mainboard", hardware.Mainboard)).Append(Row("Processor", hardware.Processor))
 			.Append(Row("CPU topology", $"{hardware.ProcessorCores} cores / {hardware.ProcessorThreads} threads"))
-			.Append("</dl></section><section class="card"><h2>DEVICES</h2><ul class="list">");
+			.Append("</dl></section><section class='card'><h2>DEVICES</h2><ul class='list'>");
 		foreach (GpuSummaryJson gpu in hardware.Gpus)
 			html.Append("<li>").Append(H($"{gpu.Name} · {gpu.Vram} · {gpu.PcieLink} · {gpu.Identifier}")).Append("</li>");
 		foreach (string memory in hardware.MemoryModules)
