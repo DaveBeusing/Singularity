@@ -55,6 +55,8 @@ public sealed class QualificationArchiveServiceTests
 		Assert.Equal(2, actual.GpuEvidence.Count);
 		Assert.Equal(["GPU-0", "GPU-1"], actual.GpuEvidence.Select(item => item.Identifier));
 		Assert.Equal(2, actual.TelemetryStatistics.Gpus.Count);
+		Assert.Equal(2, actual.TelemetryTimeline.Points.Count);
+		Assert.Null(actual.TelemetryTimeline.Points[1].Gpus[0].PowerWatts);
 	}
 
 	[Fact]
@@ -85,6 +87,23 @@ public sealed class QualificationArchiveServiceTests
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.Empty(archive.Records);
 		Assert.NotNull(archive.LastError);
+	}
+
+	[Fact]
+	public async Task LoadAsync_WhenArchiveUsesSchemaVersionOne_MigratesMissingTimelineAsEmpty()
+	{
+		using TemporaryDirectory temporary = new();
+		await File.WriteAllTextAsync(
+			temporary.ArchivePath,
+			"{\"schemaVersion\":1,\"records\":[]}",
+			TestContext.Current.CancellationToken);
+
+		using QualificationArchiveService archive = new(temporary.ArchivePath);
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(QualificationArchiveState.Ready, archive.State);
+		Assert.Empty(archive.Records);
+		Assert.Null(archive.LastError);
 	}
 
 	[Fact]
@@ -258,6 +277,7 @@ public sealed class QualificationArchiveServiceTests
 				GpuResult = ValidationStatus.Pass,
 				OverallResult = ValidationStatus.Pass,
 				TelemetryStatistics = telemetry,
+				TelemetryTimeline = CreateTimeline(),
 				GpuEvidence = Array.AsReadOnly(gpuEvidence)
 			}
 			: null;
@@ -271,8 +291,58 @@ public sealed class QualificationArchiveServiceTests
 			ExecutionMode = QualificationExecutionMode.Automated,
 			ProfileName = QualificationProfiles.Standard.Name,
 			TelemetryStatistics = telemetry,
+			TelemetryTimeline = CreateTimeline(),
 			GpuEvidence = Array.AsReadOnly(gpuEvidence),
 			Report = report
+		};
+	}
+
+	private static QualificationTelemetryTimeline CreateTimeline()
+	{
+		return new QualificationTelemetryTimeline
+		{
+			SamplingInterval = TimeSpan.FromSeconds(1),
+			Points =
+			[
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.Zero,
+					CpuLoadPercent = 80,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-0",
+							Name = "GPU 0",
+							LoadPercent = 80,
+							PowerWatts = 120
+						}
+					]
+				},
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.FromSeconds(1),
+					CpuLoadPercent = 90,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-0",
+							Name = "GPU 0",
+							LoadPercent = 90
+						}
+					]
+				}
+			],
+			Events =
+			[
+				new QualificationTimelineEvent
+				{
+					Elapsed = TimeSpan.Zero,
+					Kind = QualificationTimelineEventKind.Start,
+					Label = "Qualification started"
+				}
+			]
 		};
 	}
 
