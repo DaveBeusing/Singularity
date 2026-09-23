@@ -9,8 +9,9 @@ Results always derives from the newest completed record in the bounded `Qualific
 - overall PASS/WARNING/FAIL state with a text label and semantic color;
 - profile and manual/automated execution mode;
 - start, finish, and duration metadata;
-- CPU, memory, and GPU validation states;
-- frozen CPU, system-memory, GPU, temperature, power, and VRAM statistics where available.
+- CPU, memory, and derived GPU validation states;
+- one evidence card per selected GPU with stable identity and per-device validation;
+- frozen CPU/system-memory statistics plus per-GPU load, temperature, power, VRAM, and telemetry-gap statistics where available.
 
 No completed record produces an explicit empty state. Missing telemetry or validation evidence remains unavailable/unknown and is never converted into a numeric zero.
 
@@ -20,7 +21,7 @@ Results does not own a second qualification model. It maps the existing history/
 
 Reports consumes the same bounded in-memory history. The left history surface selects a record; the central surface and inspector render that selection. A new completed record becomes the selected entry automatically.
 
-A history record retains the generated `QualificationReport` when one exists. JSON and HTML export are routed through the existing `ReportExportService` and act on the selected report. Export is disabled unless both report evidence and current platform inventory are available.
+A history record retains frozen per-device GPU evidence and the generated `QualificationReport` when one exists. The report preview renders each selected GPU separately. JSON and HTML export are routed through the existing `ReportExportService` and act on the selected report. Export is disabled unless both report evidence and current platform inventory are available.
 
 History remains capped at ten entries and is intentionally not persisted across application restarts.
 
