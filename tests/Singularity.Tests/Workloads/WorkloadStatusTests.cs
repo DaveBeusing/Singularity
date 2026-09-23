@@ -20,4 +20,27 @@ public sealed class WorkloadStatusTests
 
 		Assert.Equal(expected, status.IsRunning);
 	}
+
+	[Fact]
+	public void ResolveSelectedGpuIdentifiers_PreservesMultiDeviceSelection()
+	{
+		WorkloadStatus status = new()
+		{
+			SelectedGpuIdentifier = "GPU-LEGACY",
+			SelectedGpuIdentifiers = ["GPU-A", "GPU-B"]
+		};
+
+		Assert.Equal(["GPU-A", "GPU-B"], status.ResolveSelectedGpuIdentifiers());
+	}
+
+	[Fact]
+	public void WorkloadOptions_UsesSingleGpuCompatibilitySelectionWhenNeeded()
+	{
+		WorkloadOptions options = new()
+		{
+			SelectedGpuIdentifier = "GPU-A"
+		};
+
+		Assert.Equal(["GPU-A"], options.ResolveSelectedGpuIdentifiers());
+	}
 }

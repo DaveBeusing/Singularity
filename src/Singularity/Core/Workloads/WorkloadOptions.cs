@@ -15,5 +15,31 @@ public sealed class WorkloadOptions
 	public int CpuThreads { get; set; }
 	public int MemoryGb { get; set; }
 	public int GpuLoadPercent { get; set; }
+
+	/// <summary>
+	/// Compatibility property for callers that target exactly one GPU.
+	/// Multi-GPU callers should use <see cref="SelectedGpuIdentifiers"/>.
+	/// </summary>
 	public string? SelectedGpuIdentifier { get; set; }
+
+	/// <summary>
+	/// Stable GPU identifiers to exercise during this workload run.
+	/// </summary>
+	public IReadOnlyList<string> SelectedGpuIdentifiers { get; set; } =
+		Array.Empty<string>();
+
+	public IReadOnlyList<string> ResolveSelectedGpuIdentifiers()
+	{
+		IEnumerable<string> source = SelectedGpuIdentifiers.Count > 0
+			? SelectedGpuIdentifiers
+			: string.IsNullOrWhiteSpace(SelectedGpuIdentifier)
+				? Array.Empty<string>()
+				: [SelectedGpuIdentifier];
+
+		return Array.AsReadOnly(
+			source
+				.Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToArray());
+	}
 }

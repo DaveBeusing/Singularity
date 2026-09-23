@@ -37,6 +37,25 @@ public sealed class QualificationPlanTests
 	}
 
 	[Fact]
+	public void CreateStandard_PreservesMultiGpuSelectionInGpuSteps()
+	{
+		WorkloadOptions options = new()
+		{
+			EnableGpuWorkload = true,
+			GpuLoadPercent = 90,
+			SelectedGpuIdentifiers = ["GPU-A", "GPU-B"]
+		};
+
+		QualificationPlan plan = QualificationPlan.CreateStandard(
+			options,
+			QualificationProfiles.Quick);
+
+		WorkloadOptions gpuStep = Assert.Single(plan.Steps).Workload;
+		Assert.Equal(["GPU-A", "GPU-B"], gpuStep.SelectedGpuIdentifiers);
+		Assert.Null(gpuStep.SelectedGpuIdentifier);
+	}
+
+	[Fact]
 	public void CreateStandard_RejectsEmptySelection()
 	{
 		WorkloadOptions options = new();

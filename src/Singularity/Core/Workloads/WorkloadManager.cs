@@ -6,9 +6,12 @@ namespace Singularity.Core.Workloads;
 
 public sealed class WorkloadManager : IWorkloadController, IDisposable
 {
+	private const string DefaultGpuWorkerKey = "__default__";
+
 	private readonly CpuStressWorker cpuStressWorker = new();
 	private readonly MemoryStressWorker memoryStressWorker = new();
-	private readonly GpuStressWorker gpuStressWorker = new();
+	private readonly Dictionary<string, GpuStressWorker> gpuStressWorkers =
+		new(StringComparer.OrdinalIgnoreCase);
 
 	private WorkloadState state = WorkloadState.Stopped;
 	private string message = "Ready";
@@ -19,7 +22,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	private int cpuThreads;
 	private int memoryGb;
 	private int gpuLoadPercent;
-	private string? selectedGpuIdentifier;
+	private IReadOnlyList<string> selectedGpuIdentifiers = Array.Empty<string>();
 
 	public bool IsRunning
 	{
@@ -44,7 +47,11 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 				CpuThreads = cpuThreads,
 				MemoryGb = memoryGb,
 				GpuLoadPercent = gpuLoadPercent,
-				SelectedGpuIdentifier = selectedGpuIdentifier,
+				SelectedGpuIdentifier = selectedGpuIdentifiers.Count == 1
+					? selectedGpuIdentifiers[0]
+					: null,
+				SelectedGpuIdentifiers = selectedGpuIdentifiers,
+				GpuDevices = CreateGpuDeviceStatuses(),
 				MemoryAllocatedMb = memoryStressWorker.AllocatedMegabytes,
 				Message = message
 			};
@@ -57,6 +64,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 
 		if (IsRunning)
 			return;
+
 		state = WorkloadState.Starting;
 		message = "Starting";
 		cpuEnabled = options.EnableCpuWorkload;
@@ -65,7 +73,8 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		cpuThreads = options.CpuThreads;
 		memoryGb = options.MemoryGb;
 		gpuLoadPercent = options.GpuLoadPercent;
-		selectedGpuIdentifier = options.SelectedGpuIdentifier;
+		selectedGpuIdentifiers = options.ResolveSelectedGpuIdentifiers();
+
 		try
 		{
 			if (cpuEnabled)
@@ -73,14 +82,14 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 			if (memoryEnabled)
 				memoryStressWorker.Start(memoryGb);
 			if (gpuEnabled)
-				gpuStressWorker.Start(gpuLoadPercent, selectedGpuIdentifier);
+				StartGpuWorkers();
 
 			state = gpuEnabled ? WorkloadState.Starting : WorkloadState.Running;
 			message = BuildRunningMessage();
 		}
 		catch (Exception ex)
 		{
-			Stop();
+			StopWorkers();
 			state = WorkloadState.Failed;
 			message = ex.Message;
 		}
@@ -90,28 +99,72 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	{
 		if (state == WorkloadState.Stopped)
 			return;
+
 		state = WorkloadState.Stopping;
 		message = "Stopping";
-		cpuStressWorker.Stop();
-		memoryStressWorker.Stop();
-		gpuStressWorker.Stop();
+		StopWorkers();
 		state = WorkloadState.Stopped;
 		message = "Ready";
-		cpuEnabled = false;
-		memoryEnabled = false;
-		gpuEnabled = false;
-		cpuThreads = 0;
-		memoryGb = 0;
-		gpuLoadPercent = 0;
-		selectedGpuIdentifier = null;
+		ResetConfiguration();
 	}
 
 	public void ResetFailure()
 	{
 		if (state != WorkloadState.Failed)
 			return;
+
 		state = WorkloadState.Stopped;
 		message = "Ready";
+		ResetConfiguration();
+	}
+
+	private void StartGpuWorkers()
+	{
+		StopGpuWorkers();
+
+		if (selectedGpuIdentifiers.Count == 0)
+		{
+			GpuStressWorker defaultWorker = new();
+			gpuStressWorkers.Add(DefaultGpuWorkerKey, defaultWorker);
+			defaultWorker.Start(gpuLoadPercent);
+			return;
+		}
+
+		foreach (string identifier in selectedGpuIdentifiers)
+		{
+			GpuStressWorker worker = new();
+			gpuStressWorkers.Add(identifier, worker);
+			worker.Start(gpuLoadPercent, identifier);
+		}
+	}
+
+	private void StopWorkers()
+	{
+		cpuStressWorker.Stop();
+		memoryStressWorker.Stop();
+		StopGpuWorkers();
+	}
+
+	private void StopGpuWorkers()
+	{
+		foreach (GpuStressWorker worker in gpuStressWorkers.Values)
+		{
+			worker.Stop();
+			worker.Dispose();
+		}
+
+		gpuStressWorkers.Clear();
+	}
+
+	private void ResetConfiguration()
+	{
+		cpuEnabled = false;
+		memoryEnabled = false;
+		gpuEnabled = false;
+		cpuThreads = 0;
+		memoryGb = 0;
+		gpuLoadPercent = 0;
+		selectedGpuIdentifiers = Array.Empty<string>();
 	}
 
 	private string BuildRunningMessage()
@@ -122,16 +175,23 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		if (memoryEnabled)
 			parts.Add($"RAM {memoryGb}GB");
 		if (gpuEnabled)
-			parts.Add($"GPU {gpuLoadPercent}%");
+		{
+			string gpuTarget = selectedGpuIdentifiers.Count > 1
+				? $"GPU x{selectedGpuIdentifiers.Count} {gpuLoadPercent}%"
+				: $"GPU {gpuLoadPercent}%";
+			parts.Add(gpuTarget);
+		}
+
 		return parts.Count == 0 ? "No workload selected" : string.Join(" | ", parts);
 	}
 
 	public void Dispose()
 	{
-		Stop();
+		StopWorkers();
 		cpuStressWorker.Dispose();
 		memoryStressWorker.Dispose();
-		gpuStressWorker.Dispose();
+		state = WorkloadState.Stopped;
+		ResetConfiguration();
 	}
 
 	private void RefreshGpuState()
@@ -139,20 +199,59 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		if (!gpuEnabled || state is WorkloadState.Stopped or WorkloadState.Stopping or WorkloadState.Failed)
 			return;
 
-		if (gpuStressWorker.Failure is Exception failure)
+		foreach ((string key, GpuStressWorker worker) in gpuStressWorkers)
 		{
+			if (worker.Failure is not Exception failure)
+				continue;
+
 			cpuStressWorker.Stop();
 			memoryStressWorker.Stop();
-			gpuStressWorker.Stop();
+			StopGpuWorkers();
 			state = WorkloadState.Failed;
-			message = failure.Message;
+			message = key == DefaultGpuWorkerKey
+				? failure.Message
+				: $"GPU {key} failed: {failure.Message}";
 			return;
 		}
 
-		if (state == WorkloadState.Starting && gpuStressWorker.IsReady)
+		if (state == WorkloadState.Starting &&
+			gpuStressWorkers.Count > 0 &&
+			gpuStressWorkers.Values.All(worker => worker.IsReady))
 		{
 			state = WorkloadState.Running;
 			message = BuildRunningMessage();
 		}
+	}
+
+	private IReadOnlyList<GpuWorkloadDeviceStatus> CreateGpuDeviceStatuses()
+	{
+		if (!gpuEnabled || selectedGpuIdentifiers.Count == 0)
+			return Array.Empty<GpuWorkloadDeviceStatus>();
+
+		GpuWorkloadDeviceStatus[] statuses = new GpuWorkloadDeviceStatus[selectedGpuIdentifiers.Count];
+		for (int index = 0; index < selectedGpuIdentifiers.Count; index++)
+		{
+			string identifier = selectedGpuIdentifiers[index];
+			if (!gpuStressWorkers.TryGetValue(identifier, out GpuStressWorker? worker))
+			{
+				statuses[index] = new GpuWorkloadDeviceStatus(
+					identifier,
+					state == WorkloadState.Failed ? WorkloadState.Failed : WorkloadState.Stopped,
+					state == WorkloadState.Failed ? message : "Stopped");
+				continue;
+			}
+
+			WorkloadState deviceState = worker.Failure is not null
+				? WorkloadState.Failed
+				: worker.IsReady
+					? WorkloadState.Running
+					: WorkloadState.Starting;
+			statuses[index] = new GpuWorkloadDeviceStatus(
+				identifier,
+				deviceState,
+				worker.Failure?.Message ?? (worker.IsReady ? "Running" : "Starting"));
+		}
+
+		return Array.AsReadOnly(statuses);
 	}
 }
