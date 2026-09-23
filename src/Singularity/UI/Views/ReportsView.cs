@@ -108,6 +108,7 @@ public sealed class ReportsView : Panel
 			Dock = DockStyle.Fill,
 			Orientation = Orientation.Vertical,
 			SplitterWidth = ThemeMetrics.SplitterWidth,
+			Width = ThemeMetrics.MinimumWorkspaceWidth,
 			SplitterDistance = 260,
 			Panel1MinSize = 180,
 			Panel2MinSize = 240,
