@@ -325,6 +325,7 @@ public sealed class QualificationArchiveService : IDisposable
 	private static bool IsArchiveFailure(Exception exception)
 	{
 		return exception is IOException
+			or InvalidDataException
 			or UnauthorizedAccessException
 			or JsonException
 			or NotSupportedException
