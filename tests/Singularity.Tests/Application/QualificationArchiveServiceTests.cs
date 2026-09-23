@@ -100,7 +100,7 @@ public sealed class QualificationArchiveServiceTests
 
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.Empty(archive.Records);
-		Assert.Contains("Unsupported", archive.LastError);
+		Assert.Contains("Unsupported", archive.LastError ?? string.Empty);
 	}
 
 	[Fact]
