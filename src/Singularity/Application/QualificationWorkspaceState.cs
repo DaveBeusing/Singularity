@@ -114,6 +114,7 @@ public sealed record QualificationWorkspaceSnapshot(
 	string MemoryTelemetry,
 	string GpuTelemetry,
 	bool RequiredTelemetryUnavailable,
+	IReadOnlyList<QualificationProfile> AvailableProfiles,
 	IReadOnlyList<QualificationGpuOption> AvailableGpus,
 	string SelectedGpu,
 	QualificationFeedback? Feedback);
@@ -124,6 +125,8 @@ public sealed class QualificationWorkspaceState
 	private bool gpuSelectionReviewRequired;
 	private IReadOnlyList<QualificationGpuOption> availableGpus =
 		Array.Empty<QualificationGpuOption>();
+	private IReadOnlyList<QualificationProfile> availableProfiles =
+		QualificationProfiles.All.Select(profile => profile.Snapshot()).ToArray();
 
 	public QualificationConfiguration Configuration { get; private set; } =
 		QualificationConfiguration.Default;
@@ -132,6 +135,46 @@ public sealed class QualificationWorkspaceState
 		QualificationMode.None;
 
 	public IReadOnlyList<QualificationGpuOption> AvailableGpus => availableGpus;
+	public IReadOnlyList<QualificationProfile> AvailableProfiles => availableProfiles;
+
+	public void SetAvailableProfiles(IReadOnlyList<QualificationProfile> profiles)
+	{
+		ArgumentNullException.ThrowIfNull(profiles);
+
+		QualificationProfile[] validProfiles = profiles
+			.Where(profile => QualificationProfileValidator.Validate(profile).IsValid)
+			.GroupBy(profile => profile.Id, StringComparer.Ordinal)
+			.Select(group => group.First().Snapshot())
+			.ToArray();
+
+		foreach (QualificationProfile builtIn in QualificationProfiles.All)
+		{
+			if (!validProfiles.Any(profile =>
+				string.Equals(profile.Id, builtIn.Id, StringComparison.Ordinal)))
+			{
+				validProfiles = validProfiles.Append(builtIn.Snapshot()).ToArray();
+			}
+		}
+
+		availableProfiles = Array.AsReadOnly(validProfiles);
+		QualificationProfile? selected = availableProfiles.FirstOrDefault(
+			profile => string.Equals(
+				profile.Id,
+				Configuration.Profile.Id,
+				StringComparison.Ordinal));
+
+		if (selected is not null)
+		{
+			Configuration = Configuration with { Profile = selected.Snapshot() };
+		}
+		else
+		{
+			Configuration = Configuration with { Profile = QualificationProfiles.Standard.Snapshot() };
+			explicitFeedback = new QualificationFeedback(
+				QualificationFeedbackLevel.Warning,
+				"The previously selected qualification profile is no longer available. Standard was selected.");
+		}
+	}
 
 	public void SetAvailableGpus(IReadOnlyList<GpuInventory> gpus)
 	{
@@ -228,6 +271,17 @@ public sealed class QualificationWorkspaceState
 
 	public string? ValidateConfiguration()
 	{
+		QualificationProfileValidationResult profileValidation =
+			QualificationProfileValidator.Validate(Configuration.Profile);
+		if (!profileValidation.IsValid)
+			return $"Qualification profile is invalid: {string.Join(" ", profileValidation.Errors)}";
+
+		if (!availableProfiles.Any(profile =>
+			string.Equals(profile.Id, Configuration.Profile.Id, StringComparison.Ordinal)))
+		{
+			return "The selected qualification profile is no longer available.";
+		}
+
 		if (!Configuration.HasSelectedWorkload)
 			return "Select at least one workload before starting qualification.";
 
@@ -321,6 +375,7 @@ public sealed class QualificationWorkspaceState
 			BuildMemoryTelemetry(telemetry),
 			BuildGpuTelemetry(telemetry, selectedIdentifiers, selectedTelemetry),
 			requiredTelemetryUnavailable,
+			availableProfiles,
 			availableGpus,
 			BuildSelectedGpuDisplay(selectedIdentifiers),
 			feedback);
@@ -333,6 +388,10 @@ public sealed class QualificationWorkspaceState
 	{
 		IReadOnlyList<string> selectedIdentifiers =
 			Configuration.ResolveSelectedGpuIdentifiers();
+		bool profileValid =
+			QualificationProfileValidator.Validate(Configuration.Profile).IsValid &&
+			availableProfiles.Any(profile =>
+				string.Equals(profile.Id, Configuration.Profile.Id, StringComparison.Ordinal));
 		bool gpuSelectionValid =
 			!Configuration.EnableGpuWorkload ||
 			(selectedIdentifiers.Count > 0 &&
@@ -341,6 +400,7 @@ public sealed class QualificationWorkspaceState
 				 selectedIdentifiers).Count == selectedIdentifiers.Count);
 
 		return Configuration.HasSelectedWorkload &&
+			profileValid &&
 			gpuSelectionValid &&
 			!gpuSelectionReviewRequired &&
 			session.State != QualificationSessionState.Running &&
