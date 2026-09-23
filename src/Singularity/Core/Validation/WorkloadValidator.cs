@@ -92,6 +92,7 @@ public sealed class WorkloadValidator
 					LegacyGpuKey,
 					string.Empty,
 					telemetry.FindGpuTelemetry(null),
+					deviceWorkload: null,
 					explicitSelection: false,
 					workload.State,
 					telemetry,
@@ -108,10 +109,16 @@ public sealed class WorkloadValidator
 				for (int index = 0; index < selectedIdentifiers.Count; index++)
 				{
 					string identifier = selectedIdentifiers[index];
+					GpuWorkloadDeviceStatus? deviceWorkload = workload.GpuDevices.FirstOrDefault(
+						device => string.Equals(
+							device.Identifier,
+							identifier,
+							StringComparison.OrdinalIgnoreCase));
 					results[index] = ValidateGpu(
 						identifier,
 						identifier,
 						telemetry.FindGpuTelemetry(identifier),
+						deviceWorkload,
 						explicitSelection: true,
 						workload.State,
 						telemetry,
@@ -146,6 +153,7 @@ public sealed class WorkloadValidator
 		string key,
 		string identifier,
 		GpuTelemetrySnapshot? selectedGpu,
+		GpuWorkloadDeviceStatus? deviceWorkload,
 		bool explicitSelection,
 		WorkloadState workloadState,
 		SystemSnapshot telemetry,
@@ -161,7 +169,25 @@ public sealed class WorkloadValidator
 		bool telemetryAvailable = selectedGpu?.IsAvailable ??
 			(!explicitSelection && telemetry.GpuTelemetryAvailable);
 
-		if (workloadState != WorkloadState.Running)
+		if (deviceWorkload?.State == WorkloadState.Failed)
+		{
+			gpuLoadStableSince.Remove(key);
+			gpuRunningSince.Remove(key);
+			status = ValidationStatus.Fail;
+			message = string.IsNullOrWhiteSpace(deviceWorkload.Message)
+				? "GPU workload failed"
+				: deviceWorkload.Message;
+		}
+		else if (workloadState == WorkloadState.Failed && deviceWorkload is not null)
+		{
+			gpuLoadStableSince.Remove(key);
+			gpuRunningSince.Remove(key);
+			status = ValidationStatus.Unknown;
+			message = string.IsNullOrWhiteSpace(deviceWorkload.Message)
+				? "GPU workload stopped after another device failed"
+				: deviceWorkload.Message;
+		}
+		else if (workloadState != WorkloadState.Running)
 		{
 			gpuLoadStableSince.Remove(key);
 			status = ValidationStatus.Warning;
