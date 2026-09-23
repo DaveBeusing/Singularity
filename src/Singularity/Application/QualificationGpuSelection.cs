@@ -45,9 +45,9 @@ public static class QualificationGpuSelection
 
 		if (selectedIdentifiers.Count == 0)
 		{
-			return options.Count == 0
-				? Array.Empty<QualificationGpuOption>()
-				: [options[0]];
+			return options.Count == 1
+				? [options[0]]
+				: Array.Empty<QualificationGpuOption>();
 		}
 
 		List<QualificationGpuOption> selections = [];
