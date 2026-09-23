@@ -31,6 +31,15 @@ public sealed class SystemSnapshot
 	public double ProcessCpuPercent { get; set; }
 	public long ProcessMemoryMb { get; set; }
 
+	public GpuTelemetrySnapshot? FindGpuTelemetry(string? identifier)
+	{
+		if (string.IsNullOrWhiteSpace(identifier))
+			return GpuTelemetrySnapshots.Count > 0 ? GpuTelemetrySnapshots[0] : null;
+
+		return GpuTelemetrySnapshots.FirstOrDefault(
+			gpu => string.Equals(gpu.Identifier, identifier, StringComparison.OrdinalIgnoreCase));
+	}
+
 	internal SystemSnapshot Copy()
 	{
 		SystemSnapshot copy = (SystemSnapshot)MemberwiseClone();

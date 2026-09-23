@@ -13,9 +13,9 @@ public sealed class WorkloadStatus
 	public int CpuThreads { get; init; }
 	public int MemoryGb { get; init; }
 	public int GpuLoadPercent { get; init; }
+	public string? SelectedGpuIdentifier { get; init; }
 	public long MemoryAllocatedMb { get; init; }
 	public string Message { get; init; } = "Ready";
 
 	public bool IsRunning => State is WorkloadState.Starting or WorkloadState.Running or WorkloadState.Stopping;
-
 }

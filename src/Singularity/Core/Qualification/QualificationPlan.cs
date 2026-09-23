@@ -44,6 +44,7 @@ public sealed record QualificationPlan(
 		EnableGpuWorkload = gpu,
 		CpuThreads = source.CpuThreads,
 		MemoryGb = source.MemoryGb,
-		GpuLoadPercent = source.GpuLoadPercent
+		GpuLoadPercent = source.GpuLoadPercent,
+		SelectedGpuIdentifier = source.SelectedGpuIdentifier
 	};
 }
