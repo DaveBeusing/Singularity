@@ -13,6 +13,7 @@ public sealed class PlatformInventoryStateTests
 	[Fact]
 	public async Task RefreshCachesInventoryAndMarksStateAvailable()
 	{
+		CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 		HardwareInventory expected = CreateInventory();
 		int reads = 0;
 		PlatformInventoryState state = new(() =>
@@ -21,7 +22,7 @@ public sealed class PlatformInventoryStateTests
 			return expected;
 		});
 
-		bool refreshed = await state.RefreshAsync();
+		bool refreshed = await state.RefreshAsync(cancellationToken);
 
 		Assert.True(refreshed);
 		Assert.Same(expected, state.Current);
@@ -34,6 +35,7 @@ public sealed class PlatformInventoryStateTests
 	[Fact]
 	public async Task FailedRefreshPreservesLastValidInventory()
 	{
+		CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 		HardwareInventory expected = CreateInventory();
 		int reads = 0;
 		PlatformInventoryState state = new(() =>
@@ -45,8 +47,8 @@ public sealed class PlatformInventoryStateTests
 			throw new InvalidOperationException("inventory failed");
 		});
 
-		Assert.True(await state.RefreshAsync());
-		bool refreshed = await state.RefreshAsync();
+		Assert.True(await state.RefreshAsync(cancellationToken));
+		bool refreshed = await state.RefreshAsync(cancellationToken);
 
 		Assert.False(refreshed);
 		Assert.Same(expected, state.Current);
@@ -57,19 +59,20 @@ public sealed class PlatformInventoryStateTests
 	[Fact]
 	public async Task ConcurrentRefreshIsRejected()
 	{
+		CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 		using ManualResetEventSlim entered = new(false);
 		using ManualResetEventSlim release = new(false);
 		PlatformInventoryState state = new(() =>
 		{
 			entered.Set();
-			Assert.True(release.Wait(TimeSpan.FromSeconds(5)));
+			Assert.True(release.Wait(TimeSpan.FromSeconds(5), cancellationToken));
 			return CreateInventory();
 		});
 
-		Task<bool> firstRefresh = state.RefreshAsync();
-		Assert.True(entered.Wait(TimeSpan.FromSeconds(5)));
+		Task<bool> firstRefresh = state.RefreshAsync(cancellationToken);
+		Assert.True(entered.Wait(TimeSpan.FromSeconds(5), cancellationToken));
 
-		bool secondRefresh = await state.RefreshAsync();
+		bool secondRefresh = await state.RefreshAsync(cancellationToken);
 		release.Set();
 
 		Assert.False(secondRefresh);
