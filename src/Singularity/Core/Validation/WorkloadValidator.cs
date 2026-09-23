@@ -9,13 +9,17 @@ namespace Singularity.Core.Validation;
 
 public sealed class WorkloadValidator
 {
-	private TimeSpan? gpuLoadStableSince;
-	private TimeSpan? gpuRunningSince;
+	private const string LegacyGpuKey = "__legacy__";
+
+	private readonly Dictionary<string, TimeSpan> gpuLoadStableSince =
+		new(StringComparer.OrdinalIgnoreCase);
+	private readonly Dictionary<string, TimeSpan> gpuRunningSince =
+		new(StringComparer.OrdinalIgnoreCase);
 
 	public void Reset()
 	{
-		gpuLoadStableSince = null;
-		gpuRunningSince = null;
+		gpuLoadStableSince.Clear();
+		gpuRunningSince.Clear();
 	}
 
 	public ValidationResult Validate(
@@ -74,81 +78,56 @@ public sealed class WorkloadValidator
 
 		ValidationStatus gpuStatus = ValidationStatus.Unknown;
 		string gpuMessage = "GPU workload disabled";
+		IReadOnlyList<GpuValidationResult> gpuDevices =
+			Array.Empty<GpuValidationResult>();
 
 		if (workload.GpuEnabled)
 		{
-			GpuTelemetrySnapshot? selectedGpu = telemetry.FindGpuTelemetry(
-				workload.SelectedGpuIdentifier);
-			bool explicitSelection = !string.IsNullOrWhiteSpace(
-				workload.SelectedGpuIdentifier);
+			IReadOnlyList<string> selectedIdentifiers =
+				workload.ResolveSelectedGpuIdentifiers();
 
-			if (workload.State != WorkloadState.Running)
+			if (selectedIdentifiers.Count == 0)
 			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Warning;
-				gpuMessage = "GPU initializing";
-			}
-			else if (sessionDuration - (gpuRunningSince ??= sessionDuration) < profile.GpuWarmupDuration)
-			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Warning;
-				gpuMessage = "GPU warming up";
-			}
-			else if (explicitSelection && selectedGpu is null)
-			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Warning;
-				gpuMessage = "Selected GPU telemetry unavailable";
-			}
-			else if (selectedGpu is not null && !selectedGpu.IsAvailable)
-			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Warning;
-				gpuMessage = selectedGpu.Status;
-			}
-			else if (!explicitSelection && !telemetry.GpuTelemetryAvailable)
-			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Warning;
-				gpuMessage = telemetry.GpuTelemetryStatus;
+				GpuValidationResult legacy = ValidateGpu(
+					LegacyGpuKey,
+					string.Empty,
+					telemetry.FindGpuTelemetry(null),
+					explicitSelection: false,
+					workload.State,
+					telemetry,
+					profile,
+					sessionDuration);
+				gpuStatus = legacy.Status;
+				gpuMessage = legacy.Message;
 			}
 			else
 			{
-				double gpuLoad = selectedGpu?.LoadPercent ?? telemetry.GpuLoadPercent;
-				int gpuTemperature = selectedGpu?.TemperatureCelsius ?? telemetry.GpuTemperatureCelsius;
+				GpuValidationResult[] results =
+					new GpuValidationResult[selectedIdentifiers.Count];
 
-				if (gpuTemperature > profile.GpuMaximumTemperatureCelsius)
+				for (int index = 0; index < selectedIdentifiers.Count; index++)
 				{
-					gpuLoadStableSince = null;
-					gpuStatus = ValidationStatus.Fail;
-					gpuMessage = $"GPU temperature {gpuTemperature} °C";
+					string identifier = selectedIdentifiers[index];
+					results[index] = ValidateGpu(
+						identifier,
+						identifier,
+						telemetry.FindGpuTelemetry(identifier),
+						explicitSelection: true,
+						workload.State,
+						telemetry,
+						profile,
+						sessionDuration);
 				}
-				else if (gpuLoad >= profile.GpuMinimumLoadPercent)
-				{
-					gpuLoadStableSince ??= sessionDuration;
-					if (sessionDuration - gpuLoadStableSince.Value >= profile.GpuStabilityDuration)
-					{
-						gpuStatus = ValidationStatus.Pass;
-						gpuMessage = $"GPU load {gpuLoad:0}%";
-					}
-					else
-					{
-						gpuStatus = ValidationStatus.Warning;
-						gpuMessage = "GPU load stabilizing";
-					}
-				}
-				else
-				{
-					gpuLoadStableSince = null;
-					gpuStatus = ValidationStatus.Fail;
-					gpuMessage = $"GPU load only {gpuLoad:0}%";
-				}
+
+				gpuDevices = Array.AsReadOnly(results);
+				gpuStatus = AggregateStatus(results);
+				gpuMessage = BuildAggregateMessage(results, gpuStatus);
 			}
 		}
 		else
 		{
-			gpuLoadStableSince = null;
-			gpuRunningSince = null;
+			gpuLoadStableSince.Clear();
+			gpuRunningSince.Clear();
 		}
 
 		return new ValidationResult
@@ -158,7 +137,140 @@ public sealed class WorkloadValidator
 			GpuStatus = gpuStatus,
 			CpuMessage = cpuMessage,
 			MemoryMessage = memoryMessage,
-			GpuMessage = gpuMessage
+			GpuMessage = gpuMessage,
+			GpuDevices = gpuDevices
 		};
+	}
+
+	private GpuValidationResult ValidateGpu(
+		string key,
+		string identifier,
+		GpuTelemetrySnapshot? selectedGpu,
+		bool explicitSelection,
+		WorkloadState workloadState,
+		SystemSnapshot telemetry,
+		QualificationProfile profile,
+		TimeSpan sessionDuration)
+	{
+		string name = selectedGpu?.Name;
+		if (string.IsNullOrWhiteSpace(name))
+			name = string.IsNullOrWhiteSpace(identifier) ? "GPU" : identifier;
+
+		ValidationStatus status;
+		string message;
+		bool telemetryAvailable = selectedGpu?.IsAvailable ??
+			(!explicitSelection && telemetry.GpuTelemetryAvailable);
+
+		if (workloadState != WorkloadState.Running)
+		{
+			gpuLoadStableSince.Remove(key);
+			status = ValidationStatus.Warning;
+			message = "GPU initializing";
+		}
+		else
+		{
+			if (!gpuRunningSince.TryGetValue(key, out TimeSpan runningSince))
+			{
+				runningSince = sessionDuration;
+				gpuRunningSince[key] = runningSince;
+			}
+
+			if (sessionDuration - runningSince < profile.GpuWarmupDuration)
+			{
+				gpuLoadStableSince.Remove(key);
+				status = ValidationStatus.Warning;
+				message = "GPU warming up";
+			}
+			else if (explicitSelection && selectedGpu is null)
+			{
+				gpuLoadStableSince.Remove(key);
+				status = ValidationStatus.Warning;
+				message = "Selected GPU telemetry unavailable";
+			}
+			else if (selectedGpu is not null && !selectedGpu.IsAvailable)
+			{
+				gpuLoadStableSince.Remove(key);
+				status = ValidationStatus.Warning;
+				message = selectedGpu.Status;
+			}
+			else if (!explicitSelection && !telemetry.GpuTelemetryAvailable)
+			{
+				gpuLoadStableSince.Remove(key);
+				status = ValidationStatus.Warning;
+				message = telemetry.GpuTelemetryStatus;
+			}
+			else
+			{
+				double gpuLoad = selectedGpu?.LoadPercent ?? telemetry.GpuLoadPercent;
+				int gpuTemperature = selectedGpu?.TemperatureCelsius ?? telemetry.GpuTemperatureCelsius;
+
+				if (gpuTemperature > profile.GpuMaximumTemperatureCelsius)
+				{
+					gpuLoadStableSince.Remove(key);
+					status = ValidationStatus.Fail;
+					message = $"GPU temperature {gpuTemperature} °C";
+				}
+				else if (gpuLoad >= profile.GpuMinimumLoadPercent)
+				{
+					if (!gpuLoadStableSince.TryGetValue(key, out TimeSpan stableSince))
+					{
+						stableSince = sessionDuration;
+						gpuLoadStableSince[key] = stableSince;
+					}
+
+					if (sessionDuration - stableSince >= profile.GpuStabilityDuration)
+					{
+						status = ValidationStatus.Pass;
+						message = $"GPU load {gpuLoad:0}%";
+					}
+					else
+					{
+						status = ValidationStatus.Warning;
+						message = "GPU load stabilizing";
+					}
+				}
+				else
+				{
+					gpuLoadStableSince.Remove(key);
+					status = ValidationStatus.Fail;
+					message = $"GPU load only {gpuLoad:0}%";
+				}
+			}
+		}
+
+		return new GpuValidationResult(
+			identifier,
+			name,
+			status,
+			message,
+			telemetryAvailable);
+	}
+
+	private static ValidationStatus AggregateStatus(
+		IReadOnlyList<GpuValidationResult> results)
+	{
+		if (results.Any(result => result.Status == ValidationStatus.Fail))
+			return ValidationStatus.Fail;
+		if (results.Any(result => result.Status == ValidationStatus.Warning))
+			return ValidationStatus.Warning;
+		if (results.Any(result => result.Status == ValidationStatus.Pass))
+			return ValidationStatus.Pass;
+		return ValidationStatus.Unknown;
+	}
+
+	private static string BuildAggregateMessage(
+		IReadOnlyList<GpuValidationResult> results,
+		ValidationStatus aggregateStatus)
+	{
+		if (results.Count == 1)
+			return results[0].Message;
+
+		GpuValidationResult? firstRelevant = results.FirstOrDefault(
+			result => result.Status == aggregateStatus);
+		string detail = firstRelevant is null
+			? string.Empty
+			: $" · {firstRelevant.Name}: {firstRelevant.Message}";
+
+		return $"{results.Count} GPUs {aggregateStatus.ToString().ToUpperInvariant()}{detail}";
 	}
 }

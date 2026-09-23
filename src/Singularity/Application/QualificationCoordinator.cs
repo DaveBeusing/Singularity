@@ -41,7 +41,10 @@ public sealed class QualificationCoordinator
 
 		workloadController.ResetFailure();
 		qualificationRunner.Reset();
-		PrepareSession(profile, QualificationExecutionMode.Manual);
+		PrepareSession(
+			profile,
+			QualificationExecutionMode.Manual,
+			options.ResolveSelectedGpuIdentifiers());
 		workloadController.Start(options);
 		return true;
 	}
@@ -56,7 +59,10 @@ public sealed class QualificationCoordinator
 
 		qualificationRunner.Reset();
 		QualificationPlan plan = QualificationPlan.CreateStandard(options, profile);
-		PrepareSession(profile, QualificationExecutionMode.Automated);
+		PrepareSession(
+			profile,
+			QualificationExecutionMode.Automated,
+			options.ResolveSelectedGpuIdentifiers());
 		automatedRunFinalized = false;
 		qualificationRunner.Start(plan);
 		return true;
@@ -114,12 +120,13 @@ public sealed class QualificationCoordinator
 
 	private void PrepareSession(
 		QualificationProfile profile,
-		QualificationExecutionMode executionMode)
+		QualificationExecutionMode executionMode,
+		IReadOnlyList<string> selectedGpuIdentifiers)
 	{
 		LastValidationResult = null;
 		LastReport = null;
 		workloadValidator.Reset();
-		Session.Start(profile, executionMode);
+		Session.Start(profile, executionMode, selectedGpuIdentifiers);
 	}
 
 	private void FinalizeSession(bool forceFailure = false)
