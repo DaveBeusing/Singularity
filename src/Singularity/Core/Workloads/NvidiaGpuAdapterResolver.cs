@@ -27,7 +27,7 @@ internal static class NvidiaGpuAdapterResolver
 				if (CudaNative.DeviceGet(out int device, ordinal) != Success)
 					continue;
 
-				if (!TryGetUuid(device, out Guid uuid))
+				if (!TryGetUuid(device, out byte[] uuid))
 					continue;
 
 				byte[] luid = new byte[LuidSize];
@@ -35,7 +35,7 @@ internal static class NvidiaGpuAdapterResolver
 					continue;
 
 				adapters.Add(new GpuAdapterIdentity(
-					Convert.ToHexString(uuid.ToByteArray()),
+					Convert.ToHexString(uuid),
 					BinaryPrimitives.ReadInt64LittleEndian(luid)));
 			}
 
@@ -55,15 +55,16 @@ internal static class NvidiaGpuAdapterResolver
 		}
 	}
 
-	private static bool TryGetUuid(int device, out Guid uuid)
+	private static bool TryGetUuid(int device, out byte[] uuid)
 	{
+		uuid = new byte[16];
 		try
 		{
-			return CudaNative.DeviceGetUuidV2(out uuid, device) == Success;
+			return CudaNative.DeviceGetUuidV2(uuid, device) == Success;
 		}
 		catch (EntryPointNotFoundException)
 		{
-			return CudaNative.DeviceGetUuid(out uuid, device) == Success;
+			return CudaNative.DeviceGetUuid(uuid, device) == Success;
 		}
 	}
 
@@ -85,10 +86,10 @@ internal static class NvidiaGpuAdapterResolver
 		internal static extern int DeviceGet(out int device, int ordinal);
 
 		[DllImport("nvcuda.dll", EntryPoint = "cuDeviceGetUuid_v2")]
-		internal static extern int DeviceGetUuidV2(out Guid uuid, int device);
+		internal static extern int DeviceGetUuidV2([Out] byte[] uuid, int device);
 
 		[DllImport("nvcuda.dll", EntryPoint = "cuDeviceGetUuid")]
-		internal static extern int DeviceGetUuid(out Guid uuid, int device);
+		internal static extern int DeviceGetUuid([Out] byte[] uuid, int device);
 
 		[DllImport("nvcuda.dll", EntryPoint = "cuDeviceGetLuid")]
 		internal static extern int DeviceGetLuid(
