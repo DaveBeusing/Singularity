@@ -175,15 +175,33 @@ public sealed class QualificationWorkspaceState
 	{
 		ArgumentNullException.ThrowIfNull(configuration);
 
-		IReadOnlyList<string> selectedIdentifiers =
-			configuration.ResolveSelectedGpuIdentifiers();
-		Configuration = configuration with
+		bool legacySelectionOverridesCollection =
+			!string.IsNullOrWhiteSpace(configuration.SelectedGpuIdentifier) &&
+			(configuration.SelectedGpuIdentifiers.Count != 1 ||
+			 !string.Equals(
+				 configuration.SelectedGpuIdentifiers[0],
+				 configuration.SelectedGpuIdentifier,
+				 StringComparison.OrdinalIgnoreCase));
+		IReadOnlyList<string> selectedIdentifiers = legacySelectionOverridesCollection
+			? [configuration.SelectedGpuIdentifier!]
+			: configuration.ResolveSelectedGpuIdentifiers();
+
+		if (selectedIdentifiers.Count == 0 &&
+			string.IsNullOrWhiteSpace(configuration.SelectedGpuIdentifier) &&
+			configuration.SelectedGpuIdentifiers.Count == 0)
 		{
-			SelectedGpuIdentifiers = selectedIdentifiers,
-			SelectedGpuIdentifier = selectedIdentifiers.Count == 1
-				? selectedIdentifiers[0]
-				: null
-		};
+			Configuration = configuration;
+		}
+		else
+		{
+			Configuration = configuration with
+			{
+				SelectedGpuIdentifiers = selectedIdentifiers,
+				SelectedGpuIdentifier = selectedIdentifiers.Count == 1
+					? selectedIdentifiers[0]
+					: null
+			};
+		}
 		gpuSelectionReviewRequired = false;
 		explicitFeedback = null;
 	}
