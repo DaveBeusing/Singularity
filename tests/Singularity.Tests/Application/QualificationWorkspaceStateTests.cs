@@ -6,6 +6,7 @@ using Singularity.Application;
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
+using Singularity.Hardware.Models;
 using Singularity.Monitoring.Models;
 using Singularity.UI.Navigation;
 
@@ -155,6 +156,120 @@ public sealed class QualificationWorkspaceStateTests
 	}
 
 	[Fact]
+	public void AvailableGpu_DefaultsToSingleStableDevice()
+	{
+		QualificationWorkspaceState state = new();
+
+		state.SetAvailableGpus(
+		[
+			new GpuInventory
+			{
+				Identifier = "GPU-A",
+				Name = "Example GPU"
+			}
+		]);
+
+		Assert.Equal("GPU-A", state.Configuration.SelectedGpuIdentifier);
+		Assert.Single(state.AvailableGpus);
+	}
+
+	[Fact]
+	public void AvailableGpu_PreservesExplicitSelectionAcrossReordering()
+	{
+		QualificationWorkspaceState state = new();
+		GpuInventory gpuA = new() { Identifier = "GPU-A", Name = "GPU A" };
+		GpuInventory gpuB = new() { Identifier = "GPU-B", Name = "GPU B" };
+		state.SetAvailableGpus([gpuA, gpuB]);
+		state.SetConfiguration(
+			state.Configuration with
+			{
+				EnableGpuWorkload = true,
+				SelectedGpuIdentifier = "GPU-B",
+				SelectedGpuName = "GPU B"
+			});
+
+		state.SetAvailableGpus([gpuB, gpuA]);
+
+		Assert.Equal("GPU-B", state.Configuration.SelectedGpuIdentifier);
+	}
+
+	[Fact]
+	public void AvailableGpu_ClearsStaleSelectionAfterRemoval()
+	{
+		QualificationWorkspaceState state = new();
+		GpuInventory gpuA = new() { Identifier = "GPU-A", Name = "GPU A" };
+		GpuInventory gpuB = new() { Identifier = "GPU-B", Name = "GPU B" };
+		state.SetAvailableGpus([gpuA, gpuB]);
+		state.SetConfiguration(
+			state.Configuration with
+			{
+				EnableGpuWorkload = true,
+				SelectedGpuIdentifier = "GPU-B",
+				SelectedGpuName = "GPU B"
+			});
+
+		state.SetAvailableGpus([gpuA]);
+
+		Assert.Null(state.Configuration.SelectedGpuIdentifier);
+		Assert.NotNull(state.CreateSnapshot(
+			new QualificationCoordinator(new FakeWorkloadController()),
+			new SystemSnapshot()).Feedback);
+	}
+
+	[Fact]
+	public void SelectedGpuTelemetry_DoesNotUseFirstGpuCompatibilityFields()
+	{
+		FakeWorkloadController workloads = new();
+		QualificationCoordinator coordinator = new(workloads);
+		QualificationWorkspaceState state = new();
+		GpuInventory gpuA = new() { Identifier = "GPU-A", Name = "GPU A" };
+		GpuInventory gpuB = new() { Identifier = "GPU-B", Name = "GPU B" };
+		state.SetAvailableGpus([gpuA, gpuB]);
+		state.SetConfiguration(
+			new QualificationConfiguration(
+				false,
+				1,
+				false,
+				1,
+				true,
+				90,
+				QualificationProfiles.Standard)
+			{
+				SelectedGpuIdentifier = "GPU-B",
+				SelectedGpuName = "GPU B"
+			});
+
+		QualificationWorkspaceSnapshot snapshot = state.CreateSnapshot(
+			coordinator,
+			new SystemSnapshot
+			{
+				GpuTelemetryAvailable = false,
+				GpuTelemetryStatus = "First GPU unavailable",
+				GpuTelemetrySnapshots =
+				[
+					new GpuTelemetrySnapshot
+					{
+						Identifier = "GPU-A",
+						IsAvailable = false,
+						Status = "First GPU unavailable"
+					},
+					new GpuTelemetrySnapshot
+					{
+						Identifier = "GPU-B",
+						IsAvailable = true,
+						LoadPercent = 73,
+						TemperatureCelsius = 58,
+						Status = "OK"
+					}
+				]
+			});
+
+		Assert.False(snapshot.RequiredTelemetryUnavailable);
+		Assert.StartsWith("73.0 %", snapshot.GpuTelemetry, StringComparison.Ordinal);
+		Assert.Equal("GPU-B", snapshot.Configuration.SelectedGpuIdentifier);
+	}
+
+	[Fact]
 	public void RequiredGpuTelemetryUnavailable_MapsPersistentWarning()
 	{
 		FakeWorkloadController workloads = new();
@@ -209,6 +324,7 @@ public sealed class QualificationWorkspaceStateTests
 				CpuThreads = options.CpuThreads,
 				MemoryGb = options.MemoryGb,
 				GpuLoadPercent = options.GpuLoadPercent,
+				SelectedGpuIdentifier = options.SelectedGpuIdentifier,
 				MemoryAllocatedMb = options.MemoryGb * 1024L,
 				Message = "Running"
 			};

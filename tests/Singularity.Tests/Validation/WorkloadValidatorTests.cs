@@ -49,4 +49,97 @@ public sealed class WorkloadValidatorTests
 		Assert.Equal(ValidationStatus.Warning, result.GpuStatus);
 		Assert.Equal("GPU warming up", result.GpuMessage);
 	}
+	[Fact]
+	public void Validate_UsesTelemetryForExplicitlySelectedGpuRegardlessOfOrder()
+	{
+		QualificationProfile profile = QualificationProfiles.Quick;
+		WorkloadValidator validator = new();
+		WorkloadStatus workload = new()
+		{
+			State = WorkloadState.Running,
+			GpuEnabled = true,
+			SelectedGpuIdentifier = "GPU-B"
+		};
+		SystemSnapshot telemetry = new()
+		{
+			GpuTelemetryAvailable = true,
+			GpuLoadPercent = 100,
+			GpuTemperatureCelsius = 35,
+			GpuTelemetrySnapshots =
+			[
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-A",
+					IsAvailable = true,
+					LoadPercent = 100,
+					TemperatureCelsius = 35,
+					Status = "OK"
+				},
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-B",
+					IsAvailable = true,
+					LoadPercent = 100,
+					TemperatureCelsius = profile.GpuMaximumTemperatureCelsius + 10,
+					Status = "OK"
+				}
+			]
+		};
+
+		validator.Validate(workload, telemetry, profile, TimeSpan.Zero);
+		ValidationResult result = validator.Validate(
+			workload,
+			telemetry,
+			profile,
+			profile.GpuWarmupDuration + TimeSpan.FromSeconds(1));
+
+		Assert.Equal(ValidationStatus.Fail, result.GpuStatus);
+		Assert.Contains("temperature", result.GpuMessage, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public void Validate_DoesNotFallBackToAnotherGpuWhenSelectedTelemetryIsUnavailable()
+	{
+		QualificationProfile profile = QualificationProfiles.Quick;
+		WorkloadValidator validator = new();
+		WorkloadStatus workload = new()
+		{
+			State = WorkloadState.Running,
+			GpuEnabled = true,
+			SelectedGpuIdentifier = "GPU-B"
+		};
+		SystemSnapshot telemetry = new()
+		{
+			GpuTelemetryAvailable = true,
+			GpuLoadPercent = 100,
+			GpuTemperatureCelsius = 35,
+			GpuTelemetrySnapshots =
+			[
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-A",
+					IsAvailable = true,
+					LoadPercent = 100,
+					TemperatureCelsius = 35,
+					Status = "OK"
+				},
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-B",
+					IsAvailable = false,
+					Status = "Selected GPU sensor unavailable"
+				}
+			]
+		};
+
+		validator.Validate(workload, telemetry, profile, TimeSpan.Zero);
+		ValidationResult result = validator.Validate(
+			workload,
+			telemetry,
+			profile,
+			profile.GpuWarmupDuration + TimeSpan.FromSeconds(1));
+
+		Assert.Equal(ValidationStatus.Warning, result.GpuStatus);
+		Assert.Equal("Selected GPU sensor unavailable", result.GpuMessage);
+	}
 }
