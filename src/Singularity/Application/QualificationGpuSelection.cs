@@ -36,20 +36,51 @@ public static class QualificationGpuSelection
 		return options.AsReadOnly();
 	}
 
+	public static IReadOnlyList<QualificationGpuOption> ResolveSelections(
+		IReadOnlyList<QualificationGpuOption> options,
+		IReadOnlyList<string> selectedIdentifiers)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentNullException.ThrowIfNull(selectedIdentifiers);
+
+		if (selectedIdentifiers.Count == 0)
+		{
+			return options.Count == 0
+				? Array.Empty<QualificationGpuOption>()
+				: [options[0]];
+		}
+
+		List<QualificationGpuOption> selections = [];
+		HashSet<string> added = new(StringComparer.OrdinalIgnoreCase);
+
+		foreach (string identifier in selectedIdentifiers)
+		{
+			if (string.IsNullOrWhiteSpace(identifier) || !added.Add(identifier))
+				continue;
+
+			QualificationGpuOption? option = options.FirstOrDefault(
+				candidate => string.Equals(
+					candidate.Identifier,
+					identifier,
+					StringComparison.OrdinalIgnoreCase));
+			if (option is not null)
+				selections.Add(option);
+		}
+
+		return selections.AsReadOnly();
+	}
+
 	public static QualificationGpuOption? ResolveSelection(
 		IReadOnlyList<QualificationGpuOption> options,
 		string? selectedIdentifier)
 	{
-		ArgumentNullException.ThrowIfNull(options);
+		IReadOnlyList<QualificationGpuOption> selections = ResolveSelections(
+			options,
+			string.IsNullOrWhiteSpace(selectedIdentifier)
+				? Array.Empty<string>()
+				: [selectedIdentifier]);
 
-		if (string.IsNullOrWhiteSpace(selectedIdentifier))
-			return options.Count > 0 ? options[0] : null;
-
-		return options.FirstOrDefault(
-			option => string.Equals(
-				option.Identifier,
-				selectedIdentifier,
-				StringComparison.OrdinalIgnoreCase));
+		return selections.Count > 0 ? selections[0] : null;
 	}
 
 	public static bool IsStableIdentifier(string? identifier)

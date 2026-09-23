@@ -39,6 +39,8 @@ public sealed record QualificationConfiguration(
 {
 	public string? SelectedGpuIdentifier { get; init; }
 	public string? SelectedGpuName { get; init; }
+	public IReadOnlyList<string> SelectedGpuIdentifiers { get; init; } =
+		Array.Empty<string>();
 
 	public static QualificationConfiguration Default { get; } = new(
 		true,
@@ -54,8 +56,26 @@ public sealed record QualificationConfiguration(
 		EnableMemoryWorkload ||
 		EnableGpuWorkload;
 
+	public IReadOnlyList<string> ResolveSelectedGpuIdentifiers()
+	{
+		IEnumerable<string> source = SelectedGpuIdentifiers.Count > 0
+			? SelectedGpuIdentifiers
+			: string.IsNullOrWhiteSpace(SelectedGpuIdentifier)
+				? Array.Empty<string>()
+				: [SelectedGpuIdentifier];
+
+		return Array.AsReadOnly(
+			source
+				.Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToArray());
+	}
+
 	public WorkloadOptions ToWorkloadOptions()
 	{
+		IReadOnlyList<string> selectedGpuIdentifiers =
+			ResolveSelectedGpuIdentifiers();
+
 		return new WorkloadOptions
 		{
 			EnableCpuWorkload = EnableCpuWorkload,
@@ -64,7 +84,10 @@ public sealed record QualificationConfiguration(
 			MemoryGb = MemoryGb,
 			EnableGpuWorkload = EnableGpuWorkload,
 			GpuLoadPercent = GpuLoadPercent,
-			SelectedGpuIdentifier = SelectedGpuIdentifier
+			SelectedGpuIdentifier = selectedGpuIdentifiers.Count == 1
+				? selectedGpuIdentifiers[0]
+				: null,
+			SelectedGpuIdentifiers = selectedGpuIdentifiers
 		};
 	}
 }
@@ -115,31 +138,50 @@ public sealed class QualificationWorkspaceState
 
 		IReadOnlyList<QualificationGpuOption> options =
 			QualificationGpuSelection.CreateOptions(gpus);
-		string? previousIdentifier = Configuration.SelectedGpuIdentifier;
-		QualificationGpuOption? selection =
-			QualificationGpuSelection.ResolveSelection(options, previousIdentifier);
+		IReadOnlyList<string> previousIdentifiers =
+			Configuration.ResolveSelectedGpuIdentifiers();
+		IReadOnlyList<QualificationGpuOption> selections =
+			QualificationGpuSelection.ResolveSelections(
+				options,
+				previousIdentifiers);
+		string[] selectedIdentifiers = selections
+			.Select(option => option.Identifier)
+			.ToArray();
 
 		availableGpus = options;
 		Configuration = Configuration with
 		{
-			SelectedGpuIdentifier = selection?.Identifier,
-			SelectedGpuName = selection?.DisplayName
+			SelectedGpuIdentifiers = Array.AsReadOnly(selectedIdentifiers),
+			SelectedGpuIdentifier = selectedIdentifiers.Length == 1
+				? selectedIdentifiers[0]
+				: null,
+			SelectedGpuName = CreateSelectedGpuLabel(selections)
 		};
 
-		if (!string.IsNullOrWhiteSpace(previousIdentifier) &&
-			selection is null &&
-			Configuration.EnableGpuWorkload)
+		bool selectionLost =
+			previousIdentifiers.Count > 0 &&
+			selectedIdentifiers.Length != previousIdentifiers.Count;
+		if (selectionLost && Configuration.EnableGpuWorkload)
 		{
 			explicitFeedback = new QualificationFeedback(
 				QualificationFeedbackLevel.Warning,
-				"The previously selected GPU is no longer available. Select a GPU before starting qualification.");
+				"One or more previously selected GPUs are no longer available. Review the GPU selection before starting qualification.");
 		}
 	}
 
 	public void SetConfiguration(QualificationConfiguration configuration)
 	{
 		ArgumentNullException.ThrowIfNull(configuration);
-		Configuration = configuration;
+
+		IReadOnlyList<string> selectedIdentifiers =
+			configuration.ResolveSelectedGpuIdentifiers();
+		Configuration = configuration with
+		{
+			SelectedGpuIdentifiers = selectedIdentifiers,
+			SelectedGpuIdentifier = selectedIdentifiers.Count == 1
+				? selectedIdentifiers[0]
+				: null
+		};
 		explicitFeedback = null;
 	}
 
@@ -180,18 +222,21 @@ public sealed class QualificationWorkspaceState
 		if (Configuration.EnableGpuWorkload && availableGpus.Count == 0)
 			return "No GPU with a stable device identity is available for qualification.";
 
-		if (Configuration.EnableGpuWorkload &&
-			string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier))
-		{
-			return "Select a GPU before starting qualification.";
-		}
+		IReadOnlyList<string> selectedIdentifiers =
+			Configuration.ResolveSelectedGpuIdentifiers();
+		if (Configuration.EnableGpuWorkload && selectedIdentifiers.Count == 0)
+			return "Select at least one GPU before starting qualification.";
 
-		if (Configuration.EnableGpuWorkload &&
-			QualificationGpuSelection.ResolveSelection(
-				availableGpus,
-				Configuration.SelectedGpuIdentifier) is null)
+		if (Configuration.EnableGpuWorkload)
 		{
-			return "The selected GPU is no longer available. Refresh the platform inventory and select an available GPU.";
+			IReadOnlyList<QualificationGpuOption> resolved =
+				QualificationGpuSelection.ResolveSelections(
+					availableGpus,
+					selectedIdentifiers);
+			if (resolved.Count != selectedIdentifiers.Count)
+			{
+				return "One or more selected GPUs are no longer available. Refresh the platform inventory and review the GPU selection.";
+			}
 		}
 
 		return null;
@@ -207,19 +252,24 @@ public sealed class QualificationWorkspaceState
 		WorkloadStatus workload = coordinator.WorkloadStatus;
 		QualificationProgress progress = coordinator.Progress;
 		QualificationSession session = coordinator.Session;
-		GpuTelemetrySnapshot? selectedGpu = telemetry.FindGpuTelemetry(
-			Configuration.SelectedGpuIdentifier);
+		IReadOnlyList<string> selectedIdentifiers =
+			Configuration.ResolveSelectedGpuIdentifiers();
+		GpuTelemetrySnapshot?[] selectedTelemetry = selectedIdentifiers
+			.Select(telemetry.FindGpuTelemetry)
+			.ToArray();
+		int unavailableGpuCount = selectedTelemetry.Count(
+			gpu => gpu is null || !gpu.IsAvailable);
 
 		bool requiredTelemetryUnavailable =
 			(Configuration.EnableMemoryWorkload && telemetry.TotalPhysicalMemoryMb <= 0) ||
-			(Configuration.EnableGpuWorkload &&
-				(selectedGpu is null || !selectedGpu.IsAvailable));
+			(Configuration.EnableGpuWorkload && unavailableGpuCount > 0);
 
 		QualificationFeedback? feedback = ResolveFeedback(
 			workload,
 			progress,
 			telemetry,
-			selectedGpu,
+			selectedIdentifiers.Count,
+			unavailableGpuCount,
 			requiredTelemetryUnavailable);
 
 		return new QualificationWorkspaceSnapshot(
@@ -233,7 +283,9 @@ public sealed class QualificationWorkspaceState
 			progress.StepCount,
 			progress.Percent,
 			session.State,
-			session.State == QualificationSessionState.Idle ? Configuration.Profile.Name : session.Profile.Name,
+			session.State == QualificationSessionState.Idle
+				? Configuration.Profile.Name
+				: session.Profile.Name,
 			session.StartTime,
 			session.Duration,
 			BuildOverallState(workload.State, progress.State, session.State),
@@ -242,10 +294,10 @@ public sealed class QualificationWorkspaceState
 			CanStop(workload, progress, session),
 			BuildCpuTelemetry(telemetry),
 			BuildMemoryTelemetry(telemetry),
-			BuildGpuTelemetry(telemetry, selectedGpu),
+			BuildGpuTelemetry(telemetry, selectedIdentifiers, selectedTelemetry),
 			requiredTelemetryUnavailable,
 			availableGpus,
-			Configuration.SelectedGpuName ?? Configuration.SelectedGpuIdentifier ?? "Not selected",
+			BuildSelectedGpuDisplay(selectedIdentifiers),
 			feedback);
 	}
 
@@ -254,12 +306,17 @@ public sealed class QualificationWorkspaceState
 		QualificationProgress progress,
 		QualificationSession session)
 	{
+		IReadOnlyList<string> selectedIdentifiers =
+			Configuration.ResolveSelectedGpuIdentifiers();
+		bool gpuSelectionValid =
+			!Configuration.EnableGpuWorkload ||
+			(selectedIdentifiers.Count > 0 &&
+			 QualificationGpuSelection.ResolveSelections(
+				 availableGpus,
+				 selectedIdentifiers).Count == selectedIdentifiers.Count);
+
 		return Configuration.HasSelectedWorkload &&
-			(!Configuration.EnableGpuWorkload ||
-				(!string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier) &&
-				 QualificationGpuSelection.ResolveSelection(
-					 availableGpus,
-					 Configuration.SelectedGpuIdentifier) is not null)) &&
+			gpuSelectionValid &&
 			session.State != QualificationSessionState.Running &&
 			progress.State != QualificationRunState.Running &&
 			workload.State is WorkloadState.Stopped or WorkloadState.Failed;
@@ -281,7 +338,8 @@ public sealed class QualificationWorkspaceState
 		WorkloadStatus workload,
 		QualificationProgress progress,
 		SystemSnapshot telemetry,
-		GpuTelemetrySnapshot? selectedGpu,
+		int selectedGpuCount,
+		int unavailableGpuCount,
 		bool requiredTelemetryUnavailable)
 	{
 		if (workload.State == WorkloadState.Failed)
@@ -313,12 +371,18 @@ public sealed class QualificationWorkspaceState
 		if (requiredTelemetryUnavailable)
 		{
 			List<string> unavailable = [];
-			if (Configuration.EnableMemoryWorkload && telemetry.TotalPhysicalMemoryMb <= 0)
-				unavailable.Add("system memory telemetry");
-			if (Configuration.EnableGpuWorkload &&
-				(selectedGpu is null || !selectedGpu.IsAvailable))
+			if (Configuration.EnableMemoryWorkload &&
+				telemetry.TotalPhysicalMemoryMb <= 0)
 			{
-				unavailable.Add("selected GPU telemetry");
+				unavailable.Add("system memory telemetry");
+			}
+
+			if (Configuration.EnableGpuWorkload && unavailableGpuCount > 0)
+			{
+				unavailable.Add(
+					selectedGpuCount <= 1
+						? "selected GPU telemetry"
+						: $"selected GPU telemetry ({unavailableGpuCount} of {selectedGpuCount} unavailable)");
 			}
 
 			return new QualificationFeedback(
@@ -370,31 +434,75 @@ public sealed class QualificationWorkspaceState
 		return $"{telemetry.UsedPhysicalMemoryPercent:0.0} % | {telemetry.UsedPhysicalMemoryMb:N0} / {telemetry.TotalPhysicalMemoryMb:N0} MB";
 	}
 
-	private string BuildGpuTelemetry(
+	private static string BuildGpuTelemetry(
 		SystemSnapshot telemetry,
-		GpuTelemetrySnapshot? selectedGpu)
+		IReadOnlyList<string> selectedIdentifiers,
+		IReadOnlyList<GpuTelemetrySnapshot?> selectedTelemetry)
 	{
-		if (!string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier))
+		if (selectedIdentifiers.Count == 0)
 		{
-			if (selectedGpu is null)
-				return "Selected GPU telemetry unavailable";
+			if (!telemetry.GpuTelemetryAvailable)
+				return telemetry.GpuTelemetryStatus;
 
-			if (!selectedGpu.IsAvailable)
-				return selectedGpu.Status;
-
-			string selectedPower = selectedGpu.PowerAvailable
-				? $" | {selectedGpu.PowerWatts:0} W"
+			string legacyPower = telemetry.GpuPowerAvailable
+				? $" | {telemetry.GpuPowerWatts:0} W"
 				: string.Empty;
-			return $"{selectedGpu.LoadPercent:0.0} % | {selectedGpu.TemperatureCelsius} °C{selectedPower}";
+			return $"{telemetry.GpuLoadPercent:0.0} % | {telemetry.GpuTemperatureCelsius} °C{legacyPower}";
 		}
 
-		if (!telemetry.GpuTelemetryAvailable)
-			return telemetry.GpuTelemetryStatus;
+		if (selectedIdentifiers.Count == 1)
+		{
+			GpuTelemetrySnapshot? gpu = selectedTelemetry[0];
+			if (gpu is null)
+				return "Selected GPU telemetry unavailable";
+			if (!gpu.IsAvailable)
+				return gpu.Status;
 
-		string power = telemetry.GpuPowerAvailable
-			? $" | {telemetry.GpuPowerWatts:0} W"
-			: string.Empty;
+			string power = gpu.PowerAvailable
+				? $" | {gpu.PowerWatts:0} W"
+				: string.Empty;
+			return $"{gpu.LoadPercent:0.0} % | {gpu.TemperatureCelsius} °C{power}";
+		}
 
-		return $"{telemetry.GpuLoadPercent:0.0} % | {telemetry.GpuTemperatureCelsius} °C{power}";
+		GpuTelemetrySnapshot[] available = selectedTelemetry
+			.Where(gpu => gpu?.IsAvailable == true)
+			.Cast<GpuTelemetrySnapshot>()
+			.ToArray();
+		if (available.Length == 0)
+			return $"{selectedIdentifiers.Count} GPUs | telemetry unavailable";
+
+		double averageLoad = available.Average(gpu => gpu.LoadPercent);
+		int maximumTemperature = available.Max(gpu => gpu.TemperatureCelsius);
+		return $"{selectedIdentifiers.Count} GPUs | {available.Length}/{selectedIdentifiers.Count} available | {averageLoad:0.0} % avg | {maximumTemperature} °C max";
+	}
+
+	private string BuildSelectedGpuDisplay(IReadOnlyList<string> selectedIdentifiers)
+	{
+		if (selectedIdentifiers.Count == 0)
+			return "Not selected";
+
+		List<string> names = [];
+		foreach (string identifier in selectedIdentifiers)
+		{
+			QualificationGpuOption? option = availableGpus.FirstOrDefault(
+				candidate => string.Equals(
+					candidate.Identifier,
+					identifier,
+					StringComparison.OrdinalIgnoreCase));
+			names.Add(option?.DisplayName ?? identifier);
+		}
+
+		return string.Join(", ", names);
+	}
+
+	private static string? CreateSelectedGpuLabel(
+		IReadOnlyList<QualificationGpuOption> selections)
+	{
+		return selections.Count switch
+		{
+			0 => null,
+			1 => selections[0].DisplayName,
+			_ => $"{selections.Count} GPUs selected"
+		};
 	}
 }
