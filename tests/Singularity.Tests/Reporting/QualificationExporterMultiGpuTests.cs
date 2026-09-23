@@ -57,15 +57,13 @@ public sealed class QualificationExporterMultiGpuTests
 	[Fact]
 	public void JsonExporter_KeepsSingleGpuCompatibilityFields()
 	{
-		QualificationReport report = CreateReport() with
+		QualificationReport baseline = CreateReport();
+		QualificationReport report = new()
 		{
-		};
-		report = new QualificationReport
-		{
-			StartedAt = report.StartedAt,
-			FinishedAt = report.FinishedAt,
-			Duration = report.Duration,
-			Profile = report.Profile,
+			StartedAt = baseline.StartedAt,
+			FinishedAt = baseline.FinishedAt,
+			Duration = baseline.Duration,
+			Profile = baseline.Profile,
 			GpuResult = ValidationStatus.Pass,
 			OverallResult = ValidationStatus.Pass,
 			TelemetryStatistics = new SessionTelemetryStatistics
