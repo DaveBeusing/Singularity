@@ -18,10 +18,10 @@ public sealed class QualificationProfileStoreTests
 		QualificationProfile first = CreateCustom("custom.alpha", "Lab");
 		QualificationProfile second = CreateCustom("custom.beta", "Lab");
 
-		await writer.SaveAsync([first, second]);
+		await writer.SaveAsync([first, second], TestContext.Current.CancellationToken);
 
 		using QualificationProfileStore reader = new(file.Path);
-		await reader.LoadAsync();
+		await reader.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationProfileStoreState.Ready, reader.State);
 		Assert.Equal(2, reader.Profiles.Count);
@@ -55,10 +55,11 @@ public sealed class QualificationProfileStoreTests
 			    }
 			  ]
 			}
-			""");
+			""",
+			TestContext.Current.CancellationToken);
 
 		using QualificationProfileStore store = new(file.Path);
-		await store.LoadAsync();
+		await store.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationProfileStoreState.Failed, store.State);
 		Assert.Empty(store.Profiles);
@@ -71,34 +72,48 @@ public sealed class QualificationProfileStoreTests
 		using TemporaryFile file = new();
 		using QualificationProfileStore store = new(file.Path);
 		QualificationProfileCatalog catalog = new(store);
-		await catalog.LoadAsync();
+		await catalog.LoadAsync(TestContext.Current.CancellationToken);
 
-		Assert.False(await catalog.UpdateAsync(QualificationProfiles.Quick with { Name = "Changed" }));
-		Assert.False(await catalog.DeleteAsync(QualificationProfiles.Quick.Id));
+		Assert.False(await catalog.UpdateAsync(
+			QualificationProfiles.Quick with { Name = "Changed" },
+			TestContext.Current.CancellationToken));
+		Assert.False(await catalog.DeleteAsync(
+			QualificationProfiles.Quick.Id,
+			TestContext.Current.CancellationToken));
 
-		QualificationProfile? created = await catalog.CreateAsync(CreateCustom("pending", "Lab"));
+		QualificationProfile? created = await catalog.CreateAsync(
+			CreateCustom("pending", "Lab"),
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(created);
 		Assert.StartsWith("custom.", created!.Id, StringComparison.Ordinal);
 		Assert.Contains(catalog.Profiles, profile => profile.Id == created.Id);
 
-		QualificationProfile? duplicate = await catalog.DuplicateAsync(created);
+		QualificationProfile? duplicate = await catalog.DuplicateAsync(
+			created,
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(duplicate);
 		Assert.Equal("Lab Copy", duplicate!.Name);
 		Assert.NotEqual(created.Id, duplicate.Id);
 
-		QualificationProfile? sameName = await catalog.CreateAsync(created with { Name = "Lab" });
+		QualificationProfile? sameName = await catalog.CreateAsync(
+			created with { Name = "Lab" },
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(sameName);
 		Assert.Equal(created.Name, sameName!.Name);
 		Assert.NotEqual(created.Id, sameName.Id);
 
-		Assert.True(await catalog.UpdateAsync(created with { CpuMinimumLoadPercent = 88 }));
+		Assert.True(await catalog.UpdateAsync(
+			created with { CpuMinimumLoadPercent = 88 },
+			TestContext.Current.CancellationToken));
 		Assert.Equal(88, catalog.Profiles.Single(profile => profile.Id == created.Id).CpuMinimumLoadPercent);
 
-		Assert.True(await catalog.DeleteAsync(created.Id));
+		Assert.True(await catalog.DeleteAsync(
+			created.Id,
+			TestContext.Current.CancellationToken));
 		Assert.DoesNotContain(catalog.Profiles, profile => profile.Id == created.Id);
 		Assert.Contains(catalog.Profiles, profile => profile.Id == QualificationProfiles.Quick.Id);
 
-		Assert.True(await catalog.ResetCustomAsync());
+		Assert.True(await catalog.ResetCustomAsync(TestContext.Current.CancellationToken));
 		Assert.Equal(3, catalog.Profiles.Count);
 		Assert.All(catalog.Profiles, profile => Assert.True(profile.IsBuiltIn));
 	}
