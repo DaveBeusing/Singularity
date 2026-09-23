@@ -89,7 +89,7 @@ public sealed class SettingsView : Panel
 		};
 
 		archiveStatusLabel.ForeColor = state == QualificationArchiveState.Failed
-			? Theme.Error
+			? Theme.Failure
 			: Theme.TextMuted;
 		clearArchiveButton.Enabled =
 			state == QualificationArchiveState.Ready && recordCount > 0;
