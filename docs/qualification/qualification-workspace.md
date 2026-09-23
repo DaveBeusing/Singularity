@@ -42,11 +42,13 @@ The user can configure:
 - CPU workload enabled state and thread count;
 - memory workload enabled state and allocation in GB;
 - GPU workload enabled state, one-or-more stable GPU device selections, and target load percentage;
-- Quick, Standard, or BurnIn qualification profile.
+- Quick, Standard, BurnIn, or a valid persisted custom qualification profile.
 
 At least one workload must be selected before a qualification can start. A single GPU with a stable identity is selected automatically. Systems with multiple selectable GPUs expose a checked multi-selection list. Stable identifiers, not list positions, define the selection. Selections survive inventory reordering. If one or more selected devices disappear after refresh, the remaining valid identities are preserved, an explicit warning is shown, and the selection must be reviewed before qualification can start.
 
 Configuration controls are disabled while a qualification session is active. The selected configuration remains application state when the user navigates to another workspace and is reapplied when Qualification is shown again.
+
+Profile selection uses stable profile identity rather than display name. Custom profiles are managed in Settings and appear in the same Qualification selector as the built-in profiles. Invalid profiles cannot start a session. If a selected custom profile is deleted, the idle configuration falls back to Standard and surfaces an explicit warning.
 
 ## Commands
 
