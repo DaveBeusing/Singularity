@@ -24,7 +24,7 @@ public sealed class QualificationExporterMultiGpuTests
 
 		using JsonDocument document = JsonDocument.Parse(json);
 		JsonElement root = document.RootElement;
-		Assert.Equal("3.0", root.GetProperty("schemaVersion").GetString());
+		Assert.Equal("4.0", root.GetProperty("schemaVersion").GetString());
 		Assert.Equal("Fail", root.GetProperty("validation").GetProperty("gpu").GetString());
 
 		JsonElement evidence = root.GetProperty("gpuEvidence");
@@ -53,7 +53,7 @@ public sealed class QualificationExporterMultiGpuTests
 		Assert.Contains("GPU-B", html, StringComparison.Ordinal);
 		Assert.Contains("GPU A", html, StringComparison.Ordinal);
 		Assert.Contains("GPU B", html, StringComparison.Ordinal);
-		Assert.Contains("Schema 3.0", html, StringComparison.Ordinal);
+		Assert.Contains("Schema 4.0", html, StringComparison.Ordinal);
 		Assert.Contains("Thermal limit exceeded", html, StringComparison.Ordinal);
 		Assert.Contains("TELEMETRY TIMELINE", html, StringComparison.Ordinal);
 		Assert.Contains("GPU temperature", html, StringComparison.Ordinal);
