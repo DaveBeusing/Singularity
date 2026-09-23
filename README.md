@@ -28,6 +28,8 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 
 ```text
 .
+├─ .github/
+│  └─ workflows/
 ├─ docs/
 │  ├─ architecture/
 │  ├─ development/
@@ -55,7 +57,8 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 - `src/Singularity` contains the WinForms application, domain models, platform integrations, monitoring services, and UI.
 - `tests/Singularity.Tests` contains deterministic unit tests that do not require physical hardware, elevation, or an interactive desktop.
 - `docs` contains architecture, development, validation, qualification, and reporting documentation.
-- `scripts` contains local build and repository inspection helpers.
+- `scripts` contains local build and repository validation helpers.
+- `.github/workflows` contains the Windows pull-request and `master` validation workflow.
 
 ## Architecture
 
@@ -85,27 +88,38 @@ The application composition root creates platform services, the qualification co
 - A Direct3D 12-capable GPU and runtime supporting feature level 11_0 and shader model 6.0 for the GPU workload.
 - An NVIDIA driver exposing NVML for NVIDIA GPU inventory and telemetry. The remaining application features continue to work when NVML is unavailable.
 
-## Build
+## Build and Validate
 
-Restore dependencies and build the solution from the repository root:
-
-```powershell
-dotnet restore
-dotnet build
-```
-
-For the repository build workflow, including validation checks, run:
+Run the canonical repository validation from the repository root:
 
 ```powershell
 ./scripts/build.ps1
 ```
 
-## Test
+The script restores `Singularity.slnx`, builds Release with warnings treated as errors, and runs the deterministic test suite. Use `-Configuration Debug` when required. `-Run` is explicit and launches the application only after validation succeeds.
 
-Run the deterministic test suite from the repository root:
+Equivalent Release commands are:
 
 ```powershell
-dotnet test
+dotnet restore Singularity.slnx
+dotnet build Singularity.slnx --configuration Release --no-restore
+dotnet test Singularity.slnx --configuration Release --no-build
+```
+
+## Continuous Integration
+
+`.github/workflows/windows-validation.yml` runs automatically for pull requests targeting `master` and pushes to `master`.
+
+CI runs the canonical Release validation on a Windows runner with the .NET 10 SDK, then performs a publish smoke check for the configured self-contained, compressed, single-file `win-x64` application. The workflow fails unless `Singularity.exe` is produced and is non-empty.
+
+Hardware-dependent qualification, administrator/UAC behavior, interactive WinForms automation, Authenticode signing, timestamping, and release publication are intentionally outside ordinary CI.
+
+## Test
+
+Run only the deterministic tests after a successful Release build with:
+
+```powershell
+dotnet test Singularity.slnx --configuration Release --no-build
 ```
 
 Hardware access, elevation behavior, and interactive UI operation require validation on a representative Windows system and are intentionally outside the unit-test suite.
@@ -122,10 +136,10 @@ Windows displays a UAC prompt because Singularity requires administrator privile
 
 ## Publish
 
-Create the configured Release publication from the repository root:
+After a successful Release validation, create the configured publication from the repository root:
 
 ```powershell
-dotnet publish src/Singularity/Singularity.csproj --configuration Release
+dotnet publish src/Singularity/Singularity.csproj --configuration Release --no-build
 ```
 
 The project publishes for `win-x64` as a self-contained, compressed single-file application. Output is written beneath `src/Singularity/bin/Release/net10.0-windows/win-x64/publish` unless an output path is supplied.
@@ -146,9 +160,10 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 
 ## Roadmap
 
-Remaining opportunities include persisting qualification history across application restarts, extending GPU inventory and telemetry beyond NVIDIA/NVML, and adding hardware-integration coverage across representative systems.
+Remaining opportunities include persisting qualification history across application restarts, extending GPU inventory and telemetry beyond NVIDIA/NVML, completing the trusted release-signing pipeline, and adding hardware-integration coverage across representative systems.
 
 ## License
+
 Copyright (c) 2026 David Beusing
 
 Singularity is available under the [MIT License](LICENSE.md).
