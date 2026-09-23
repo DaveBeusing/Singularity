@@ -16,7 +16,20 @@ internal static class Program
 	[STAThread]
 	private static void Main()
 	{
-		ApplicationConfiguration.Initialize();
+		try
+		{
+			ApplicationConfiguration.Initialize();
+			StartupFailureReporter.Install();
+			RunApplication();
+		}
+		catch (Exception ex)
+		{
+			StartupFailureReporter.ReportStartupFailure(ex);
+		}
+	}
+
+	private static void RunApplication()
+	{
 		using WorkloadManager workloadManager = new();
 		using SystemMonitor systemMonitor = new();
 		using QualificationArchiveService qualificationArchive = new();
