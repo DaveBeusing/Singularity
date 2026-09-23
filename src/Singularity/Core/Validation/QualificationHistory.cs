@@ -13,31 +13,33 @@ public sealed class QualificationHistory
 
 	public IReadOnlyList<QualificationRecord> Records => records;
 
-	public void Add(QualificationSession session, QualificationReport? report = null)
+	public QualificationRecord? Add(QualificationSession session, QualificationReport? report = null)
 	{
 		ArgumentNullException.ThrowIfNull(session);
 
 		if (session.StartTime is null || session.EndTime is null)
-			return;
+			return null;
 
-		records.Insert(
-			0,
-			new QualificationRecord
-			{
-				StartedAt = session.StartTime.Value,
-				FinishedAt = session.EndTime.Value,
-				Duration = session.Duration,
-				Result = session.Result,
-				ExecutionMode = session.ExecutionMode,
-				ProfileName = session.Profile.Name,
-				TelemetryStatistics = session.TelemetryStatistics,
-				GpuEvidence = report?.GpuEvidence ??
-					CreateUnavailableGpuEvidence(session.TelemetryStatistics.Gpus),
-				Report = report
-			});
+		QualificationRecord record = new()
+		{
+			StartedAt = session.StartTime.Value,
+			FinishedAt = session.EndTime.Value,
+			Duration = session.Duration,
+			Result = session.Result,
+			ExecutionMode = session.ExecutionMode,
+			ProfileName = session.Profile.Name,
+			TelemetryStatistics = session.TelemetryStatistics,
+			GpuEvidence = report?.GpuEvidence ??
+				CreateUnavailableGpuEvidence(session.TelemetryStatistics.Gpus),
+			Report = report
+		};
+
+		records.Insert(0, record);
 
 		while (records.Count > MaximumRecords)
 			records.RemoveAt(records.Count - 1);
+
+		return record;
 	}
 
 	public void Clear()
