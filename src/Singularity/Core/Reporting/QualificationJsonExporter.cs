@@ -10,7 +10,7 @@ namespace Singularity.Core.Reporting;
 
 public sealed class QualificationJsonExporter
 {
-	public const string SchemaVersion = "1.0";
+	public const string SchemaVersion = "2.0";
 
 	private static readonly JsonSerializerOptions SerializerOptions = new()
 	{
@@ -49,6 +49,7 @@ public sealed class QualificationJsonExporter
 				report.GpuResult,
 				report.OverallResult),
 			report.TelemetryStatistics,
+			CreateGpuEvidence(report.GpuEvidence),
 			CreateHardwareSummary(hardware));
 	}
 
@@ -60,6 +61,34 @@ public sealed class QualificationJsonExporter
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(path);
 		File.WriteAllText(path, Serialize(report, hardware, singularityVersion));
+	}
+
+	private static IReadOnlyList<GpuQualificationEvidenceJson> CreateGpuEvidence(
+		IReadOnlyList<GpuQualificationEvidence> evidence)
+	{
+		GpuQualificationEvidenceJson[] result =
+			new GpuQualificationEvidenceJson[evidence.Count];
+
+		for (int index = 0; index < evidence.Count; index++)
+		{
+			GpuQualificationEvidence gpu = evidence[index];
+			GpuTelemetryStatistics telemetry = gpu.TelemetryStatistics;
+			result[index] = new GpuQualificationEvidenceJson(
+				gpu.Identifier,
+				gpu.Name,
+				gpu.Result,
+				gpu.ValidationMessage,
+				gpu.TelemetryAvailable,
+				new GpuTelemetryStatisticsJson(
+					telemetry.AvailableSampleCount,
+					telemetry.UnavailableSampleCount,
+					telemetry.LoadPercent,
+					telemetry.TemperatureCelsius,
+					telemetry.PowerWatts,
+					telemetry.VramUsagePercent));
+		}
+
+		return Array.AsReadOnly(result);
 	}
 
 	private static HardwareSummaryJson CreateHardwareSummary(HardwareInventory hardware)

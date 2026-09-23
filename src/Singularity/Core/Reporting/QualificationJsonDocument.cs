@@ -14,6 +14,7 @@ public sealed record QualificationJsonDocument(
 	QualificationProfile QualificationProfile,
 	QualificationValidationJson Validation,
 	SessionTelemetryStatistics TelemetryStatistics,
+	IReadOnlyList<GpuQualificationEvidenceJson> GpuEvidence,
 	HardwareSummaryJson Hardware);
 
 public sealed record QualificationValidationJson(
@@ -21,6 +22,22 @@ public sealed record QualificationValidationJson(
 	ValidationStatus Memory,
 	ValidationStatus Gpu,
 	ValidationStatus Overall);
+
+public sealed record GpuQualificationEvidenceJson(
+	string Identifier,
+	string Name,
+	ValidationStatus Validation,
+	string ValidationMessage,
+	bool TelemetryAvailable,
+	GpuTelemetryStatisticsJson Telemetry);
+
+public sealed record GpuTelemetryStatisticsJson(
+	long AvailableSampleCount,
+	long UnavailableSampleCount,
+	MetricStatistics? LoadPercent,
+	MetricStatistics? TemperatureCelsius,
+	MetricStatistics? PowerWatts,
+	MetricStatistics? VramUsagePercent);
 
 public sealed record HardwareSummaryJson(
 	string OperatingSystem,
