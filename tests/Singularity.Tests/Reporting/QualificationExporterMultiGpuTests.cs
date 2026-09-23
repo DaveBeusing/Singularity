@@ -54,6 +54,10 @@ public sealed class QualificationExporterMultiGpuTests
 		Assert.Contains("GPU A", html, StringComparison.Ordinal);
 		Assert.Contains("GPU B", html, StringComparison.Ordinal);
 		Assert.Contains("Schema 4.0", html, StringComparison.Ordinal);
+		Assert.Contains("Profile identity", html, StringComparison.Ordinal);
+		Assert.Contains(QualificationProfiles.Quick.Id, html, StringComparison.Ordinal);
+		Assert.Contains("Profile origin", html, StringComparison.Ordinal);
+		Assert.Contains("GPU warm-up", html, StringComparison.Ordinal);
 		Assert.Contains("Thermal limit exceeded", html, StringComparison.Ordinal);
 		Assert.Contains("TELEMETRY TIMELINE", html, StringComparison.Ordinal);
 		Assert.Contains("GPU temperature", html, StringComparison.Ordinal);

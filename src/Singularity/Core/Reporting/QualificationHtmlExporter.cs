@@ -69,13 +69,21 @@ public sealed class QualificationHtmlExporter
 		QualificationProfile profile = document.QualificationProfile;
 		html.Append("<div class='grid'><section class='card'><h2>SESSION</h2><dl>")
 			.Append(Row("Timestamp", document.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)))
-			.Append(Row("Duration", document.SessionDuration.ToString(@"hh\:mm\:ss")))
-			.Append(Row("Profile", profile.Name)).Append("</dl></section>")
+			.Append(Row("Duration", document.SessionDuration.ToString("c", CultureInfo.InvariantCulture)))
+			.Append(Row("Profile", profile.Name))
+			.Append(Row("Profile identity", profile.Id))
+			.Append(Row("Profile origin", profile.Origin.ToString()))
+			.Append("</dl></section>")
 			.Append("<section class='card'><h2>PROFILE</h2><dl>")
+			.Append(Row("Recommended duration", profile.RecommendedDuration.ToString("c", CultureInfo.InvariantCulture)))
 			.Append(Row("CPU minimum", $"{profile.CpuMinimumLoadPercent:0}%"))
+			.Append(Row("CPU warning", $"{profile.CpuWarningLoadPercent:0}%"))
 			.Append(Row("Memory tolerance", $"{profile.MemoryAllocationTolerancePercent:0}%"))
+			.Append(Row("Memory warning", $"{profile.MemoryWarningTolerancePercent:0}%"))
 			.Append(Row("GPU minimum", $"{profile.GpuMinimumLoadPercent:0}%"))
 			.Append(Row("GPU maximum temp", $"{profile.GpuMaximumTemperatureCelsius:0} °C"))
+			.Append(Row("GPU warm-up", profile.GpuWarmupDuration.ToString("c", CultureInfo.InvariantCulture)))
+			.Append(Row("GPU stability", profile.GpuStabilityDuration.ToString("c", CultureInfo.InvariantCulture)))
 			.Append("</dl></section></div>");
 	}
 
