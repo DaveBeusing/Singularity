@@ -295,6 +295,10 @@ public sealed class MainForm : Form
 
 	private void RenderInventoryState()
 	{
+		qualificationWorkspaceState.SetAvailableGpus(
+			platformInventoryState.Current?.Gpus ?? []);
+		qualificationWorkspaceController?.Refresh();
+
 		overviewView.UpdateInventory(platformInventoryState);
 		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
 		platformView.UpdateInventory(platformInventoryState);
