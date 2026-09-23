@@ -19,7 +19,7 @@ public sealed class QualificationView : Panel
 	private readonly SingularityNumeric memoryGbInput = new();
 	private readonly SingularityNumeric gpuLoadInput = new();
 	private readonly CheckedListBox gpuDeviceInput = new();
-	private readonly Dictionary<string, CommandButton> profileButtons = [];
+	private readonly ComboBox profileInput = new();
 	private readonly Label stateValue = CreateValueLabel();
 	private readonly Label profileValue = CreateValueLabel();
 	private readonly Label modeValue = CreateValueLabel();
@@ -60,6 +60,7 @@ public sealed class QualificationView : Panel
 		try
 		{
 			selectedProfile = configuration.Profile;
+			SelectProfileOption(configuration.Profile.Id);
 			cpuCheck.Checked = configuration.EnableCpuWorkload;
 			memoryCheck.Checked = configuration.EnableMemoryWorkload;
 			gpuCheck.Checked = configuration.EnableGpuWorkload;
@@ -68,7 +69,6 @@ public sealed class QualificationView : Panel
 			gpuLoadInput.Value = configuration.GpuLoadPercent;
 			SetGpuSelections(configuration.ResolveSelectedGpuIdentifiers());
 			UpdateInputEnabledStates();
-			UpdateProfileButtonStyles();
 		}
 		finally
 		{
@@ -80,6 +80,9 @@ public sealed class QualificationView : Panel
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
 
+		ApplyProfileOptions(
+			snapshot.AvailableProfiles,
+			snapshot.Configuration.Profile.Id);
 		ApplyGpuOptions(
 			snapshot.AvailableGpus,
 			snapshot.Configuration.ResolveSelectedGpuIdentifiers());
@@ -279,42 +282,35 @@ public sealed class QualificationView : Panel
 		{
 			Dock = DockStyle.Top,
 			Height = 24,
-			Text = "Profiles define duration and validation thresholds.",
+			Text = "Built-in and custom profiles define duration and validation thresholds.",
 			Font = ThemeFonts.CardTextSmall,
 			ForeColor = Theme.TextMuted,
 			BackColor = Theme.PanelLight
 		};
 
-		FlowLayoutPanel buttons = new()
+		profileInput.Dock = DockStyle.Bottom;
+		profileInput.Height = 34;
+		profileInput.DropDownStyle = ComboBoxStyle.DropDownList;
+		profileInput.DisplayMember = nameof(QualificationProfile.Name);
+		profileInput.Font = ThemeFonts.CardText;
+		profileInput.BackColor = Theme.Panel;
+		profileInput.ForeColor = Theme.TextMain;
+		profileInput.AccessibleName = "Qualification profile";
+		profileInput.SelectedIndexChanged += (_, _) =>
 		{
-			Dock = DockStyle.Bottom,
-			Height = 42,
-			FlowDirection = FlowDirection.LeftToRight,
-			WrapContents = false,
-			BackColor = Theme.PanelLight
+			if (applyingConfiguration || profileInput.SelectedItem is not QualificationProfile profile)
+				return;
+
+			selectedProfile = profile;
+			OnConfigurationEdited();
 		};
 
-		foreach (QualificationProfile profile in QualificationProfiles.All)
-		{
-			CommandButton button = new()
-			{
-				Text = profile.Name,
-				Width = 112,
-				Height = 34,
-				Margin = new Padding(0, 4, ThemeMetrics.SpacingSmall, 0),
-				Tag = profile,
-				AccessibleName = $"{profile.Name} qualification profile"
-			};
-			button.Click += (_, _) => SelectProfile(profile);
-			profileButtons.Add(profile.Name, button);
-			buttons.Controls.Add(button);
-		}
-
-		panel.Controls.Add(buttons);
+		panel.Controls.Add(profileInput);
 		panel.Controls.Add(description);
 		panel.Controls.Add(title);
 		return panel;
 	}
+
 
 	private Panel BuildWorkloadRow(
 		string name,
@@ -515,6 +511,59 @@ public sealed class QualificationView : Panel
 		return panel;
 	}
 
+	private void ApplyProfileOptions(
+		IReadOnlyList<QualificationProfile> profiles,
+		string selectedId)
+	{
+		bool sameOptions = profileInput.Items.Count == profiles.Count;
+		if (sameOptions)
+		{
+			for (int index = 0; index < profiles.Count; index++)
+			{
+				if (profileInput.Items[index] is not QualificationProfile existing ||
+					!Equals(existing, profiles[index]))
+				{
+					sameOptions = false;
+					break;
+				}
+			}
+		}
+
+		bool wasApplying = applyingConfiguration;
+		applyingConfiguration = true;
+		try
+		{
+			if (!sameOptions)
+			{
+				profileInput.BeginUpdate();
+				try
+				{
+					profileInput.Items.Clear();
+					foreach (QualificationProfile profile in profiles)
+						profileInput.Items.Add(profile);
+				}
+				finally { profileInput.EndUpdate(); }
+			}
+			SelectProfileOption(selectedId);
+		}
+		finally { applyingConfiguration = wasApplying; }
+	}
+
+	private void SelectProfileOption(string id)
+	{
+		for (int index = 0; index < profileInput.Items.Count; index++)
+		{
+			if (profileInput.Items[index] is QualificationProfile profile &&
+				string.Equals(profile.Id, id, StringComparison.Ordinal))
+			{
+				if (profileInput.SelectedIndex != index)
+					profileInput.SelectedIndex = index;
+				selectedProfile = profile;
+				return;
+			}
+		}
+	}
+
 	private void ApplyGpuOptions(
 		IReadOnlyList<QualificationGpuOption> options,
 		IReadOnlyList<string> selectedIdentifiers)
@@ -577,13 +626,6 @@ public sealed class QualificationView : Panel
 		}
 	}
 
-	private void SelectProfile(QualificationProfile profile)
-	{
-		selectedProfile = profile;
-		UpdateProfileButtonStyles();
-		OnConfigurationEdited();
-	}
-
 	private void OnConfigurationEdited()
 	{
 		UpdateInputEnabledStates();
@@ -641,21 +683,8 @@ public sealed class QualificationView : Panel
 		cpuCheck.Enabled = enabled;
 		memoryCheck.Enabled = enabled;
 		gpuCheck.Enabled = enabled;
-		foreach (CommandButton button in profileButtons.Values)
-			button.Enabled = enabled;
+		profileInput.Enabled = enabled;
 		UpdateInputEnabledStates();
-	}
-
-	private void UpdateProfileButtonStyles()
-	{
-		foreach ((string name, CommandButton button) in profileButtons)
-		{
-			bool selected = string.Equals(name, selectedProfile.Name, StringComparison.Ordinal);
-			button.BackColor = selected ? Theme.Accent : Theme.Panel;
-			button.ForeColor = selected ? Color.Black : Theme.TextMain;
-			button.FlatAppearance.BorderSize = selected ? 1 : 0;
-			button.FlatAppearance.BorderColor = Theme.Accent;
-		}
 	}
 
 	private void UpdateFeedback(QualificationFeedback? feedback)

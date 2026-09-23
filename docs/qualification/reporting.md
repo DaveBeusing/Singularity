@@ -56,7 +56,7 @@ Every `gpuEvidence` entry continues to contain:
 - available and unavailable sample counts;
 - load, temperature, power, and VRAM statistics.
 
-The scalar `validation.gpu` value remains the deterministic aggregate GPU result. Existing session-level telemetry fields also remain present; single-GPU runs continue to populate their legacy GPU metrics. Consumers that require time-based evidence should use schema `3.0` and read `telemetryTimeline`; consumers that require unambiguous multi-device evidence should continue to read `gpuEvidence`.
+The scalar `validation.gpu` value remains the deterministic aggregate GPU result. Existing session-level telemetry fields also remain present; single-GPU runs continue to populate their legacy GPU metrics. Consumers that require time-based evidence should use schema `4.0` and read `telemetryTimeline`; consumers that require unambiguous multi-device evidence should continue to read `gpuEvidence`.
 
 Hardware inventory remains a separate summary of the machine and is not a substitute for qualification evidence. Stable GPU identifiers appear in inventory, qualification evidence, and timeline points so consumers can correlate the exercised devices explicitly.
 
@@ -106,3 +106,8 @@ The report preview shows the same frozen telemetry timeline and per-device GPU e
 ## Persistent qualification archive
 
 Completed evidence is serialized through the versioned application-layer archive contract and stored per Windows user at `%LOCALAPPDATA%\Singularity\qualification-archive.json`. Archive schema `2` adds the bounded telemetry timeline while retaining read compatibility with schema `1`; schema-`1` records load with an empty timeline. Writes use a same-directory temporary file followed by atomic replacement so a failed new write does not destroy the prior valid archive. Corrupt data, unsupported schema versions, permission failures, and I/O errors fail closed and surface an archive failure state without crashing startup. See [Qualification archive](qualification-archive.md) for schema ownership, retention, recovery, deletion, and privacy behavior.
+
+
+## Qualification profile evidence
+
+Report schema `4.0` extends the serialized qualification profile with stable profile identity and origin. Reports therefore distinguish canonical built-in profiles from user-defined profiles even when display names are identical. The full effective profile remains frozen with the report, including all thresholds and timing values used by the completed session.

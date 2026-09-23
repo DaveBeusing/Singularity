@@ -15,6 +15,8 @@ public sealed class QualificationRecord
 	public ValidationStatus Result { get; init; } = ValidationStatus.Unknown;
 	public QualificationExecutionMode ExecutionMode { get; init; } = QualificationExecutionMode.Unknown;
 	public string ProfileName { get; init; } = string.Empty;
+	public QualificationProfile Profile { get; init; } =
+		QualificationProfiles.Standard.Snapshot();
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
 		SessionTelemetryStatistics.Empty;
 	public QualificationTelemetryTimeline TelemetryTimeline { get; init; } =

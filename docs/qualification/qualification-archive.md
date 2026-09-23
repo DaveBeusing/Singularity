@@ -14,11 +14,11 @@ The archive is local to the current Windows user. Singularity does not sync this
 
 ## Schema and ownership
 
-`Application/Persistence/QualificationArchiveDocument` owns the persistence contract. The current schema version is `2`. Schema version `1` remains readable so existing qualification archives continue to load after the timeline feature is introduced.
+`Application/Persistence/QualificationArchiveDocument` owns the persistence contract. The current schema version is `3`. Schema versions `1` and `2` remain readable so existing qualification archives continue to load after the timeline and custom-profile features are introduced.
 
-Each persisted record contains the completed-session timestamps, duration, final result, execution mode, profile name, frozen streaming telemetry statistics, bounded telemetry timeline, per-device GPU evidence, and the generated qualification report when available. Enum values are written as readable names.
+Each persisted record contains the completed-session timestamps, duration, final result, execution mode, profile name, full effective qualification profile, frozen streaming telemetry statistics, bounded telemetry timeline, per-device GPU evidence, and the generated qualification report when available. Enum values are written as readable names.
 
-Schema `2` adds the bounded telemetry timeline. When a schema-`1` record is loaded, the missing timeline is represented as an empty timeline rather than fabricated evidence. Archive versions below the minimum supported version or above the current version fail closed rather than being interpreted approximately.
+Schema `2` adds the bounded telemetry timeline. Schema `3` adds the complete effective qualification-profile snapshot. When a schema-`1` record is loaded, the missing timeline is represented as an empty timeline rather than fabricated evidence. Schema-`1` and schema-`2` records resolve their profile from the canonical built-in name because custom profiles did not exist in those schemas. Unknown legacy profile names fail closed rather than receiving fabricated threshold values. Archive versions below the minimum supported version or above the current version fail closed rather than being interpreted approximately.
 
 The archive never stores the unbounded raw telemetry sample stream. Timeline evidence is already bounded/downsampled before persistence.
 

@@ -65,6 +65,9 @@ public sealed class QualificationSession
 		QualificationExecutionMode executionMode = QualificationExecutionMode.Manual,
 		IReadOnlyList<string>? selectedGpuIdentifiers = null)
 	{
+		QualificationProfileValidator.EnsureValid(profile);
+		QualificationProfile effectiveProfile = profile.Snapshot();
+
 		SelectedGpuIdentifiers = Array.AsReadOnly(
 			(selectedGpuIdentifiers ?? Array.Empty<string>())
 				.Where(identifier => !string.IsNullOrWhiteSpace(identifier))
@@ -77,12 +80,12 @@ public sealed class QualificationSession
 		Result = ValidationStatus.Unknown;
 		telemetryCollector = new SessionTelemetryCollector(SelectedGpuIdentifiers);
 		timelineCollector = new QualificationTelemetryTimelineCollector(
-			profile.RecommendedDuration,
+			effectiveProfile.RecommendedDuration,
 			SelectedGpuIdentifiers);
 		timelineCollector.AddEvent(TimeSpan.Zero, QualificationTimelineEventKind.Start, "Qualification started");
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 		TelemetryTimeline = QualificationTelemetryTimeline.Empty;
-		Profile = profile;
+		Profile = effectiveProfile;
 		ExecutionMode = executionMode;
 	}
 

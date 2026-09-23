@@ -28,6 +28,26 @@ public sealed class QualificationSessionTests
 	}
 
 	[Fact]
+	public void Start_SnapshotsEffectiveProfile()
+	{
+		QualificationProfile source = QualificationProfiles.Standard with
+		{
+			Id = "custom.snapshot",
+			Name = "Snapshot",
+			Origin = QualificationProfileOrigin.Custom,
+			CpuMinimumLoadPercent = 86
+		};
+		QualificationSession session = new();
+
+		session.Start(source);
+
+		QualificationProfile edited = source with { CpuMinimumLoadPercent = 92 };
+		Assert.NotSame(source, session.Profile);
+		Assert.Equal(86, session.Profile.CpuMinimumLoadPercent);
+		Assert.Equal(92, edited.CpuMinimumLoadPercent);
+	}
+
+	[Fact]
 	public void Reset_ClearsCompletedSession()
 	{
 		QualificationSession session = new();

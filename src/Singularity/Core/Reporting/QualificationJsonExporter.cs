@@ -10,7 +10,7 @@ namespace Singularity.Core.Reporting;
 
 public sealed class QualificationJsonExporter
 {
-	public const string SchemaVersion = "3.0";
+	public const string SchemaVersion = "4.0";
 
 	private static readonly JsonSerializerOptions SerializerOptions = new()
 	{

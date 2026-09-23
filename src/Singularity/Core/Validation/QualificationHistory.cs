@@ -28,6 +28,7 @@ public sealed class QualificationHistory
 			Result = session.Result,
 			ExecutionMode = session.ExecutionMode,
 			ProfileName = session.Profile.Name,
+			Profile = session.Profile.Snapshot(),
 			TelemetryStatistics = session.TelemetryStatistics,
 			TelemetryTimeline = report?.TelemetryTimeline ?? session.TelemetryTimeline,
 			GpuEvidence = report?.GpuEvidence ??
