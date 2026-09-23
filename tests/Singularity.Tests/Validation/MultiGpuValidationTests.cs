@@ -46,6 +46,49 @@ public sealed class MultiGpuValidationTests
 	}
 
 	[Fact]
+	public void Validate_MapsTerminalGpuWorkloadFailureToTheOwningDevice()
+	{
+		WorkloadValidator validator = new();
+		WorkloadStatus workload = new()
+		{
+			State = WorkloadState.Failed,
+			GpuEnabled = true,
+			SelectedGpuIdentifiers = ["GPU-A", "GPU-B"],
+			GpuDevices =
+			[
+				new GpuWorkloadDeviceStatus(
+					"GPU-A",
+					WorkloadState.Stopped,
+					"Stopped after another GPU workload failed"),
+				new GpuWorkloadDeviceStatus(
+					"GPU-B",
+					WorkloadState.Failed,
+					"GPU GPU-B failed: Direct3D 12 GPU workload timed out.")
+			]
+		};
+		SystemSnapshot telemetry = new()
+		{
+			GpuTelemetrySnapshots =
+			[
+				CreateGpu("GPU-A", 100, 50),
+				CreateGpu("GPU-B", 100, 50)
+			]
+		};
+
+		ValidationResult result = validator.Validate(
+			workload,
+			telemetry,
+			QualificationProfiles.Quick,
+			TimeSpan.FromSeconds(1));
+
+		Assert.Equal(ValidationStatus.Fail, result.GpuStatus);
+		Assert.Equal(ValidationStatus.Unknown, result.GpuDevices[0].Status);
+		Assert.Equal(ValidationStatus.Fail, result.GpuDevices[1].Status);
+		Assert.Contains("another GPU workload failed", result.GpuDevices[0].Message);
+		Assert.Contains("timed out", result.GpuDevices[1].Message);
+	}
+
+	[Fact]
 	public void Validate_PreservesUnavailableTelemetryForOneSelectedDevice()
 	{
 		QualificationProfile profile = QualificationProfiles.Quick;
