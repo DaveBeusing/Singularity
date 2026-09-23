@@ -26,6 +26,9 @@ internal static class NvmlNative
 	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetUUID")]
 	public static extern NvmlReturn DeviceGetUuid(IntPtr device, byte[] uuid, uint length);
 
+	[DllImport("nvml.dll", EntryPoint = "nvmlDeviceGetLuid")]
+	public static extern NvmlReturn DeviceGetLuid(IntPtr device, byte[] luid, ref uint size);
+
 	[DllImport("nvml.dll", EntryPoint = "nvmlSystemGetDriverVersion")]
 	public static extern NvmlReturn SystemGetDriverVersion(byte[] version, uint length);
 
