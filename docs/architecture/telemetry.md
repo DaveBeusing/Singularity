@@ -32,6 +32,26 @@ Session statistics use bounded streaming accumulators. Each selected GPU indepen
 
 
 
+## Qualification telemetry timeline
+
+Active qualification sessions consume the same cached `SystemSnapshot` stream used for validation and streaming statistics. No additional hardware polling is introduced for timeline evidence.
+
+`QualificationTelemetryTimelineCollector` retains a bounded/downsampled chronological view of the session:
+
+- maximum 720 frozen telemetry points per session;
+- minimum sampling interval of 500 ms;
+- initial interval derived from the qualification profile's expected duration;
+- deterministic adaptive coarsening when a run exceeds the initial evidence budget;
+- CPU load and system-memory utilization at session level;
+- load, temperature, power, and VRAM utilization per selected GPU;
+- nullable values for unavailable per-GPU telemetry;
+- bounded qualification lifecycle and automated-step event markers;
+- start/end points and observed extrema retained when the final evidence set is assembled.
+
+The collector does not replace the streaming summary accumulators. Minimum/average/maximum statistics continue to observe every accepted qualification snapshot, while the timeline is intentionally downsampled for explanation, visualization, persistence, and export.
+
+Timeline evidence is frozen when the session completes or fails. Results and Reports render only the frozen timeline through lightweight WinForms drawing. The chart controls do not run timers, poll hardware, or continuously invalidate themselves. HTML export renders the same evidence as inline SVG with no external charting dependency.
+
 ## Inventory versus telemetry lifecycle
 
 Platform inventory and telemetry are intentionally separate lifecycles.

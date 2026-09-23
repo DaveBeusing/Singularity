@@ -27,6 +27,7 @@ public sealed class ReportsView : Panel
 	private readonly Label gpuValue = CreateValueLabel();
 	private readonly Label statisticsValue = CreateValueLabel();
 	private readonly FlowLayoutPanel gpuEvidenceList = new();
+	private readonly TelemetryTimelineView timelineView = new();
 	private readonly List<CommandButton> historyButtons = [];
 	private string historySignature = string.Empty;
 
@@ -221,6 +222,7 @@ public sealed class ReportsView : Panel
 
 		previewPanel.Controls.Add(emptyPreviewLabel);
 		previewPanel.Controls.Add(gpuEvidenceList);
+		previewPanel.Controls.Add(timelineView);
 		previewPanel.Controls.Add(previewGrid);
 		previewPanel.Controls.Add(exports);
 		previewPanel.Controls.Add(title);
@@ -322,6 +324,7 @@ public sealed class ReportsView : Panel
 			SetStatus(memoryValue, report.MemoryResult);
 			SetStatus(gpuValue, report.GpuResult);
 			statisticsValue.Text = BuildStatisticsSummary(report.TelemetryStatistics);
+			timelineView.UpdateTimeline(report.TelemetryTimeline);
 			RenderGpuEvidence(report.GpuEvidence);
 		}
 		else
@@ -330,6 +333,7 @@ public sealed class ReportsView : Panel
 			SetStatus(memoryValue, ValidationStatus.Unknown);
 			SetStatus(gpuValue, ValidationStatus.Unknown);
 			statisticsValue.Text = "Unavailable";
+			timelineView.UpdateTimeline(record.TelemetryTimeline);
 			RenderGpuEvidence(record.GpuEvidence);
 		}
 	}
@@ -346,6 +350,7 @@ public sealed class ReportsView : Panel
 		SetStatus(memoryValue, ValidationStatus.Unknown);
 		SetStatus(gpuValue, ValidationStatus.Unknown);
 		statisticsValue.Text = "Unavailable";
+		timelineView.UpdateTimeline(QualificationTelemetryTimeline.Empty);
 		RenderGpuEvidence(Array.Empty<GpuQualificationEvidence>());
 	}
 

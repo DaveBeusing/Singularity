@@ -29,6 +29,7 @@ public sealed class QualificationHistory
 			ExecutionMode = session.ExecutionMode,
 			ProfileName = session.Profile.Name,
 			TelemetryStatistics = session.TelemetryStatistics,
+			TelemetryTimeline = report?.TelemetryTimeline ?? session.TelemetryTimeline,
 			GpuEvidence = report?.GpuEvidence ??
 				CreateUnavailableGpuEvidence(session.TelemetryStatistics.Gpus),
 			Report = report

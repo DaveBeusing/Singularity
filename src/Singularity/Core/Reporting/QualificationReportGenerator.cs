@@ -30,6 +30,7 @@ public sealed class QualificationReportGenerator
 			GpuResult = validationResult.GpuStatus,
 			OverallResult = session.Result,
 			TelemetryStatistics = session.TelemetryStatistics,
+			TelemetryTimeline = session.TelemetryTimeline,
 			GpuEvidence = BuildGpuEvidence(session, validationResult)
 		};
 	}

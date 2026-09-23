@@ -5,6 +5,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Singularity.Core.Qualification;
+using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 
 namespace Singularity.Application.Persistence;
@@ -97,7 +98,8 @@ public sealed class QualificationArchiveService : IDisposable
 			if (document is null)
 				throw new InvalidDataException("Qualification archive is empty or invalid.");
 
-			if (document.SchemaVersion != QualificationArchiveDocument.CurrentSchemaVersion)
+			if (document.SchemaVersion < QualificationArchiveDocument.MinimumSupportedSchemaVersion ||
+				document.SchemaVersion > QualificationArchiveDocument.CurrentSchemaVersion)
 			{
 				throw new InvalidDataException(
 					$"Unsupported qualification archive schema version {document.SchemaVersion}.");
@@ -287,7 +289,58 @@ public sealed class QualificationArchiveService : IDisposable
 		if (dto.Duration < TimeSpan.Zero)
 			throw new InvalidDataException("Qualification archive contains a negative duration.");
 
+		ValidateTimeline(dto.TelemetryTimeline);
+		if (dto.Report is not null)
+			ValidateTimeline(dto.Report.TelemetryTimeline);
+
 		return dto.ToRecord();
+	}
+
+	private static void ValidateTimeline(QualificationTelemetryTimeline timeline)
+	{
+		ArgumentNullException.ThrowIfNull(timeline);
+
+		if (timeline.SchemaVersion != QualificationTelemetryTimeline.CurrentSchemaVersion)
+		{
+			throw new InvalidDataException(
+				$"Unsupported qualification telemetry timeline schema version {timeline.SchemaVersion}.");
+		}
+
+		if (timeline.MaximumPoints <= 0 ||
+			timeline.MaximumPoints > QualificationTelemetryTimeline.DefaultMaximumPoints)
+		{
+			throw new InvalidDataException("Qualification archive contains an invalid timeline point budget.");
+		}
+
+		if (timeline.Points.Count > timeline.MaximumPoints ||
+			timeline.Points.Count > QualificationTelemetryTimeline.DefaultMaximumPoints)
+		{
+			throw new InvalidDataException("Qualification archive contains an oversized telemetry timeline.");
+		}
+
+		if (timeline.Events.Count > QualificationTelemetryTimeline.MaximumEvents)
+			throw new InvalidDataException("Qualification archive contains too many telemetry timeline events.");
+
+		if (timeline.SamplingInterval < TimeSpan.Zero)
+			throw new InvalidDataException("Qualification archive contains a negative timeline sampling interval.");
+
+		TimeSpan previous = TimeSpan.Zero;
+		for (int index = 0; index < timeline.Points.Count; index++)
+		{
+			QualificationTelemetryPoint point = timeline.Points[index];
+			if (point.Elapsed < TimeSpan.Zero || (index > 0 && point.Elapsed < previous))
+				throw new InvalidDataException("Qualification archive contains unordered telemetry timeline points.");
+			previous = point.Elapsed;
+		}
+
+		previous = TimeSpan.Zero;
+		for (int index = 0; index < timeline.Events.Count; index++)
+		{
+			QualificationTimelineEvent marker = timeline.Events[index];
+			if (marker.Elapsed < TimeSpan.Zero || (index > 0 && marker.Elapsed < previous))
+				throw new InvalidDataException("Qualification archive contains unordered telemetry timeline events.");
+			previous = marker.Elapsed;
+		}
 	}
 
 	private static QualificationRecordKey CreateRecordKey(QualificationRecord record)

@@ -17,6 +17,8 @@ public sealed class QualificationRecord
 	public string ProfileName { get; init; } = string.Empty;
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
 		SessionTelemetryStatistics.Empty;
+	public QualificationTelemetryTimeline TelemetryTimeline { get; init; } =
+		QualificationTelemetryTimeline.Empty;
 	public IReadOnlyList<GpuQualificationEvidence> GpuEvidence { get; init; } =
 		Array.Empty<GpuQualificationEvidence>();
 	public QualificationReport? Report { get; init; }

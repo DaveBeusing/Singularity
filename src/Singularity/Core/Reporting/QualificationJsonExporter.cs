@@ -10,7 +10,7 @@ namespace Singularity.Core.Reporting;
 
 public sealed class QualificationJsonExporter
 {
-	public const string SchemaVersion = "2.0";
+	public const string SchemaVersion = "3.0";
 
 	private static readonly JsonSerializerOptions SerializerOptions = new()
 	{
@@ -49,6 +49,7 @@ public sealed class QualificationJsonExporter
 				report.GpuResult,
 				report.OverallResult),
 			report.TelemetryStatistics,
+			report.TelemetryTimeline,
 			CreateGpuEvidence(report.GpuEvidence),
 			CreateHardwareSummary(hardware));
 	}

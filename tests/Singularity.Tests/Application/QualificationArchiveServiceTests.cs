@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using System.Text.Json.Nodes;
 using Singularity.Application;
 using Singularity.Application.Persistence;
 using Singularity.Core.Qualification;
@@ -55,6 +56,8 @@ public sealed class QualificationArchiveServiceTests
 		Assert.Equal(2, actual.GpuEvidence.Count);
 		Assert.Equal(["GPU-0", "GPU-1"], actual.GpuEvidence.Select(item => item.Identifier));
 		Assert.Equal(2, actual.TelemetryStatistics.Gpus.Count);
+		Assert.Equal(2, actual.TelemetryTimeline.Points.Count);
+		Assert.Null(actual.TelemetryTimeline.Points[1].Gpus[0].PowerWatts);
 	}
 
 	[Fact]
@@ -85,6 +88,53 @@ public sealed class QualificationArchiveServiceTests
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.Empty(archive.Records);
 		Assert.NotNull(archive.LastError);
+	}
+
+	[Fact]
+	public async Task LoadAsync_WhenArchiveUsesSchemaVersionOne_MigratesMissingTimelineAsEmpty()
+	{
+		using TemporaryDirectory temporary = new();
+		await File.WriteAllTextAsync(
+			temporary.ArchivePath,
+			"{\"schemaVersion\":1,\"records\":[]}",
+			TestContext.Current.CancellationToken);
+
+		using QualificationArchiveService archive = new(temporary.ArchivePath);
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(QualificationArchiveState.Ready, archive.State);
+		Assert.Empty(archive.Records);
+		Assert.Null(archive.LastError);
+	}
+
+	[Fact]
+	public async Task LoadAsync_WhenTimelineExceedsPointBudget_FailsClosed()
+	{
+		using TemporaryDirectory temporary = new();
+		using (QualificationArchiveService archive = new(temporary.ArchivePath))
+		{
+			await archive.LoadAsync(TestContext.Current.CancellationToken);
+			await archive.SaveAsync(CreateRecord(0), TestContext.Current.CancellationToken);
+		}
+
+		JsonNode root = JsonNode.Parse(
+			await File.ReadAllTextAsync(temporary.ArchivePath, TestContext.Current.CancellationToken))!;
+		JsonArray points = root["records"]![0]!["telemetryTimeline"]!["points"]!.AsArray();
+		JsonNode seed = points[0]!.DeepClone();
+		while (points.Count <= QualificationTelemetryTimeline.DefaultMaximumPoints)
+			points.Add(seed.DeepClone());
+
+		await File.WriteAllTextAsync(
+			temporary.ArchivePath,
+			root.ToJsonString(),
+			TestContext.Current.CancellationToken);
+
+		using QualificationArchiveService reloaded = new(temporary.ArchivePath);
+		await reloaded.LoadAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(QualificationArchiveState.Failed, reloaded.State);
+		Assert.Empty(reloaded.Records);
+		Assert.Contains("oversized", reloaded.LastError ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 	}
 
 	[Fact]
@@ -258,6 +308,7 @@ public sealed class QualificationArchiveServiceTests
 				GpuResult = ValidationStatus.Pass,
 				OverallResult = ValidationStatus.Pass,
 				TelemetryStatistics = telemetry,
+				TelemetryTimeline = CreateTimeline(),
 				GpuEvidence = Array.AsReadOnly(gpuEvidence)
 			}
 			: null;
@@ -271,8 +322,58 @@ public sealed class QualificationArchiveServiceTests
 			ExecutionMode = QualificationExecutionMode.Automated,
 			ProfileName = QualificationProfiles.Standard.Name,
 			TelemetryStatistics = telemetry,
+			TelemetryTimeline = CreateTimeline(),
 			GpuEvidence = Array.AsReadOnly(gpuEvidence),
 			Report = report
+		};
+	}
+
+	private static QualificationTelemetryTimeline CreateTimeline()
+	{
+		return new QualificationTelemetryTimeline
+		{
+			SamplingInterval = TimeSpan.FromSeconds(1),
+			Points =
+			[
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.Zero,
+					CpuLoadPercent = 80,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-0",
+							Name = "GPU 0",
+							LoadPercent = 80,
+							PowerWatts = 120
+						}
+					]
+				},
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.FromSeconds(1),
+					CpuLoadPercent = 90,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-0",
+							Name = "GPU 0",
+							LoadPercent = 90
+						}
+					]
+				}
+			],
+			Events =
+			[
+				new QualificationTimelineEvent
+				{
+					Elapsed = TimeSpan.Zero,
+					Kind = QualificationTimelineEventKind.Start,
+					Label = "Qualification started"
+				}
+			]
 		};
 	}
 

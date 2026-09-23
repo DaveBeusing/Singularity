@@ -30,6 +30,7 @@ public sealed class ResultsView : Panel
 	private readonly Label powerMetricValue = CreateValueLabel();
 	private readonly Label vramMetricValue = CreateValueLabel();
 	private readonly FlowLayoutPanel gpuEvidenceList = new();
+	private readonly TelemetryTimelineView timelineView = new();
 
 	public ResultsView()
 	{
@@ -67,6 +68,7 @@ public sealed class ResultsView : Panel
 		temperatureMetricValue.Text = FormatMetric(statistics.GpuTemperatureCelsius, "°C");
 		powerMetricValue.Text = FormatMetric(statistics.GpuPowerWatts, "W");
 		vramMetricValue.Text = FormatMetric(statistics.GpuVramUsagePercent, "%");
+		timelineView.UpdateTimeline(snapshot.TelemetryTimeline);
 		RenderGpuEvidence(snapshot.GpuEvidence);
 	}
 
@@ -129,11 +131,12 @@ public sealed class ResultsView : Panel
 			AutoSize = true,
 			AutoSizeMode = AutoSizeMode.GrowAndShrink,
 			ColumnCount = 2,
-			RowCount = 3,
+			RowCount = 4,
 			BackColor = Theme.Workspace
 		};
 		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52));
 		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));
+		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -145,12 +148,15 @@ public sealed class ResultsView : Panel
 		summary.Margin = new Padding(0, 0, ThemeMetrics.Spacing, ThemeMetrics.Spacing);
 		validation.Margin = new Padding(0, 0, 0, ThemeMetrics.Spacing);
 		statistics.Margin = new Padding(0, 0, 0, ThemeMetrics.Spacing);
+		timelineView.Margin = new Padding(0, 0, 0, ThemeMetrics.Spacing);
 		gpuEvidence.Margin = new Padding(0);
 		layout.Controls.Add(summary, 0, 0);
 		layout.Controls.Add(validation, 1, 0);
 		layout.Controls.Add(statistics, 0, 1);
 		layout.SetColumnSpan(statistics, 2);
-		layout.Controls.Add(gpuEvidence, 0, 2);
+		layout.Controls.Add(timelineView, 0, 2);
+		layout.SetColumnSpan(timelineView, 2);
+		layout.Controls.Add(gpuEvidence, 0, 3);
 		layout.SetColumnSpan(gpuEvidence, 2);
 
 		contentPanel.Controls.Add(layout);

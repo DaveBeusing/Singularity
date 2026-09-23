@@ -14,6 +14,7 @@ public sealed record QualificationJsonDocument(
 	QualificationProfile QualificationProfile,
 	QualificationValidationJson Validation,
 	SessionTelemetryStatistics TelemetryStatistics,
+	QualificationTelemetryTimeline TelemetryTimeline,
 	IReadOnlyList<GpuQualificationEvidenceJson> GpuEvidence,
 	HardwareSummaryJson Hardware);
 

@@ -24,7 +24,7 @@ public sealed class QualificationExporterMultiGpuTests
 
 		using JsonDocument document = JsonDocument.Parse(json);
 		JsonElement root = document.RootElement;
-		Assert.Equal("2.0", root.GetProperty("schemaVersion").GetString());
+		Assert.Equal("3.0", root.GetProperty("schemaVersion").GetString());
 		Assert.Equal("Fail", root.GetProperty("validation").GetProperty("gpu").GetString());
 
 		JsonElement evidence = root.GetProperty("gpuEvidence");
@@ -35,6 +35,9 @@ public sealed class QualificationExporterMultiGpuTests
 		Assert.Equal("GPU-B", evidence[1].GetProperty("identifier").GetString());
 		Assert.Equal("Fail", evidence[1].GetProperty("validation").GetString());
 		Assert.Equal(1, evidence[1].GetProperty("telemetry").GetProperty("unavailableSampleCount").GetInt64());
+		JsonElement timeline = root.GetProperty("telemetryTimeline");
+		Assert.Equal(2, timeline.GetProperty("points").GetArrayLength());
+		Assert.Equal("GPU-A", timeline.GetProperty("points")[0].GetProperty("gpus")[0].GetProperty("identifier").GetString());
 	}
 
 	[Fact]
@@ -50,8 +53,10 @@ public sealed class QualificationExporterMultiGpuTests
 		Assert.Contains("GPU-B", html, StringComparison.Ordinal);
 		Assert.Contains("GPU A", html, StringComparison.Ordinal);
 		Assert.Contains("GPU B", html, StringComparison.Ordinal);
-		Assert.Contains("Schema 2.0", html, StringComparison.Ordinal);
+		Assert.Contains("Schema 3.0", html, StringComparison.Ordinal);
 		Assert.Contains("Thermal limit exceeded", html, StringComparison.Ordinal);
+		Assert.Contains("TELEMETRY TIMELINE", html, StringComparison.Ordinal);
+		Assert.Contains("GPU temperature", html, StringComparison.Ordinal);
 	}
 
 	[Fact]
@@ -66,6 +71,7 @@ public sealed class QualificationExporterMultiGpuTests
 			Profile = baseline.Profile,
 			GpuResult = ValidationStatus.Pass,
 			OverallResult = ValidationStatus.Pass,
+			TelemetryTimeline = CreateTimeline(),
 			TelemetryStatistics = new SessionTelemetryStatistics
 			{
 				GpuLoadPercent = Metric(1, 90, 90, 90),
@@ -109,6 +115,7 @@ public sealed class QualificationExporterMultiGpuTests
 			MemoryResult = ValidationStatus.Pass,
 			GpuResult = ValidationStatus.Fail,
 			OverallResult = ValidationStatus.Fail,
+			TelemetryTimeline = CreateTimeline(),
 			TelemetryStatistics = new SessionTelemetryStatistics
 			{
 				CpuLoadPercent = Metric(2, 80, 90, 100),
@@ -153,6 +160,76 @@ public sealed class QualificationExporterMultiGpuTests
 				PowerWatts = Metric(availableSamples, 100, 120, 140),
 				VramUsagePercent = Metric(availableSamples, 20, 40, 60)
 			}
+		};
+	}
+
+	private static QualificationTelemetryTimeline CreateTimeline()
+	{
+		return new QualificationTelemetryTimeline
+		{
+			SamplingInterval = TimeSpan.FromSeconds(1),
+			Points =
+			[
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.Zero,
+					CpuLoadPercent = 80,
+					SystemMemoryUsagePercent = 40,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-A",
+							Name = "GPU A",
+							LoadPercent = 70,
+							TemperatureCelsius = 50,
+							PowerWatts = 100,
+							VramUsagePercent = 20
+						},
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-B",
+							Name = "GPU B",
+							LoadPercent = 75,
+							TemperatureCelsius = 55,
+							PowerWatts = 110,
+							VramUsagePercent = 30
+						}
+					]
+				},
+				new QualificationTelemetryPoint
+				{
+					Elapsed = TimeSpan.FromSeconds(1),
+					CpuLoadPercent = 90,
+					SystemMemoryUsagePercent = 50,
+					Gpus =
+					[
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-A",
+							Name = "GPU A",
+							LoadPercent = 90,
+							TemperatureCelsius = 60,
+							PowerWatts = 120,
+							VramUsagePercent = 40
+						},
+						new QualificationTelemetryGpuPoint
+						{
+							Identifier = "GPU-B",
+							Name = "GPU B"
+						}
+					]
+				}
+			],
+			Events =
+			[
+				new QualificationTimelineEvent
+				{
+					Elapsed = TimeSpan.Zero,
+					Kind = QualificationTimelineEventKind.Start,
+					Label = "Qualification started"
+				}
+			]
 		};
 	}
 

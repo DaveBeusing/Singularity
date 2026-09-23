@@ -14,11 +14,31 @@ The archive is local to the current Windows user. Singularity does not sync this
 
 ## Schema and ownership
 
-`Application/Persistence/QualificationArchiveDocument` owns the persistence contract. The current schema version is `1`.
+`Application/Persistence/QualificationArchiveDocument` owns the persistence contract. The current schema version is `2`. Schema version `1` remains readable so existing qualification archives continue to load after the timeline feature is introduced.
 
-Each persisted record contains the completed-session timestamps, duration, final result, execution mode, profile name, frozen session telemetry statistics, per-device GPU evidence, and the generated qualification report when available. Enum values are written as readable names. Unsupported schema versions fail closed rather than being interpreted approximately.
+Each persisted record contains the completed-session timestamps, duration, final result, execution mode, profile name, frozen streaming telemetry statistics, bounded telemetry timeline, per-device GPU evidence, and the generated qualification report when available. Enum values are written as readable names.
 
-The archive stores completed evidence only. It does not persist raw telemetry time series.
+Schema `2` adds the bounded telemetry timeline. When a schema-`1` record is loaded, the missing timeline is represented as an empty timeline rather than fabricated evidence. Archive versions below the minimum supported version or above the current version fail closed rather than being interpreted approximately.
+
+The archive never stores the unbounded raw telemetry sample stream. Timeline evidence is already bounded/downsampled before persistence.
+
+## Timeline storage bounds
+
+Each completed record may contain at most 720 frozen telemetry points and at most 128 event markers. The effective sampling interval is stored with the timeline so the retained evidence remains self-describing.
+
+A timeline point can contain:
+
+- elapsed qualification time;
+- CPU load;
+- system-memory utilization;
+- per-GPU load;
+- per-GPU temperature;
+- per-GPU power when available;
+- per-GPU VRAM utilization when available.
+
+Per-GPU values remain associated with the stable device identifier. Unavailable values are serialized as `null`, not numeric zero.
+
+The bounded timeline exists in addition to the existing streaming summary statistics. Archive consumers must not treat the downsampled timeline as a replacement for the full-sample minimum/average/maximum statistics.
 
 ## Retention
 
@@ -27,7 +47,7 @@ Two limits intentionally serve different purposes:
 - `QualificationHistory` retains the ten newest records for the live qualification runtime model.
 - `QualificationArchiveService` retains up to 100 completed records by default for restart-safe Results/Reports evidence.
 
-The coordinator exposes the bounded archive-backed evidence list to Results and Reports while preserving the existing ten-entry live history.
+The coordinator exposes the bounded archive-backed evidence list to Results and Reports while preserving the existing ten-entry live history. Because each record's timeline is independently bounded, archive memory and storage growth remain bounded by both record retention and per-record timeline limits.
 
 ## Startup behavior
 
@@ -70,4 +90,4 @@ If an archive write is still pending when the main window is closed, Singularity
 
 ## Privacy
 
-The qualification archive can contain hardware identity, qualification outcomes, timestamps, telemetry statistics, and report evidence. It is stored only in the current user's local application-data directory unless a test or future explicitly configured storage path is used. Clearing the archive removes Singularity's local persisted qualification evidence file.
+The qualification archive can contain hardware identity, qualification outcomes, timestamps, bounded telemetry timelines, telemetry statistics, and report evidence. It is stored only in the current user's local application-data directory unless a test or future explicitly configured storage path is used. Clearing the archive removes Singularity's local persisted qualification evidence file.
