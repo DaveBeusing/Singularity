@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using System.Text.Json.Nodes;
 using Singularity.Application;
 using Singularity.Application.Persistence;
 using Singularity.Core.Qualification;
@@ -104,6 +105,36 @@ public sealed class QualificationArchiveServiceTests
 		Assert.Equal(QualificationArchiveState.Ready, archive.State);
 		Assert.Empty(archive.Records);
 		Assert.Null(archive.LastError);
+	}
+
+	[Fact]
+	public async Task LoadAsync_WhenTimelineExceedsPointBudget_FailsClosed()
+	{
+		using TemporaryDirectory temporary = new();
+		using (QualificationArchiveService archive = new(temporary.ArchivePath))
+		{
+			await archive.LoadAsync(TestContext.Current.CancellationToken);
+			await archive.SaveAsync(CreateRecord(0), TestContext.Current.CancellationToken);
+		}
+
+		JsonNode root = JsonNode.Parse(
+			await File.ReadAllTextAsync(temporary.ArchivePath, TestContext.Current.CancellationToken))!;
+		JsonArray points = root["records"]![0]!["telemetryTimeline"]!["points"]!.AsArray();
+		JsonNode seed = points[0]!.DeepClone();
+		while (points.Count <= QualificationTelemetryTimeline.DefaultMaximumPoints)
+			points.Add(seed.DeepClone());
+
+		await File.WriteAllTextAsync(
+			temporary.ArchivePath,
+			root.ToJsonString(),
+			TestContext.Current.CancellationToken);
+
+		using QualificationArchiveService reloaded = new(temporary.ArchivePath);
+		await reloaded.LoadAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(QualificationArchiveState.Failed, reloaded.State);
+		Assert.Empty(reloaded.Records);
+		Assert.Contains("oversized", reloaded.LastError ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 	}
 
 	[Fact]
