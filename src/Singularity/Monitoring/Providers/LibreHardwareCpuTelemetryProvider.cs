@@ -10,37 +10,69 @@ namespace Singularity.Monitoring.Providers;
 
 public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 {
-	private readonly Computer computer;
+	private readonly Computer? computer;
+	private readonly string initializationStatus;
 	private bool disposed;
 	private bool sensorDumpWritten;
 
 	public LibreHardwareCpuTelemetryProvider()
 	{
-		computer = new Computer
+		Computer? candidate = null;
+		try
 		{
-			IsCpuEnabled = true,
-			IsMotherboardEnabled = true,
-			IsControllerEnabled = true
-		};
+			candidate = new Computer
+			{
+				IsCpuEnabled = true,
+				IsMotherboardEnabled = true,
+				IsControllerEnabled = true
+			};
 
-		computer.Open();
+			candidate.Open();
+			computer = candidate;
+			initializationStatus = "OK";
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine($"CPU telemetry initialization error: {ex}");
+			try
+			{
+				candidate?.Close();
+			}
+			catch
+			{
+				// Best effort cleanup after failed hardware initialization.
+			}
+
+			computer = null;
+			initializationStatus = "CPU temp initialization failed";
+		}
 	}
 
 	public CpuTelemetrySnapshot Read()
 	{
+		Computer? activeComputer = computer;
+		if (activeComputer is null)
+		{
+			return new CpuTelemetrySnapshot
+			{
+				IsAvailable = false,
+				Status = initializationStatus
+			};
+		}
+
 		try
 		{
-			UpdateAllHardware();
+			UpdateAllHardware(activeComputer);
 
 			if (!sensorDumpWritten)
 			{
-				WriteSensorDump();
+				WriteSensorDump(activeComputer);
 				sensorDumpWritten = true;
 			}
 
 			ISensor? sensor =
-				FindPreferredCpuTemperatureSensor()
-				?? FindAnyCpuTemperatureSensor();
+				FindPreferredCpuTemperatureSensor(activeComputer)
+				?? FindAnyCpuTemperatureSensor(activeComputer);
 
 			if (sensor?.Value is float temperature)
 			{
@@ -70,7 +102,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 		}
 	}
 
-	private void UpdateAllHardware()
+	private static void UpdateAllHardware(Computer computer)
 	{
 		foreach (IHardware hardware in computer.Hardware)
 		{
@@ -88,7 +120,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 		}
 	}
 
-	private ISensor? FindPreferredCpuTemperatureSensor()
+	private static ISensor? FindPreferredCpuTemperatureSensor(Computer computer)
 	{
 		string[] preferredNames =
 		[
@@ -105,7 +137,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 
 		foreach (string preferredName in preferredNames)
 		{
-			foreach (ISensor sensor in EnumerateSensors())
+			foreach (ISensor sensor in EnumerateSensors(computer))
 			{
 				if (sensor.SensorType != SensorType.Temperature)
 					continue;
@@ -128,7 +160,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 		return null;
 	}
 
-	private ISensor? FindAnyCpuTemperatureSensor()
+	private static ISensor? FindAnyCpuTemperatureSensor(Computer computer)
 	{
 		foreach (ISensor sensor in EnumerateSensors())
 		{
@@ -161,7 +193,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 			|| sensorName.Contains("Tdie", StringComparison.OrdinalIgnoreCase);
 	}
 
-	private IEnumerable<ISensor> EnumerateSensors()
+	private static IEnumerable<ISensor> EnumerateSensors(Computer computer)
 	{
 		foreach (IHardware hardware in computer.Hardware)
 		{
@@ -188,7 +220,7 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 		}
 	}
 
-	private void WriteSensorDump()
+	private static void WriteSensorDump(Computer computer)
 	{
 		Debug.WriteLine("===== LibreHardwareMonitor Sensor Dump =====");
 
@@ -224,7 +256,17 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 		if (disposed)
 			return;
 
-		computer.Close();
+		if (computer is not null)
+		{
+			try
+			{
+				computer.Close();
+			}
+			catch (Exception ex)
+			{
+				Debug.WriteLine($"CPU telemetry shutdown error: {ex}");
+			}
+		}
 		disposed = true;
 	}
 }
