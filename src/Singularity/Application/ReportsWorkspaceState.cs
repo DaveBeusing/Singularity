@@ -32,8 +32,15 @@ public sealed class ReportsWorkspaceState
 		bool inventoryAvailable)
 	{
 		ArgumentNullException.ThrowIfNull(history);
+		return CreateSnapshot(history.Records, inventoryAvailable);
+	}
 
-		IReadOnlyList<QualificationRecord> records = history.Records;
+	public ReportsWorkspaceSnapshot CreateSnapshot(
+		IReadOnlyList<QualificationRecord> records,
+		bool inventoryAvailable)
+	{
+		ArgumentNullException.ThrowIfNull(records);
+
 		if (records.Count == 0)
 		{
 			selectedRecord = null;
@@ -71,12 +78,21 @@ public sealed class ReportsWorkspaceState
 		bool inventoryAvailable)
 	{
 		ArgumentNullException.ThrowIfNull(history);
+		return Select(index, history.Records, inventoryAvailable);
+	}
 
-		if (index >= 0 && index < history.Records.Count)
-			selectedRecord = history.Records[index];
+	public ReportsWorkspaceSnapshot Select(
+		int index,
+		IReadOnlyList<QualificationRecord> records,
+		bool inventoryAvailable)
+	{
+		ArgumentNullException.ThrowIfNull(records);
 
-		latestRecord ??= history.Records.Count > 0 ? history.Records[0] : null;
-		return CreateSnapshot(history, inventoryAvailable);
+		if (index >= 0 && index < records.Count)
+			selectedRecord = records[index];
+
+		latestRecord ??= records.Count > 0 ? records[0] : null;
+		return CreateSnapshot(records, inventoryAvailable);
 	}
 
 	private int FindSelectedIndex(IReadOnlyList<QualificationRecord> records)
