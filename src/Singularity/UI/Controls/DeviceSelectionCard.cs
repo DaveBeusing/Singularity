@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using System.ComponentModel;
+
 namespace Singularity.UI.Controls;
 
 public sealed class DeviceSelectionCard : Panel
@@ -26,6 +28,8 @@ public sealed class DeviceSelectionCard : Panel
 
 	public event Action? SelectionRequested;
 
+	[Browsable(false)]
+	[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 	public bool Selected
 	{
 		get => selected;

@@ -2,62 +2,76 @@
 
 param(
 	[string]$RootPath = "",
-    [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Release",
-
-    [switch]$Run
+	[ValidateSet("Debug", "Release")]
+	[string]$Configuration = "Release",
+	[switch]$Run
 )
+
+$ErrorActionPreference = "Stop"
 
 $RepoRoot = if ([string]::IsNullOrWhiteSpace($RootPath)) {
 	Split-Path -Parent $PSScriptRoot
 } else {
 	$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RootPath)
 }
+
 $ProjectPath = Join-Path $RepoRoot "src\Singularity\Singularity.csproj"
 $SolutionPath = Join-Path $RepoRoot "Singularity.slnx"
 
+function Invoke-DotNetStage {
+	param(
+		[Parameter(Mandatory = $true)]
+		[string]$Name,
+		[Parameter(Mandatory = $true)]
+		[string[]]$Arguments
+	)
+
+	Write-Host ""
+	Write-Host "=== $Name ===" -ForegroundColor Cyan
+
+	& dotnet @Arguments
+	$ExitCode = $LASTEXITCODE
+
+	if ($ExitCode -ne 0) {
+		throw "$Name failed with exit code $ExitCode."
+	}
+}
+
 Push-Location $RepoRoot
 
-Write-Host ""
-Write-Host "=== Restore ===" -ForegroundColor Cyan
+try {
+	Invoke-DotNetStage -Name "Restore" -Arguments @(
+		"restore",
+		$SolutionPath
+	)
 
-dotnet restore $SolutionPath
+	Invoke-DotNetStage -Name "Build ($Configuration)" -Arguments @(
+		"build",
+		$SolutionPath,
+		"--configuration", $Configuration,
+		"--no-restore"
+	)
 
-if ($LASTEXITCODE -ne 0) {
-	Pop-Location
-    Write-Error "dotnet restore fehlgeschlagen."
-    exit $LASTEXITCODE
+	Invoke-DotNetStage -Name "Test ($Configuration)" -Arguments @(
+		"test",
+		$SolutionPath,
+		"--configuration", $Configuration,
+		"--no-build",
+		"--no-restore"
+	)
+
+	Write-Host ""
+	Write-Host "Validation succeeded." -ForegroundColor Green
+
+	if ($Run) {
+		Invoke-DotNetStage -Name "Run ($Configuration)" -Arguments @(
+			"run",
+			"--project", $ProjectPath,
+			"--configuration", $Configuration,
+			"--no-build"
+		)
+	}
 }
-
-Write-Host ""
-Write-Host "=== Build ($Configuration) ===" -ForegroundColor Cyan
-
-dotnet build `
-	$SolutionPath `
-    --configuration $Configuration `
-    --no-restore
-
-if ($LASTEXITCODE -ne 0) {
+finally {
 	Pop-Location
-    Write-Error "dotnet build fehlgeschlagen."
-    exit $LASTEXITCODE
 }
-
-Write-Host ""
-Write-Host "Build erfolgreich." -ForegroundColor Green
-
-if ($Run) {
-
-    Write-Host ""
-    Write-Host "=== Run ===" -ForegroundColor Cyan
-
-    dotnet run `
-		--project $ProjectPath `
-        --configuration $Configuration `
-        --no-build
-	$RunExitCode = $LASTEXITCODE
-	Pop-Location
-	exit $RunExitCode
-}
-
-Pop-Location
