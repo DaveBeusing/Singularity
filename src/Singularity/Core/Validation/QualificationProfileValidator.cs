@@ -60,7 +60,8 @@ public static class QualificationProfileValidator
 			errors.Add("Memory warning tolerance cannot exceed the memory pass tolerance.");
 		}
 
-		if (profile.GpuMaximumTemperatureCelsius <= 0 ||
+		if (!double.IsFinite(profile.GpuMaximumTemperatureCelsius) ||
+			profile.GpuMaximumTemperatureCelsius <= 0 ||
 			profile.GpuMaximumTemperatureCelsius > MaximumTemperatureCelsius)
 		{
 			errors.Add(
@@ -74,8 +75,9 @@ public static class QualificationProfileValidator
 			errors.Add("GPU stability duration cannot be negative.");
 
 		if (profile.RecommendedDuration > TimeSpan.Zero &&
-			profile.GpuWarmupDuration + profile.GpuStabilityDuration >
-			profile.RecommendedDuration)
+			profile.GpuWarmupDuration.TotalSeconds +
+			profile.GpuStabilityDuration.TotalSeconds >
+			profile.RecommendedDuration.TotalSeconds)
 		{
 			errors.Add("GPU warm-up and stability time cannot exceed the recommended duration.");
 		}
