@@ -184,13 +184,15 @@ public sealed class WorkloadValidator
 			else if (explicitSelection && selectedGpu is null)
 			{
 				gpuLoadStableSince.Remove(key);
-				status = ValidationStatus.Warning;
+				status = ValidationStatus.Unknown;
 				message = "Selected GPU telemetry unavailable";
 			}
 			else if (selectedGpu is not null && !selectedGpu.IsAvailable)
 			{
 				gpuLoadStableSince.Remove(key);
-				status = ValidationStatus.Warning;
+				status = explicitSelection
+					? ValidationStatus.Unknown
+					: ValidationStatus.Warning;
 				message = selectedGpu.Status;
 			}
 			else if (!explicitSelection && !telemetry.GpuTelemetryAvailable)
@@ -253,7 +255,9 @@ public sealed class WorkloadValidator
 			return ValidationStatus.Fail;
 		if (results.Any(result => result.Status == ValidationStatus.Warning))
 			return ValidationStatus.Warning;
-		if (results.Any(result => result.Status == ValidationStatus.Pass))
+		if (results.Any(result => result.Status == ValidationStatus.Unknown))
+			return ValidationStatus.Warning;
+		if (results.All(result => result.Status == ValidationStatus.Pass))
 			return ValidationStatus.Pass;
 		return ValidationStatus.Unknown;
 	}
@@ -267,6 +271,12 @@ public sealed class WorkloadValidator
 
 		GpuValidationResult? firstRelevant = results.FirstOrDefault(
 			result => result.Status == aggregateStatus);
+		if (firstRelevant is null && aggregateStatus == ValidationStatus.Warning)
+		{
+			firstRelevant = results.FirstOrDefault(
+				result => result.Status == ValidationStatus.Unknown);
+		}
+
 		string detail = firstRelevant is null
 			? string.Empty
 			: $" · {firstRelevant.Name}: {firstRelevant.Message}";

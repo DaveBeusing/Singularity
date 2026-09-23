@@ -19,7 +19,7 @@ Memory percentages describe the required fraction of the requested allocation. F
 - `Fail` means CPU or memory is below its warning threshold, GPU temperature exceeds the profile maximum, or post-warm-up GPU load is below its minimum.
 - `Unknown` means that workload component is disabled.
 
-For every explicitly selected GPU, `WorkloadValidator` resolves the matching `GpuTelemetrySnapshot`. Missing or unavailable telemetry becomes a warning for that device; telemetry from another enumerated GPU is never substituted. Each GPU owns an independent warm-up and stable-load timer so a slow or interrupted device cannot inherit another adapter's stability state. Legacy callers without explicit identifiers retain the compatibility behavior based on the first GPU fields in `SystemSnapshot`.
+For every explicitly selected GPU, `WorkloadValidator` resolves the matching `GpuTelemetrySnapshot`. Missing or unavailable telemetry remains `UNKNOWN` for that device; telemetry from another enumerated GPU is never substituted. Because an enabled GPU workload cannot be qualified as passing without evidence, the derived aggregate GPU status becomes `WARNING` whenever any selected device is `UNKNOWN` and no device has failed. Each GPU owns an independent warm-up and stable-load timer so a slow or interrupted device cannot inherit another adapter's stability state. Legacy callers without explicit identifiers retain the compatibility behavior based on the first GPU fields in `SystemSnapshot`.
 
 GPU load must remain at or above the minimum for the profile's stability duration before that device passes. Dropping below the minimum resets only that device's stability window. Validator state is reset when a new session begins.
 

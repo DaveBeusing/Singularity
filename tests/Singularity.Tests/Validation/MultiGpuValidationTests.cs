@@ -76,7 +76,7 @@ public sealed class MultiGpuValidationTests
 		Assert.Equal(ValidationStatus.Warning, result.GpuStatus);
 		Assert.True(result.GpuDevices[0].TelemetryAvailable);
 		Assert.False(result.GpuDevices[1].TelemetryAvailable);
-		Assert.Equal(ValidationStatus.Warning, result.GpuDevices[1].Status);
+		Assert.Equal(ValidationStatus.Unknown, result.GpuDevices[1].Status);
 	}
 
 	private static GpuTelemetrySnapshot CreateGpu(
