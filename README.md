@@ -15,13 +15,13 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 - Includes Quick, Standard, and Burn-in qualification profiles.
 - Evaluates CPU, memory, and GPU checks as PASS, WARNING, or FAIL.
 - Records qualification sessions with validation results and minimum, average, and maximum telemetry statistics.
-- Keeps the ten most recent sessions in a bounded in-memory history with frozen profile, run mode, result, telemetry statistics, and report evidence where available.
+- Keeps the ten most recent sessions in the live runtime history and persists up to 100 completed qualification records per Windows user with frozen profile, run mode, result, telemetry statistics, per-device GPU evidence, and report evidence where available.
 - Runs automated qualification plans with dedicated and combined workload steps.
 - Exports the selected qualification report as JSON or standalone HTML, including profile, validation, statistics, hardware inventory, and application version.
 - Uses a resizable editor-style WinForms shell with persistent Overview, Platform, Qualification, Results, Reports, and Settings workspaces, contextual navigation, optional inspector/tool regions, and a global status bar.
 - Provides a dedicated Qualification workspace with state-aware commands, persistent-in-session configuration, current-session state, automated progress, failure feedback, contextual inspection, and live cached telemetry in the Tool Panel.
 - Presents the latest completed qualification evidence in Results and bounded selectable history with report preview/export in Reports.
-- Provides session-only Settings for sidebar, inspector, and tool-panel layout visibility without implying persistence across application restarts.
+- Provides Settings for session-only sidebar, inspector, and tool-panel layout visibility plus local qualification-archive status and explicit clear/delete control.
 - Caches platform inventory outside the UI lifecycle, supports explicit non-blocking refresh, and provides component-level Platform navigation with selection-driven device inspection.
 
 ## Repository Structure
@@ -157,11 +157,11 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 - [Qualification workspace](docs/qualification/qualification-workspace.md)
 - [Qualification runner](docs/qualification/qualification-runner.md)
 - [Validation](docs/qualification/validation.md)
-- [Reporting](docs/qualification/reporting.md)
+- [Reporting](docs/qualification/reporting.md)\n- [Qualification archive](docs/qualification/qualification-archive.md)
 
 ## Roadmap
 
-Remaining opportunities include persisting qualification history across application restarts, extending vendor-specific telemetry beyond NVIDIA/NVML, completing the trusted release-signing pipeline, and adding hardware-integration coverage across representative GPU and system configurations.
+Remaining opportunities include extending vendor-specific telemetry beyond NVIDIA/NVML, defining migration behavior when a future qualification-archive schema requires it, completing the trusted release-signing pipeline, and adding hardware-integration coverage across representative GPU and system configurations.
 
 ## License
 
