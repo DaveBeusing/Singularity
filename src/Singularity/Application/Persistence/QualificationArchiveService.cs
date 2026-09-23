@@ -5,6 +5,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Singularity.Core.Qualification;
+using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 
 namespace Singularity.Application.Persistence;
