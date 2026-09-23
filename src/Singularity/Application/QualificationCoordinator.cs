@@ -22,6 +22,7 @@ public sealed class QualificationCoordinator
 	private readonly object archiveTaskLock = new();
 	private Task archiveWriteTask = Task.CompletedTask;
 	private bool automatedRunFinalized;
+	private int lastRecordedAutomatedStep;
 	private SystemSnapshot? lastSnapshot;
 
 	public QualificationSession Session { get; } = new();
@@ -117,6 +118,7 @@ public sealed class QualificationCoordinator
 			options.ResolveSelectedGpuIdentifiers());
 		automatedRunFinalized = false;
 		qualificationRunner.Start(plan);
+		RecordAutomatedStepTransition();
 		return true;
 	}
 
@@ -124,6 +126,8 @@ public sealed class QualificationCoordinator
 	{
 		if (qualificationRunner.IsRunning)
 		{
+			Session.RecordTimelineEvent(QualificationTimelineEventKind.Stop, "Stop requested");
+			Session.RecordTimelineEvent(QualificationTimelineEventKind.Cancelled, "Automated qualification cancelled");
 			qualificationRunner.Cancel();
 			FinalizeSession(forceFailure: true);
 			return true;
@@ -147,6 +151,7 @@ public sealed class QualificationCoordinator
 					Session.Duration);
 		}
 
+		Session.RecordTimelineEvent(QualificationTimelineEventKind.Stop, "Stop requested");
 		workloadController.Stop();
 		FinalizeSession(forceFailure: workloadState == WorkloadState.Failed);
 		return true;
@@ -174,7 +179,10 @@ public sealed class QualificationCoordinator
 		}
 
 		if (qualificationRunner.IsRunning)
+		{
 			qualificationRunner.Update(LastValidationResult);
+			RecordAutomatedStepTransition();
+		}
 
 		if (Session.State == QualificationSessionState.Running &&
 			qualificationRunner.State == QualificationRunState.Idle &&
@@ -200,7 +208,24 @@ public sealed class QualificationCoordinator
 		LastReport = null;
 		lastSnapshot = null;
 		workloadValidator.Reset();
+		lastRecordedAutomatedStep = 0;
 		Session.Start(profile, executionMode, selectedGpuIdentifiers);
+	}
+
+	private void RecordAutomatedStepTransition()
+	{
+		QualificationProgress progress = qualificationRunner.Progress;
+		if (progress.State != QualificationRunState.Running ||
+			progress.StepNumber <= 0 ||
+			progress.StepNumber == lastRecordedAutomatedStep)
+		{
+			return;
+		}
+
+		lastRecordedAutomatedStep = progress.StepNumber;
+		Session.RecordTimelineEvent(
+			QualificationTimelineEventKind.StepTransition,
+			$"Step {progress.StepNumber}/{progress.StepCount}: {progress.StepName}");
 	}
 
 	private void FinalizeSession(bool forceFailure = false)
