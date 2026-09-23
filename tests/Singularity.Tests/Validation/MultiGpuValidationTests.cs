@@ -31,11 +31,13 @@ public sealed class MultiGpuValidationTests
 		};
 
 		validator.Validate(workload, telemetry, profile, TimeSpan.Zero);
+		TimeSpan afterWarmup = profile.GpuWarmupDuration + TimeSpan.FromSeconds(1);
+		validator.Validate(workload, telemetry, profile, afterWarmup);
 		ValidationResult result = validator.Validate(
 			workload,
 			telemetry,
 			profile,
-			profile.GpuWarmupDuration + profile.GpuStabilityDuration + TimeSpan.FromSeconds(1));
+			afterWarmup + profile.GpuStabilityDuration + TimeSpan.FromSeconds(1));
 
 		Assert.Equal(2, result.GpuDevices.Count);
 		Assert.Equal(ValidationStatus.Fail, result.GpuStatus);
@@ -63,11 +65,13 @@ public sealed class MultiGpuValidationTests
 		};
 
 		validator.Validate(workload, telemetry, profile, TimeSpan.Zero);
+		TimeSpan afterWarmup = profile.GpuWarmupDuration + TimeSpan.FromSeconds(1);
+		validator.Validate(workload, telemetry, profile, afterWarmup);
 		ValidationResult result = validator.Validate(
 			workload,
 			telemetry,
 			profile,
-			profile.GpuWarmupDuration + profile.GpuStabilityDuration + TimeSpan.FromSeconds(1));
+			afterWarmup + profile.GpuStabilityDuration + TimeSpan.FromSeconds(1));
 
 		Assert.Equal(ValidationStatus.Warning, result.GpuStatus);
 		Assert.True(result.GpuDevices[0].TelemetryAvailable);

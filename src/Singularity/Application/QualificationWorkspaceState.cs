@@ -262,7 +262,8 @@ public sealed class QualificationWorkspaceState
 
 		bool requiredTelemetryUnavailable =
 			(Configuration.EnableMemoryWorkload && telemetry.TotalPhysicalMemoryMb <= 0) ||
-			(Configuration.EnableGpuWorkload && unavailableGpuCount > 0);
+			(Configuration.EnableGpuWorkload &&
+				(selectedIdentifiers.Count == 0 || unavailableGpuCount > 0));
 
 		QualificationFeedback? feedback = ResolveFeedback(
 			workload,
@@ -377,7 +378,8 @@ public sealed class QualificationWorkspaceState
 				unavailable.Add("system memory telemetry");
 			}
 
-			if (Configuration.EnableGpuWorkload && unavailableGpuCount > 0)
+			if (Configuration.EnableGpuWorkload &&
+				(selectedGpuCount == 0 || unavailableGpuCount > 0))
 			{
 				unavailable.Add(
 					selectedGpuCount <= 1
