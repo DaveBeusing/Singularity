@@ -4,7 +4,7 @@ The final editor-style UI migration separates qualification execution, completed
 
 ## Results
 
-Results always derives from the newest completed record in the bounded `QualificationHistory`. It presents:
+Results derives from the newest completed record in the coordinator's bounded evidence list. At runtime this list combines the current ten-entry `QualificationHistory` with the locally persisted qualification archive loaded at startup. It presents:
 
 - overall PASS/WARNING/FAIL state with a text label and semantic color;
 - profile and manual/automated execution mode;
@@ -19,11 +19,11 @@ Results does not own a second qualification model. It maps the existing history/
 
 ## Reports
 
-Reports consumes the same bounded in-memory history. The left history surface selects a record; the central surface and inspector render that selection. A new completed record becomes the selected entry automatically.
+Reports consumes the same archive-backed evidence list. The left history surface selects a record; the central surface and inspector render that selection. A new completed record becomes the selected entry automatically.
 
 A history record retains frozen per-device GPU evidence and the generated `QualificationReport` when one exists. The report preview renders each selected GPU separately. JSON and HTML export are routed through the existing `ReportExportService` and act on the selected report. Export is disabled unless both report evidence and current platform inventory are available.
 
-History remains capped at ten entries and is intentionally not persisted across application restarts.
+`QualificationHistory` remains capped at ten entries for the live runtime model. `QualificationArchiveService` persists up to 100 completed records by default under `%LOCALAPPDATA%\\Singularity\\qualification-archive.json`, so Results and Reports can be rehydrated after restart.
 
 ## Settings
 
@@ -34,7 +34,7 @@ Settings is not a general configuration framework. It exposes only shell capabil
 - tool-panel visibility preference;
 - reset layout to defaults.
 
-These preferences apply only to the current application session. The UI explicitly states that they do not survive restart.
+These layout preferences apply only to the current application session. Settings separately shows qualification-archive loading/ready/failure state, stored-record count, local storage path, and an explicitly confirmed clear action.
 
 Inspector and tool-panel preferences are retained when navigating through a workspace that does not support the requested region. The unsupported region is collapsed visually and reappears when the user enters a compatible workspace.
 
