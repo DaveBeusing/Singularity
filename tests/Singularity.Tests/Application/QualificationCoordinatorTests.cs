@@ -4,6 +4,7 @@
 
 using Singularity.Application;
 using Singularity.Core.Qualification;
+using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
 using Singularity.Monitoring.Models;
@@ -69,6 +70,18 @@ public sealed class QualificationCoordinatorTests
 		Assert.Single(coordinator.History.Records);
 		Assert.Null(coordinator.LastReport);
 		Assert.Equal(WorkloadState.Stopped, coordinator.WorkloadStatus.State);
+		Assert.Equal(
+			[
+				QualificationTimelineEventKind.Start,
+				QualificationTimelineEventKind.StepTransition,
+				QualificationTimelineEventKind.Stop,
+				QualificationTimelineEventKind.Cancelled,
+				QualificationTimelineEventKind.Failed
+			],
+			coordinator.Session.TelemetryTimeline.Events.Select(marker => marker.Kind));
+		Assert.True(coordinator.Session.TelemetryTimeline.Events
+			.Zip(coordinator.Session.TelemetryTimeline.Events.Skip(1), (left, right) => left.Elapsed <= right.Elapsed)
+			.All(value => value));
 	}
 
 
