@@ -74,11 +74,14 @@ public static class QualificationGpuSelection
 		IReadOnlyList<QualificationGpuOption> options,
 		string? selectedIdentifier)
 	{
+		ArgumentNullException.ThrowIfNull(options);
+
+		if (string.IsNullOrWhiteSpace(selectedIdentifier))
+			return options.Count > 0 ? options[0] : null;
+
 		IReadOnlyList<QualificationGpuOption> selections = ResolveSelections(
 			options,
-			string.IsNullOrWhiteSpace(selectedIdentifier)
-				? Array.Empty<string>()
-				: [selectedIdentifier]);
+			[selectedIdentifier]);
 
 		return selections.Count > 0 ? selections[0] : null;
 	}
