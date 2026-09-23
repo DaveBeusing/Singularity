@@ -11,7 +11,7 @@ namespace Singularity.Application.Persistence;
 internal sealed class QualificationArchiveDocument
 {
 	public const int MinimumSupportedSchemaVersion = 1;
-	public const int CurrentSchemaVersion = 2;
+	public const int CurrentSchemaVersion = 3;
 
 	public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 	public IReadOnlyList<QualificationArchiveRecordDto> Records { get; init; } =
@@ -27,6 +27,7 @@ internal sealed class QualificationArchiveRecordDto
 	public QualificationExecutionMode ExecutionMode { get; init; } =
 		QualificationExecutionMode.Unknown;
 	public string ProfileName { get; init; } = string.Empty;
+	public QualificationProfile? Profile { get; init; }
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
 		SessionTelemetryStatistics.Empty;
 	public QualificationTelemetryTimeline TelemetryTimeline { get; init; } =
@@ -47,6 +48,7 @@ internal sealed class QualificationArchiveRecordDto
 			Result = record.Result,
 			ExecutionMode = record.ExecutionMode,
 			ProfileName = record.ProfileName,
+			Profile = record.Profile.Snapshot(),
 			TelemetryStatistics = record.TelemetryStatistics,
 			TelemetryTimeline = record.TelemetryTimeline,
 			GpuEvidence = record.GpuEvidence,
@@ -54,7 +56,7 @@ internal sealed class QualificationArchiveRecordDto
 		};
 	}
 
-	public QualificationRecord ToRecord()
+	public QualificationRecord ToRecord(QualificationProfile effectiveProfile)
 	{
 		return new QualificationRecord
 		{
@@ -64,6 +66,7 @@ internal sealed class QualificationArchiveRecordDto
 			Result = Result,
 			ExecutionMode = ExecutionMode,
 			ProfileName = ProfileName,
+			Profile = effectiveProfile.Snapshot(),
 			TelemetryStatistics = TelemetryStatistics,
 			TelemetryTimeline = TelemetryTimeline,
 			GpuEvidence = GpuEvidence,

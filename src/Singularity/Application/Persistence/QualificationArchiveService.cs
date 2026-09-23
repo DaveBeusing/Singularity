@@ -293,7 +293,19 @@ public sealed class QualificationArchiveService : IDisposable
 		if (dto.Report is not null)
 			ValidateTimeline(dto.Report.TelemetryTimeline);
 
-		return dto.ToRecord();
+		QualificationProfile effectiveProfile = dto.Profile?.Snapshot() ??
+			QualificationProfiles.FindBuiltInByName(dto.ProfileName)?.Snapshot() ??
+			throw new InvalidDataException(
+				$"Qualification archive contains unknown legacy profile '{dto.ProfileName}'.");
+		QualificationProfileValidationResult profileValidation =
+			QualificationProfileValidator.Validate(effectiveProfile);
+		if (!profileValidation.IsValid)
+		{
+			throw new InvalidDataException(
+				$"Qualification archive contains an invalid profile: {string.Join(" ", profileValidation.Errors)}");
+		}
+
+		return dto.ToRecord(effectiveProfile);
 	}
 
 	private static void ValidateTimeline(QualificationTelemetryTimeline timeline)
