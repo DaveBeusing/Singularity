@@ -97,7 +97,8 @@ public sealed class QualificationArchiveService : IDisposable
 			if (document is null)
 				throw new InvalidDataException("Qualification archive is empty or invalid.");
 
-			if (document.SchemaVersion != QualificationArchiveDocument.CurrentSchemaVersion)
+			if (document.SchemaVersion < QualificationArchiveDocument.MinimumSupportedSchemaVersion ||
+				document.SchemaVersion > QualificationArchiveDocument.CurrentSchemaVersion)
 			{
 				throw new InvalidDataException(
 					$"Unsupported qualification archive schema version {document.SchemaVersion}.");
