@@ -16,35 +16,52 @@ public sealed class LibreHardwareCpuTelemetryProvider : IDisposable
 	private bool sensorDumpWritten;
 
 	public LibreHardwareCpuTelemetryProvider()
+		: this(CreateComputer)
 	{
-		Computer? candidate = null;
+	}
+
+	internal LibreHardwareCpuTelemetryProvider(Func<Computer> computerFactory)
+	{
+		ArgumentNullException.ThrowIfNull(computerFactory);
 		try
 		{
-			candidate = new Computer
-			{
-				IsCpuEnabled = true,
-				IsMotherboardEnabled = true,
-				IsControllerEnabled = true
-			};
-
-			candidate.Open();
-			computer = candidate;
+			computer = computerFactory();
 			initializationStatus = "OK";
 		}
 		catch (Exception ex)
 		{
 			Debug.WriteLine($"CPU telemetry initialization error: {ex}");
+			computer = null;
+			initializationStatus = "CPU temp initialization failed";
+		}
+	}
+
+	private static Computer CreateComputer()
+	{
+		Computer computer = new()
+		{
+			IsCpuEnabled = true,
+			IsMotherboardEnabled = true,
+			IsControllerEnabled = true
+		};
+
+		try
+		{
+			computer.Open();
+			return computer;
+		}
+		catch
+		{
 			try
 			{
-				candidate?.Close();
+				computer.Close();
 			}
 			catch
 			{
 				// Best effort cleanup after failed hardware initialization.
 			}
 
-			computer = null;
-			initializationStatus = "CPU temp initialization failed";
+			throw;
 		}
 	}
 
