@@ -42,11 +42,17 @@ public static class ResultsWorkspaceState
 	public static ResultsWorkspaceSnapshot Create(QualificationHistory history)
 	{
 		ArgumentNullException.ThrowIfNull(history);
+		return Create(history.Records);
+	}
 
-		if (history.Records.Count == 0)
+	public static ResultsWorkspaceSnapshot Create(IReadOnlyList<QualificationRecord> records)
+	{
+		ArgumentNullException.ThrowIfNull(records);
+
+		if (records.Count == 0)
 			return ResultsWorkspaceSnapshot.Empty;
 
-		QualificationRecord record = history.Records[0];
+		QualificationRecord record = records[0];
 		QualificationReport? report = record.Report;
 
 		return new ResultsWorkspaceSnapshot(

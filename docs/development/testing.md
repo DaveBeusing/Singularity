@@ -36,9 +36,9 @@ The current unit suite exercises deterministic behavior in:
 - Results empty/latest-evidence mapping, including failed-session telemetry without an exportable report;
 - Reports selection and export-availability mapping;
 - bounded history retention of profile, execution mode, telemetry, and report evidence;
-- deterministic shell region visibility and reset state.
+- deterministic shell region visibility and reset state;\n- qualification archive empty load, atomic first write, restart roundtrip, newest-first ordering, retention, failed-write preservation, corrupted/unsupported data, inaccessible storage, explicit clear, multi-GPU report evidence, and Results/Reports rehydration.
 
-The tests do not launch WinForms and do not require administrator privileges. They intentionally avoid NVML, real GPU workloads, Direct3D, LibreHardwareMonitor sensors, WMI inventory, and other hardware-dependent paths.
+Qualification archive tests use isolated temporary directories/files and never read or write the developer's real application-data directory. The tests do not launch WinForms and do not require administrator privileges. They intentionally avoid NVML, real GPU workloads, Direct3D, LibreHardwareMonitor sensors, WMI inventory, and other hardware-dependent paths.
 
 ## CI validation boundary
 

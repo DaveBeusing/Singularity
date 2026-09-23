@@ -66,10 +66,11 @@ The Results workspace presents the newest completed qualification record rather 
 
 Results renders a separate evidence card for every selected GPU. A failed session can remain visible even when no exportable report exists: any frozen GPU statistics remain attached to their stable device identifiers while unavailable validation evidence stays `UNKNOWN` rather than being fabricated.
 
-The history remains in memory only and is capped at ten records.
+`QualificationHistory` remains capped at ten records for the live runtime model. Completed records are also written to the local versioned qualification archive, which retains up to 100 records by default and is loaded asynchronously at startup. Results and Reports use the resulting bounded archive-backed evidence list.
 
 ## Reports workspace
 
-Reports presents the bounded history as selectable entries. Selection drives the central report preview and inspector. A newly completed session becomes the current selection, while older records remain selectable for the lifetime of the application session.
+Reports presents the bounded archive-backed evidence list as selectable entries. Selection drives the central report preview and inspector. A newly completed session becomes the current selection, while persisted records remain selectable after application restart until archive retention removes them or the user explicitly clears the archive.
 
 The report preview shows per-device GPU evidence in addition to the aggregate component status. JSON and HTML export operate on the selected history record's existing `QualificationReport`. Export commands remain disabled when the selected record has no report evidence or platform inventory is unavailable. Export does not create a second report model and does not add a web server or external web dependency.
+\n\n## Persistent qualification archive\n\nCompleted evidence is serialized through the versioned application-layer archive contract and stored per Windows user at `%LOCALAPPDATA%\\Singularity\\qualification-archive.json`. Writes use a same-directory temporary file followed by atomic replacement so a failed new write does not destroy the prior valid archive. Corrupt data, unsupported schema versions, permission failures, and I/O errors fail closed and surface an archive failure state without crashing startup. See [Qualification archive](qualification-archive.md) for schema ownership, retention, recovery, deletion, and privacy behavior.\n

@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 using Singularity.Application;
+using Singularity.Application.Persistence;
 using Singularity.Core.Workloads;
 using Singularity.Hardware.Providers;
 using Singularity.Monitoring.Runtime;
@@ -18,7 +19,8 @@ internal static class Program
 		ApplicationConfiguration.Initialize();
 		using WorkloadManager workloadManager = new();
 		using SystemMonitor systemMonitor = new();
-		QualificationCoordinator coordinator = new(workloadManager);
+		using QualificationArchiveService qualificationArchive = new();
+		QualificationCoordinator coordinator = new(workloadManager, qualificationArchive);
 		ReportExportService reportExportService = new();
 		HardwareProvider hardwareProvider = new();
 		PlatformInventoryState platformInventoryState = new(hardwareProvider.Read);

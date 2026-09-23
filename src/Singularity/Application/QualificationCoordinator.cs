@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
+using Singularity.Application.Persistence;
 using Singularity.Core.Qualification;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
@@ -16,20 +17,70 @@ public sealed class QualificationCoordinator
 	private readonly QualificationRunner qualificationRunner;
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationReportGenerator reportGenerator = new();
+	private readonly QualificationArchiveService? qualificationArchive;
+	private readonly List<QualificationRecord> evidenceRecords = [];
+	private readonly object archiveTaskLock = new();
+	private Task archiveWriteTask = Task.CompletedTask;
 	private bool automatedRunFinalized;
 	private SystemSnapshot? lastSnapshot;
 
 	public QualificationSession Session { get; } = new();
 	public QualificationHistory History { get; } = new();
+	public IReadOnlyList<QualificationRecord> EvidenceRecords => evidenceRecords;
 	public ValidationResult? LastValidationResult { get; private set; }
 	public QualificationReport? LastReport { get; private set; }
 	public WorkloadStatus WorkloadStatus => workloadController.Status;
 	public QualificationProgress Progress => qualificationRunner.Progress;
+	public QualificationArchiveState ArchiveState =>
+		qualificationArchive?.State ?? QualificationArchiveState.NotLoaded;
+	public string? ArchiveError => qualificationArchive?.LastError;
+	public string? ArchivePath => qualificationArchive?.ArchivePath;
+	public int ArchivedRecordCount => qualificationArchive?.Records.Count ?? 0;
+	private int EvidenceRetentionLimit =>
+		qualificationArchive?.RetentionLimit ?? QualificationArchiveService.DefaultRetentionLimit;
 
-	public QualificationCoordinator(IWorkloadController workloadController)
+	public QualificationCoordinator(
+		IWorkloadController workloadController,
+		QualificationArchiveService? qualificationArchive = null)
 	{
 		this.workloadController = workloadController;
+		this.qualificationArchive = qualificationArchive;
 		qualificationRunner = new QualificationRunner(workloadController);
+	}
+
+	public async Task LoadArchiveAsync(CancellationToken cancellationToken = default)
+	{
+		if (qualificationArchive is null)
+			return;
+
+		await qualificationArchive.LoadAsync(cancellationToken);
+
+		if (qualificationArchive.State == QualificationArchiveState.Ready)
+		{
+			ReplaceEvidenceRecords(
+				evidenceRecords.Concat(qualificationArchive.Records));
+		}
+	}
+
+	public async Task ClearArchiveAsync(CancellationToken cancellationToken = default)
+	{
+		await FlushArchiveAsync();
+
+		if (qualificationArchive is not null)
+		{
+			await qualificationArchive.ClearAsync(cancellationToken);
+			if (qualificationArchive.State != QualificationArchiveState.Ready)
+				return;
+		}
+
+		History.Clear();
+		evidenceRecords.Clear();
+	}
+
+	public Task FlushArchiveAsync()
+	{
+		lock (archiveTaskLock)
+			return archiveWriteTask;
 	}
 
 	public bool StartManual(WorkloadOptions options, QualificationProfile profile)
@@ -169,6 +220,76 @@ public sealed class QualificationCoordinator
 			? null
 			: reportGenerator.Create(Session, LastValidationResult);
 
-		History.Add(Session, LastReport);
+		QualificationRecord? record = History.Add(Session, LastReport);
+		if (record is null)
+			return;
+
+		AddEvidenceRecord(record);
+		QueueArchiveSave(record);
 	}
+
+	private void AddEvidenceRecord(QualificationRecord record)
+	{
+		QualificationRecordKey key = CreateRecordKey(record);
+		evidenceRecords.RemoveAll(item => CreateRecordKey(item) == key);
+		evidenceRecords.Add(record);
+		evidenceRecords.Sort(
+			(left, right) =>
+			{
+				int finished = right.FinishedAt.CompareTo(left.FinishedAt);
+				return finished != 0
+					? finished
+					: right.StartedAt.CompareTo(left.StartedAt);
+			});
+
+		while (evidenceRecords.Count > EvidenceRetentionLimit)
+			evidenceRecords.RemoveAt(evidenceRecords.Count - 1);
+	}
+
+	private void ReplaceEvidenceRecords(IEnumerable<QualificationRecord> records)
+	{
+		evidenceRecords.Clear();
+		foreach (QualificationRecord record in records
+			.GroupBy(CreateRecordKey)
+			.Select(group => group.First())
+			.OrderByDescending(item => item.FinishedAt)
+			.ThenByDescending(item => item.StartedAt)
+			.Take(EvidenceRetentionLimit))
+		{
+			evidenceRecords.Add(record);
+		}
+	}
+
+	private void QueueArchiveSave(QualificationRecord record)
+	{
+		if (qualificationArchive is null)
+			return;
+
+		lock (archiveTaskLock)
+		{
+			archiveWriteTask = PersistAfterAsync(archiveWriteTask, record);
+		}
+	}
+
+	private async Task PersistAfterAsync(Task previousWrite, QualificationRecord record)
+	{
+		await previousWrite.ConfigureAwait(false);
+		if (qualificationArchive is not null)
+			await qualificationArchive.SaveAsync(record).ConfigureAwait(false);
+	}
+
+	private static QualificationRecordKey CreateRecordKey(QualificationRecord record)
+	{
+		return new QualificationRecordKey(
+			record.StartedAt,
+			record.FinishedAt,
+			record.ProfileName,
+			record.ExecutionMode);
+	}
+
+	private readonly record struct QualificationRecordKey(
+		DateTime StartedAt,
+		DateTime FinishedAt,
+		string ProfileName,
+		QualificationExecutionMode ExecutionMode);
 }
