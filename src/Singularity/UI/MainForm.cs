@@ -4,6 +4,7 @@
 
 using Singularity.Application;
 using Singularity.Application.Commands;
+using Singularity.Application.Persistence;
 using Singularity.Core.Reporting;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
@@ -491,7 +492,7 @@ public sealed class MainForm : Form
 		RenderQualificationState();
 		UpdateArchiveStatus();
 
-		if (coordinator.ArchiveState == Application.Persistence.QualificationArchiveState.Failed)
+		if (coordinator.ArchiveState == QualificationArchiveState.Failed)
 		{
 			MessageBox.Show(
 				this,
