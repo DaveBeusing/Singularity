@@ -26,6 +26,7 @@ public sealed class ReportsView : Panel
 	private readonly Label memoryValue = CreateValueLabel();
 	private readonly Label gpuValue = CreateValueLabel();
 	private readonly Label statisticsValue = CreateValueLabel();
+	private readonly FlowLayoutPanel gpuEvidenceList = new();
 	private readonly List<CommandButton> historyButtons = [];
 	private string historySignature = string.Empty;
 
@@ -155,6 +156,7 @@ public sealed class ReportsView : Panel
 		previewPanel.BackColor = Theme.Panel;
 		previewPanel.Padding = new Padding(ThemeMetrics.Spacing);
 		previewPanel.TabStop = true;
+		previewPanel.AutoScroll = true;
 
 		Label title = new()
 		{
@@ -203,6 +205,14 @@ public sealed class ReportsView : Panel
 		AddRow(previewGrid, 9, "Telemetry", statisticsValue);
 
 		emptyPreviewLabel.Dock = DockStyle.Fill;
+		gpuEvidenceList.Dock = DockStyle.Top;
+		gpuEvidenceList.AutoSize = true;
+		gpuEvidenceList.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+		gpuEvidenceList.FlowDirection = FlowDirection.TopDown;
+		gpuEvidenceList.WrapContents = false;
+		gpuEvidenceList.BackColor = Theme.Panel;
+		gpuEvidenceList.Margin = new Padding(0, ThemeMetrics.Spacing, 0, ThemeMetrics.Spacing);
+
 		emptyPreviewLabel.Text = "Select a qualification history entry to review its report evidence.";
 		emptyPreviewLabel.Font = ThemeFonts.Subtitle;
 		emptyPreviewLabel.ForeColor = Theme.TextMuted;
@@ -210,6 +220,7 @@ public sealed class ReportsView : Panel
 		emptyPreviewLabel.TextAlign = ContentAlignment.MiddleCenter;
 
 		previewPanel.Controls.Add(emptyPreviewLabel);
+		previewPanel.Controls.Add(gpuEvidenceList);
 		previewPanel.Controls.Add(previewGrid);
 		previewPanel.Controls.Add(exports);
 		previewPanel.Controls.Add(title);
@@ -311,6 +322,7 @@ public sealed class ReportsView : Panel
 			SetStatus(memoryValue, report.MemoryResult);
 			SetStatus(gpuValue, report.GpuResult);
 			statisticsValue.Text = BuildStatisticsSummary(report.TelemetryStatistics);
+			RenderGpuEvidence(report.GpuEvidence);
 		}
 		else
 		{
@@ -318,6 +330,7 @@ public sealed class ReportsView : Panel
 			SetStatus(memoryValue, ValidationStatus.Unknown);
 			SetStatus(gpuValue, ValidationStatus.Unknown);
 			statisticsValue.Text = "Unavailable";
+			RenderGpuEvidence(record.GpuEvidence);
 		}
 	}
 
@@ -333,6 +346,82 @@ public sealed class ReportsView : Panel
 		SetStatus(memoryValue, ValidationStatus.Unknown);
 		SetStatus(gpuValue, ValidationStatus.Unknown);
 		statisticsValue.Text = "Unavailable";
+		RenderGpuEvidence(Array.Empty<GpuQualificationEvidence>());
+	}
+
+	private void RenderGpuEvidence(IReadOnlyList<GpuQualificationEvidence> evidence)
+	{
+		gpuEvidenceList.SuspendLayout();
+		try
+		{
+			gpuEvidenceList.Controls.Clear();
+			if (evidence.Count == 0)
+			{
+				gpuEvidenceList.Controls.Add(new Label
+				{
+					AutoSize = true,
+					Text = "Per-device GPU evidence unavailable.",
+					Font = ThemeFonts.CardText,
+					ForeColor = Theme.TextMuted,
+					BackColor = Theme.Panel
+				});
+				return;
+			}
+
+			foreach (GpuQualificationEvidence gpu in evidence)
+			{
+				TableLayoutPanel row = new()
+				{
+					Width = Math.Max(320, previewPanel.ClientSize.Width - ThemeMetrics.Spacing * 4),
+					Height = 72,
+					ColumnCount = 2,
+					RowCount = 2,
+					BackColor = Theme.PanelLight,
+					Margin = new Padding(0, 0, 0, ThemeMetrics.SpacingSmall),
+					Padding = new Padding(ThemeMetrics.SpacingSmall)
+				};
+				row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 72));
+				row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
+				row.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+				row.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+
+				Label name = new()
+				{
+					Dock = DockStyle.Fill,
+					Text = gpu.Name,
+					Font = ThemeFonts.CardTitle,
+					ForeColor = Theme.TextMain,
+					BackColor = Theme.PanelLight,
+					AutoEllipsis = true
+				};
+				Label identifier = new()
+				{
+					Dock = DockStyle.Fill,
+					Text = gpu.Identifier,
+					Font = ThemeFonts.CardTextSmall,
+					ForeColor = Theme.TextMuted,
+					BackColor = Theme.PanelLight,
+					AutoEllipsis = true
+				};
+				Label status = CreateValueLabel();
+				SetStatus(status, gpu.Result);
+				Label metrics = CreateValueLabel();
+				metrics.Text =
+					gpu.TelemetryStatistics.LoadPercent is { } load
+						? $"{load.Average:0}% avg • {gpu.TelemetryStatistics.UnavailableSampleCount} gaps"
+						: $"Telemetry unavailable • {gpu.TelemetryStatistics.UnavailableSampleCount} gaps";
+
+				row.Controls.Add(name, 0, 0);
+				row.Controls.Add(status, 1, 0);
+				row.Controls.Add(identifier, 0, 1);
+				row.Controls.Add(metrics, 1, 1);
+				gpuEvidenceList.Controls.Add(row);
+			}
+		}
+		finally
+		{
+			gpuEvidenceList.ResumeLayout();
+		}
 	}
 
 	private static string BuildStatisticsSummary(SessionTelemetryStatistics statistics)

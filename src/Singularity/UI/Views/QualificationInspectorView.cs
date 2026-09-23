@@ -75,8 +75,8 @@ public sealed class QualificationInspectorView : Panel
 			$"Memory: {FormatEnabled(configuration.EnableMemoryWorkload)}\r\n" +
 			$"Allocation: {configuration.MemoryGb} GB\r\n\r\n" +
 			$"GPU: {FormatEnabled(configuration.EnableGpuWorkload)}\r\n" +
-			$"Device: {snapshot.SelectedGpu}\r\n" +
-			$"Identifier: {configuration.SelectedGpuIdentifier ?? "Not selected"}\r\n" +
+			$"Devices: {snapshot.SelectedGpu}\r\n" +
+			$"Identifiers: {FormatGpuIdentifiers(configuration)}\r\n" +
 			$"Target load: {configuration.GpuLoadPercent}%\r\n\r\n" +
 			$"Current workload state: {snapshot.WorkloadState}";
 	}
@@ -93,6 +93,14 @@ public sealed class QualificationInspectorView : Panel
 			$"Elapsed: {snapshot.Elapsed:hh\\:mm\\:ss}\r\n" +
 			$"Automated state: {snapshot.AutomatedState}\r\n" +
 			$"Progress: {snapshot.ProgressPercent:0}%";
+	}
+
+	private static string FormatGpuIdentifiers(QualificationConfiguration configuration)
+	{
+		IReadOnlyList<string> identifiers = configuration.ResolveSelectedGpuIdentifiers();
+		return identifiers.Count == 0
+			? "Not selected"
+			: string.Join(", ", identifiers);
 	}
 
 	private static string FormatEnabled(bool enabled) => enabled ? "Enabled" : "Disabled";
