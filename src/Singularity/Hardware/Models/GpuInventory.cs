@@ -4,12 +4,19 @@
 
 namespace Singularity.Hardware.Models;
 
-
 public sealed class GpuInventory
 {
 	public string Identifier { get; set; } = string.Empty;
+	public long? AdapterLuid { get; set; }
 	public int AdapterIndex { get; set; }
+	public string Vendor { get; set; } = "Unknown";
+	public uint? VendorId { get; set; }
+	public uint? DeviceId { get; set; }
+	public uint? SubsystemId { get; set; }
+	public uint? Revision { get; set; }
+	public ulong? DedicatedVideoMemoryBytes { get; set; }
 	public bool IsNvidia { get; set; } = true;
+	public bool IsDirect3D12Capable { get; set; } = true;
 	public string Name { get; set; } = "Unknown";
 
 	public string Vram { get; set; } = "Unknown";
@@ -22,5 +29,4 @@ public sealed class GpuInventory
 	public string PcieWidthMax { get; set; } = "Unknown";
 
 	public string Details { get; set; } = "Unknown";
-
 }

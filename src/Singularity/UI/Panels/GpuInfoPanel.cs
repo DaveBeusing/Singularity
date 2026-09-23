@@ -26,12 +26,53 @@ public sealed class GpuInfoPanel : Panel
 			BackColor = Theme.PanelLight
 		});
 
-		Controls.Add(CreateLabel("GPU", 64, 8, 250, Theme.TextMuted, 8.5F, true, ContentAlignment.MiddleLeft));
+		Controls.Add(CreateLabel(
+			$"GPU · {Display(gpu.Vendor)}",
+			64,
+			8,
+			250,
+			Theme.TextMuted,
+			8.5F,
+			true,
+			ContentAlignment.MiddleLeft));
 		Controls.Add(CreateLabel(gpu.Name, 64, 29, width - 260, Theme.TextMain, 8.8F, false, ContentAlignment.MiddleLeft));
-		Controls.Add(CreateLabel($"Gen{gpu.PcieGenerationCurrent}x{gpu.PcieWidthCurrent}", 64, 50, width - 260, Theme.TextMuted, 8.2F, false, ContentAlignment.MiddleLeft));
-		Controls.Add(CreateLabel($"Max Gen{gpu.PcieGenerationMax}x{gpu.PcieWidthMax}", 64, 68, width - 260, Theme.TextMuted, 8.2F, false, ContentAlignment.MiddleLeft));
-		Controls.Add(CreateLabel(gpu.Vram, width - 185, 29, 165, Theme.TextMain, 8.8F, true, ContentAlignment.MiddleRight));
-		Controls.Add(CreateLabel(gpu.Temperature, width - 185, 50, 165, Theme.TextMain, 8.8F, true, ContentAlignment.MiddleRight));
+		Controls.Add(CreateLabel(
+			$"{PcieLink(gpu.PcieGenerationCurrent, gpu.PcieWidthCurrent)} · D3D12 {(gpu.IsDirect3D12Capable ? "ready" : "unavailable")}",
+			64,
+			50,
+			width - 260,
+			Theme.TextMuted,
+			8.2F,
+			false,
+			ContentAlignment.MiddleLeft));
+		Controls.Add(CreateLabel(
+			$"Max {PcieLink(gpu.PcieGenerationMax, gpu.PcieWidthMax)}",
+			64,
+			68,
+			width - 260,
+			Theme.TextMuted,
+			8.2F,
+			false,
+			ContentAlignment.MiddleLeft));
+		Controls.Add(CreateLabel(Display(gpu.Vram), width - 185, 29, 165, Theme.TextMain, 8.8F, true, ContentAlignment.MiddleRight));
+		Controls.Add(CreateLabel(Display(gpu.Temperature), width - 185, 50, 165, Theme.TextMain, 8.8F, true, ContentAlignment.MiddleRight));
+	}
+
+	private static string PcieLink(string? generation, string? width)
+	{
+		return IsAvailable(generation) && IsAvailable(width)
+			? $"Gen{generation}x{width}"
+			: "PCIe unavailable";
+	}
+
+	private static string Display(string? value) =>
+		IsAvailable(value) ? value! : "Unavailable";
+
+	private static bool IsAvailable(string? value)
+	{
+		return !string.IsNullOrWhiteSpace(value) &&
+			!string.Equals(value, "Unknown", StringComparison.OrdinalIgnoreCase) &&
+			!string.Equals(value, "Unavailable", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static Label CreateLabel(string text, int left, int top, int width, Color color, float size, bool bold, ContentAlignment alignment)
@@ -50,5 +91,4 @@ public sealed class GpuInfoPanel : Panel
 			AutoEllipsis = true
 		};
 	}
-
 }

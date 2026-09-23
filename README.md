@@ -8,7 +8,7 @@ Singularity is a Windows hardware qualification tool for collecting system inven
 
 ## Features
 
-- Collects inventory for Windows, mainboard and BIOS, CPU, memory modules, storage devices, and NVIDIA GPUs.
+- Collects inventory for Windows, mainboard and BIOS, CPU, memory modules, storage devices, and vendor-neutral Windows GPUs through DXGI/Direct3D 12, with NVIDIA-specific NVML enrichment when available.
 - Monitors system and process CPU usage, process and physical memory, CPU temperature, and NVIDIA GPU load, temperature, power, and VRAM usage.
 - Uses tiered telemetry scheduling and caching to balance responsiveness with hardware-query cost.
 - Provides independently configurable CPU, memory, and Direct3D 12 GPU workloads, including combined runs.
@@ -86,7 +86,7 @@ The application composition root creates platform services, the qualification co
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) for source builds.
 - Administrator approval when the application starts; the executable requests elevation through UAC.
 - A Direct3D 12-capable GPU and runtime supporting feature level 11_0 and shader model 6.0 for the GPU workload.
-- An NVIDIA driver exposing NVML for NVIDIA GPU inventory and telemetry. The remaining application features continue to work when NVML is unavailable.
+- NVIDIA telemetry enrichment requires an NVIDIA driver exposing NVML. Baseline GPU inventory and Direct3D 12 qualification discovery do not depend on NVML.
 
 ## Build and Validate
 
@@ -151,6 +151,7 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 - [Results, Reports, and Settings workspaces](docs/architecture/results-reports-settings.md)
 - [Navigation and command model](docs/architecture/navigation-command-model.md)
 - [Telemetry design](docs/architecture/telemetry.md)
+- [GPU inventory](docs/architecture/gpu-inventory.md)
 - [Building](docs/development/building.md)
 - [Testing](docs/development/testing.md)
 - [Qualification workspace](docs/qualification/qualification-workspace.md)
@@ -160,7 +161,7 @@ The project publishes for `win-x64` as a self-contained, compressed single-file 
 
 ## Roadmap
 
-Remaining opportunities include persisting qualification history across application restarts, extending GPU inventory and telemetry beyond NVIDIA/NVML, completing the trusted release-signing pipeline, and adding hardware-integration coverage across representative systems.
+Remaining opportunities include persisting qualification history across application restarts, extending vendor-specific telemetry beyond NVIDIA/NVML, completing the trusted release-signing pipeline, and adding hardware-integration coverage across representative GPU and system configurations.
 
 ## License
 

@@ -50,10 +50,17 @@ public static class PlatformSelectionMapper
 			Display(gpu.Name),
 			[
 				new("Adapter", gpu.AdapterIndex.ToString()),
+				new("Vendor", Display(gpu.Vendor)),
+				new("Vendor ID", Hex(gpu.VendorId)),
+				new("Device ID", Hex(gpu.DeviceId)),
 				new("Name", Display(gpu.Name)),
 				new("VRAM", Display(gpu.Vram)),
-				new("PCIe current", $"Gen{Display(gpu.PcieGenerationCurrent)} x{Display(gpu.PcieWidthCurrent)}"),
-				new("PCIe maximum", $"Gen{Display(gpu.PcieGenerationMax)} x{Display(gpu.PcieWidthMax)}"),
+				new("Direct3D 12", gpu.IsDirect3D12Capable ? "Available" : "Unavailable"),
+				new("PCIe current", PcieLink(gpu.PcieGenerationCurrent, gpu.PcieWidthCurrent)),
+				new("PCIe maximum", PcieLink(gpu.PcieGenerationMax, gpu.PcieWidthMax)),
+				new("Adapter LUID", gpu.AdapterLuid.HasValue
+					? $"0x{unchecked((ulong)gpu.AdapterLuid.Value):X16}"
+					: "Unavailable"),
 				new("Details", Display(gpu.Details)),
 				new("Identifier", Display(gpu.Identifier))
 			]);
@@ -79,8 +86,23 @@ public static class PlatformSelectionMapper
 			]);
 	}
 
-	private static string Display(string? value)
+	private static string PcieLink(string? generation, string? width)
 	{
-		return string.IsNullOrWhiteSpace(value) ? "Unavailable" : value;
+		return IsAvailable(generation) && IsAvailable(width)
+			? $"Gen{generation} x{width}"
+			: "Unavailable";
+	}
+
+	private static string Hex(uint? value) =>
+		value.HasValue ? $"0x{value.Value:X4}" : "Unavailable";
+
+	private static string Display(string? value) =>
+		IsAvailable(value) ? value! : "Unavailable";
+
+	private static bool IsAvailable(string? value)
+	{
+		return !string.IsNullOrWhiteSpace(value) &&
+			!string.Equals(value, "Unknown", StringComparison.OrdinalIgnoreCase) &&
+			!string.Equals(value, "Unavailable", StringComparison.OrdinalIgnoreCase);
 	}
 }

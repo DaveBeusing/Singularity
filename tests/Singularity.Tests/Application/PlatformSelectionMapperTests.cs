@@ -53,6 +53,35 @@ public sealed class PlatformSelectionMapperTests
 		Assert.Equal("gpu-uuid", selection.Id);
 		Assert.Equal("Example GPU", selection.DisplayName);
 		Assert.Contains(selection.Properties, property => property.Name == "Adapter" && property.Value == "2");
+		Assert.Contains(selection.Properties, property => property.Name == "Direct3D 12" && property.Value == "Available");
+	}
+
+	[Fact]
+	public void GpuSelectionRepresentsVendorNeutralMetadataAndUnavailablePcie()
+	{
+		GpuInventory gpu = new()
+		{
+			Identifier = "dxgi:luid:0000000000000042",
+			AdapterLuid = 0x42,
+			AdapterIndex = 1,
+			Vendor = "AMD",
+			VendorId = 0x1002,
+			DeviceId = 0x744C,
+			IsNvidia = false,
+			IsDirect3D12Capable = true,
+			Name = "AMD Radeon",
+			PcieGenerationCurrent = "Unavailable",
+			PcieWidthCurrent = "Unavailable"
+		};
+
+		PlatformDeviceSelection selection = PlatformSelectionMapper.FromGpu(gpu, 1);
+
+		Assert.Equal(gpu.Identifier, selection.Id);
+		Assert.Contains(selection.Properties, property => property.Name == "Vendor" && property.Value == "AMD");
+		Assert.Contains(selection.Properties, property => property.Name == "Vendor ID" && property.Value == "0x1002");
+		Assert.Contains(selection.Properties, property => property.Name == "Device ID" && property.Value == "0x744C");
+		Assert.Contains(selection.Properties, property => property.Name == "PCIe current" && property.Value == "Unavailable");
+		Assert.Contains(selection.Properties, property => property.Name == "Adapter LUID" && property.Value == "0x0000000000000042");
 	}
 
 	[Fact]

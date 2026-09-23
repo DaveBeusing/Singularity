@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 // See LICENSE file in the project root for full license information.
 
-using System.Text;
 using Singularity.Hardware.Models;
 using Singularity.Hardware.Native.Nvml;
 
@@ -10,15 +9,18 @@ namespace Singularity.Hardware.Providers;
 
 public sealed class NvmlGpuProvider
 {
-	public IReadOnlyList<GpuInventory> ReadAll()
+	public IReadOnlyList<GpuInventory> ReadAll(
+		IReadOnlyList<NvidiaGpuAdapterIdentity>? identities = null)
 	{
 		try
 		{
+			identities ??= NvidiaGpuAdapterIdentityProvider.ReadAll();
 			NvmlReturn result = NvmlNative.Init();
 			if (result != NvmlReturn.Success)
 			{
 				return Unavailable("NVML initialization failed");
 			}
+
 			try
 			{
 				result = NvmlNative.DeviceGetCount(out uint deviceCount);
@@ -30,9 +32,13 @@ public sealed class NvmlGpuProvider
 				{
 					if (NvmlNative.DeviceGetHandleByIndex(index, out IntPtr device) != NvmlReturn.Success)
 						continue;
-					gpus.Add(ReadGpu(device, (int)index));
+
+					gpus.Add(ReadGpu(device, checked((int)index), identities));
 				}
-				return gpus.Count > 0 ? gpus.AsReadOnly() : Unavailable("NVML device not found");
+
+				return gpus.Count > 0
+					? gpus.AsReadOnly()
+					: Unavailable("NVML device not found");
 			}
 			finally
 			{
@@ -53,20 +59,39 @@ public sealed class NvmlGpuProvider
 		Array.AsReadOnly([new GpuInventory
 		{
 			Identifier = "nvml:unavailable",
+			IsNvidia = true,
+			Vendor = "NVIDIA",
 			Name = "NVIDIA GPU",
 			Details = details
 		}]);
 
-	private static GpuInventory ReadGpu(IntPtr device, int adapterIndex)
+	private static GpuInventory ReadGpu(
+		IntPtr device,
+		int adapterIndex,
+		IReadOnlyList<NvidiaGpuAdapterIdentity> identities)
 	{
+		string identifier = ReadGpuUuid(device, adapterIndex);
 		string name = ReadGpuName(device);
-		string memory = ReadMemoryInfo(device);
+		string memory = ReadMemoryInfo(device, out ulong? totalMemoryBytes);
 		string temperature = ReadTemperature(device);
-		ReadPcieInfo(device, out string currentGeneration, out string maxGeneration, out string currentWidth, out string maxWidth);
+		ReadPcieInfo(
+			device,
+			out string currentGeneration,
+			out string maxGeneration,
+			out string currentWidth,
+			out string maxWidth);
+
+		long? adapterLuid = ResolveAdapterLuid(identifier, identities);
+
 		return new GpuInventory
 		{
-			Identifier = ReadGpuUuid(device, adapterIndex),
+			Identifier = identifier,
+			AdapterLuid = adapterLuid,
 			AdapterIndex = adapterIndex,
+			Vendor = "NVIDIA",
+			VendorId = 0x10DE,
+			DedicatedVideoMemoryBytes = totalMemoryBytes,
+			IsNvidia = true,
 			Name = name,
 			Vram = memory,
 			Temperature = temperature,
@@ -78,42 +103,71 @@ public sealed class NvmlGpuProvider
 		};
 	}
 
+	private static long? ResolveAdapterLuid(
+		string identifier,
+		IReadOnlyList<NvidiaGpuAdapterIdentity> identities)
+	{
+		string normalized = GpuDeviceIdentity.NormalizeVendorIdentifier(identifier);
+		if (normalized.Length == 0)
+			return null;
+
+		NvidiaGpuAdapterIdentity? identity = identities.FirstOrDefault(
+			candidate => string.Equals(
+				GpuDeviceIdentity.NormalizeVendorIdentifier(candidate.Identifier),
+				normalized,
+				StringComparison.Ordinal));
+
+		return identity?.AdapterLuid;
+	}
+
 	private static string ReadGpuUuid(IntPtr device, int adapterIndex)
 	{
 		byte[] buffer = new byte[96];
 		NvmlReturn result = NvmlNative.DeviceGetUuid(device, buffer, (uint)buffer.Length);
-		return result == NvmlReturn.Success ? DecodeAscii(buffer) : $"nvml:{adapterIndex}";
+		return result == NvmlReturn.Success
+			? DecodeAscii(buffer)
+			: $"nvml:{adapterIndex}";
 	}
 
 	private static string ReadGpuName(IntPtr device)
 	{
 		byte[] buffer = new byte[96];
 		NvmlReturn result = NvmlNative.DeviceGetName(device, buffer, (uint)buffer.Length);
-		return result == NvmlReturn.Success ? DecodeAscii(buffer) : "Unknown NVIDIA GPU";
+		return result == NvmlReturn.Success
+			? DecodeAscii(buffer)
+			: "Unknown NVIDIA GPU";
 	}
 
-//	private static string ReadDriverVersion()
-//	{
-//		byte[] buffer = new byte[80];
-//		NvmlReturn result = NvmlSystemGetDriverVersion(buffer, (uint)buffer.Length);
-//		if (result != NvmlReturn.Success)
-//			return "Unknown";
-//		return DecodeAscii(buffer);
-//	}
-
-	private static string ReadMemoryInfo(IntPtr device)
+	private static string ReadMemoryInfo(IntPtr device, out ulong? totalMemoryBytes)
 	{
 		NvmlReturn result = NvmlNative.DeviceGetMemoryInfo(device, out NvmlMemory memory);
-		return result == NvmlReturn.Success ? $"VRAM {FormatBytes(memory.Total)}" : "VRAM Unknown";
+		if (result == NvmlReturn.Success)
+		{
+			totalMemoryBytes = memory.Total;
+			return $"VRAM {FormatBytes(memory.Total)}";
+		}
+
+		totalMemoryBytes = null;
+		return "VRAM Unknown";
 	}
 
 	private static string ReadTemperature(IntPtr device)
 	{
-		NvmlReturn result = NvmlNative.DeviceGetTemperature(device, NvmlTemperatureSensor.Gpu, out uint temperature);
-		return result == NvmlReturn.Success ? $"Temp {temperature} °C" : "Temp Unknown";
+		NvmlReturn result = NvmlNative.DeviceGetTemperature(
+			device,
+			NvmlTemperatureSensor.Gpu,
+			out uint temperature);
+		return result == NvmlReturn.Success
+			? $"Temp {temperature} °C"
+			: "Temp Unknown";
 	}
 
-	private static void ReadPcieInfo(IntPtr device, out string currentGeneration, out string maxGeneration, out string currentWidth, out string maxWidth)
+	private static void ReadPcieInfo(
+		IntPtr device,
+		out string currentGeneration,
+		out string maxGeneration,
+		out string currentWidth,
+		out string maxWidth)
 	{
 		currentGeneration = "Unknown";
 		maxGeneration = "Unknown";
@@ -121,24 +175,16 @@ public sealed class NvmlGpuProvider
 		maxWidth = "Unknown";
 
 		if (NvmlNative.DeviceGetCurrPcieLinkGeneration(device, out uint currGen) == NvmlReturn.Success)
-		{
 			currentGeneration = currGen.ToString();
-		}
 
 		if (NvmlNative.DeviceGetMaxPcieLinkGeneration(device, out uint maxGen) == NvmlReturn.Success)
-		{
 			maxGeneration = maxGen.ToString();
-		}
 
 		if (NvmlNative.DeviceGetCurrPcieLinkWidth(device, out uint currWidth) == NvmlReturn.Success)
-		{
 			currentWidth = currWidth.ToString();
-		}
 
 		if (NvmlNative.DeviceGetMaxPcieLinkWidth(device, out uint maxLinkWidth) == NvmlReturn.Success)
-		{
 			maxWidth = maxLinkWidth.ToString();
-		}
 	}
 
 	private static string FormatBytes(ulong bytes)
@@ -152,7 +198,7 @@ public sealed class NvmlGpuProvider
 		int length = Array.IndexOf(buffer, (byte)0);
 		if (length < 0)
 			length = buffer.Length;
+
 		return System.Text.Encoding.ASCII.GetString(buffer, 0, length).Trim();
 	}
-
 }
