@@ -36,6 +36,8 @@ public sealed class QualificationCoordinator
 	public string? ArchiveError => qualificationArchive?.LastError;
 	public string? ArchivePath => qualificationArchive?.ArchivePath;
 	public int ArchivedRecordCount => qualificationArchive?.Records.Count ?? 0;
+	private int EvidenceRetentionLimit =>
+		qualificationArchive?.RetentionLimit ?? QualificationArchiveService.DefaultRetentionLimit;
 
 	public QualificationCoordinator(
 		IWorkloadController workloadController,
@@ -240,7 +242,7 @@ public sealed class QualificationCoordinator
 					: right.StartedAt.CompareTo(left.StartedAt);
 			});
 
-		while (evidenceRecords.Count > QualificationArchiveService.DefaultRetentionLimit)
+		while (evidenceRecords.Count > EvidenceRetentionLimit)
 			evidenceRecords.RemoveAt(evidenceRecords.Count - 1);
 	}
 
@@ -252,7 +254,7 @@ public sealed class QualificationCoordinator
 			.Select(group => group.First())
 			.OrderByDescending(item => item.FinishedAt)
 			.ThenByDescending(item => item.StartedAt)
-			.Take(QualificationArchiveService.DefaultRetentionLimit))
+			.Take(EvidenceRetentionLimit))
 		{
 			evidenceRecords.Add(record);
 		}
