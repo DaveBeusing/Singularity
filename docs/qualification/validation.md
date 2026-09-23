@@ -19,6 +19,8 @@ Memory percentages describe the required fraction of the requested allocation. F
 - `Fail` means CPU or memory is below its warning threshold, GPU temperature exceeds the profile maximum, or post-warm-up GPU load is below its minimum.
 - `Unknown` means that workload component is disabled.
 
+When a GPU workload has an explicit device identifier, `WorkloadValidator` first resolves the matching `GpuTelemetrySnapshot`. Missing or unavailable telemetry for that selected device is a warning; telemetry from another enumerated GPU is not substituted. Legacy callers without an explicit identifier retain the compatibility behavior based on the first GPU fields in `SystemSnapshot`.
+
 GPU load must remain at or above the minimum for the profile's stability duration before passing. Dropping below the minimum resets that stability window. Validator state is reset when a new session begins.
 
 `ValidationSummary` determines the overall result by precedence: any failure wins, otherwise any warning, otherwise any pass, otherwise unknown. `ValidationResult.IsSuccess` treats warnings and unknown components as non-failures; this is the value used by automated stop-on-failure behavior.
