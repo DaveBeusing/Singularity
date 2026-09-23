@@ -148,6 +148,55 @@ public sealed class QualificationCoordinatorTests
 	}
 
 	[Fact]
+	public void Stop_AfterGpuFailureBeforeNextUpdate_PreservesOwningDeviceFailureEvidence()
+	{
+		FakeWorkloadController workloads = new();
+		QualificationCoordinator coordinator = new(workloads);
+		WorkloadOptions options = new()
+		{
+			EnableGpuWorkload = true,
+			GpuLoadPercent = 90,
+			SelectedGpuIdentifiers = ["GPU-A", "GPU-B"]
+		};
+		SystemSnapshot telemetry = new()
+		{
+			GpuTelemetrySnapshots =
+			[
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-A",
+					Name = "GPU A",
+					IsAvailable = true,
+					LoadPercent = 100,
+					TemperatureCelsius = 50,
+					Status = "OK"
+				},
+				new GpuTelemetrySnapshot
+				{
+					Identifier = "GPU-B",
+					Name = "GPU B",
+					IsAvailable = true,
+					LoadPercent = 100,
+					TemperatureCelsius = 50,
+					Status = "OK"
+				}
+			]
+		};
+
+		Assert.True(coordinator.StartManual(options, QualificationProfiles.Quick));
+		coordinator.Update(telemetry);
+		workloads.FailGpu("GPU-B", "Direct3D 12 GPU workload timed out.");
+
+		Assert.True(coordinator.Stop());
+
+		Assert.Equal(QualificationSessionState.Failed, coordinator.Session.State);
+		Assert.NotNull(coordinator.LastReport);
+		Assert.Equal(ValidationStatus.Unknown, coordinator.LastReport!.GpuEvidence[0].Result);
+		Assert.Equal(ValidationStatus.Fail, coordinator.LastReport.GpuEvidence[1].Result);
+		Assert.Contains("timed out", coordinator.LastReport.GpuEvidence[1].ValidationMessage);
+	}
+
+	[Fact]
 	public void ManualWorkloadFailure_FinalizesActiveSession()
 	{
 		FakeWorkloadController workloads = new();
