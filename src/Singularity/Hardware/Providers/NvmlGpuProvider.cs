@@ -9,10 +9,12 @@ namespace Singularity.Hardware.Providers;
 
 public sealed class NvmlGpuProvider
 {
-	public IReadOnlyList<GpuInventory> ReadAll()
+	public IReadOnlyList<GpuInventory> ReadAll(
+		IReadOnlyList<NvidiaGpuAdapterIdentity>? identities = null)
 	{
 		try
 		{
+			identities ??= NvidiaGpuAdapterIdentityProvider.ReadAll();
 			NvmlReturn result = NvmlNative.Init();
 			if (result != NvmlReturn.Success)
 			{
@@ -31,7 +33,7 @@ public sealed class NvmlGpuProvider
 					if (NvmlNative.DeviceGetHandleByIndex(index, out IntPtr device) != NvmlReturn.Success)
 						continue;
 
-					gpus.Add(ReadGpu(device, checked((int)index)));
+					gpus.Add(ReadGpu(device, checked((int)index), identities));
 				}
 
 				return gpus.Count > 0
@@ -65,7 +67,8 @@ public sealed class NvmlGpuProvider
 
 	private static GpuInventory ReadGpu(
 		IntPtr device,
-		int adapterIndex)
+		int adapterIndex,
+		IReadOnlyList<NvidiaGpuAdapterIdentity> identities)
 	{
 		string identifier = ReadGpuUuid(device, adapterIndex);
 		string name = ReadGpuName(device);
@@ -78,7 +81,7 @@ public sealed class NvmlGpuProvider
 			out string currentWidth,
 			out string maxWidth);
 
-		long? adapterLuid = ReadAdapterLuid(device);
+		long? adapterLuid = ResolveAdapterLuid(identifier, identities);
 
 		return new GpuInventory
 		{
@@ -100,15 +103,21 @@ public sealed class NvmlGpuProvider
 		};
 	}
 
-	private static long? ReadAdapterLuid(IntPtr device)
+	private static long? ResolveAdapterLuid(
+		string identifier,
+		IReadOnlyList<NvidiaGpuAdapterIdentity> identities)
 	{
-		byte[] luid = new byte[8];
-		uint size = (uint)luid.Length;
-		NvmlReturn result = NvmlNative.DeviceGetLuid(device, luid, ref size);
-		if (result != NvmlReturn.Success || size < luid.Length)
+		string normalized = GpuDeviceIdentity.NormalizeVendorIdentifier(identifier);
+		if (normalized.Length == 0)
 			return null;
 
-		return System.Buffers.Binary.BinaryPrimitives.ReadInt64LittleEndian(luid);
+		NvidiaGpuAdapterIdentity? identity = identities.FirstOrDefault(
+			candidate => string.Equals(
+				GpuDeviceIdentity.NormalizeVendorIdentifier(candidate.Identifier),
+				normalized,
+				StringComparison.Ordinal));
+
+		return identity?.AdapterLuid;
 	}
 
 	private static string ReadGpuUuid(IntPtr device, int adapterIndex)
