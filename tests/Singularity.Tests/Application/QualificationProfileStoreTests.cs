@@ -81,10 +81,15 @@ public sealed class QualificationProfileStoreTests
 		Assert.StartsWith("custom.", created!.Id, StringComparison.Ordinal);
 		Assert.Contains(catalog.Profiles, profile => profile.Id == created.Id);
 
-		QualificationProfile? duplicate = await catalog.CreateAsync(created with { Name = "Lab" });
+		QualificationProfile? duplicate = await catalog.DuplicateAsync(created);
 		Assert.NotNull(duplicate);
-		Assert.Equal(created.Name, duplicate!.Name);
+		Assert.Equal("Lab Copy", duplicate!.Name);
 		Assert.NotEqual(created.Id, duplicate.Id);
+
+		QualificationProfile? sameName = await catalog.CreateAsync(created with { Name = "Lab" });
+		Assert.NotNull(sameName);
+		Assert.Equal(created.Name, sameName!.Name);
+		Assert.NotEqual(created.Id, sameName.Id);
 
 		Assert.True(await catalog.UpdateAsync(created with { CpuMinimumLoadPercent = 88 }));
 		Assert.Equal(88, catalog.Profiles.Single(profile => profile.Id == created.Id).CpuMinimumLoadPercent);
