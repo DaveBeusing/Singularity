@@ -22,7 +22,8 @@ public static class QualificationGpuSelection
 
 		foreach (GpuInventory gpu in gpus)
 		{
-			if (!IsStableIdentifier(gpu.Identifier) ||
+			if (!gpu.IsDirect3D12Capable ||
+				!IsStableIdentifier(gpu.Identifier) ||
 				!identifiers.Add(gpu.Identifier))
 			{
 				continue;
@@ -89,7 +90,7 @@ public static class QualificationGpuSelection
 	public static bool IsStableIdentifier(string? identifier)
 	{
 		return !string.IsNullOrWhiteSpace(identifier) &&
-			!identifier.StartsWith("nvml:", StringComparison.OrdinalIgnoreCase);
+			!GpuDeviceIdentity.IsTransientNvmlIdentifier(identifier);
 	}
 
 	private static string CreateDisplayName(GpuInventory gpu)
