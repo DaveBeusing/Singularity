@@ -73,6 +73,33 @@ public sealed class QualificationCoordinatorTests
 
 
 	[Fact]
+	public void Stop_CancelsMultiGpuAutomatedRunAndPreservesDeviceEvidence()
+	{
+		FakeWorkloadController workloads = new();
+		QualificationCoordinator coordinator = new(workloads);
+		WorkloadOptions options = new()
+		{
+			EnableGpuWorkload = true,
+			GpuLoadPercent = 90,
+			SelectedGpuIdentifiers = ["GPU-A", "GPU-B"]
+		};
+
+		Assert.True(coordinator.StartAutomated(options, QualificationProfiles.Quick));
+		Assert.Equal(["GPU-A", "GPU-B"], coordinator.Session.SelectedGpuIdentifiers);
+
+		Assert.True(coordinator.Stop());
+
+		Assert.Equal(QualificationRunState.Cancelled, coordinator.Progress.State);
+		Assert.Equal(QualificationSessionState.Failed, coordinator.Session.State);
+		QualificationRecord record = Assert.Single(coordinator.History.Records);
+		Assert.Equal(
+			["GPU-A", "GPU-B"],
+			record.GpuEvidence.Select(evidence => evidence.Identifier));
+		Assert.All(record.GpuEvidence, evidence =>
+			Assert.Equal(ValidationStatus.Unknown, evidence.Result));
+	}
+
+	[Fact]
 	public void ManualWorkloadFailure_FinalizesActiveSession()
 	{
 		FakeWorkloadController workloads = new();
@@ -141,6 +168,8 @@ public sealed class QualificationCoordinatorTests
 				CpuThreads = options.CpuThreads,
 				MemoryGb = options.MemoryGb,
 				GpuLoadPercent = options.GpuLoadPercent,
+				SelectedGpuIdentifier = options.SelectedGpuIdentifier,
+				SelectedGpuIdentifiers = options.ResolveSelectedGpuIdentifiers(),
 				MemoryAllocatedMb = options.MemoryGb * 1024L,
 				Message = "Running"
 			};

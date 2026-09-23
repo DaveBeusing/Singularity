@@ -36,6 +36,36 @@ public sealed class MultiGpuWorkspaceStateTests
 	}
 
 	[Fact]
+	public void AvailableGpus_DeviceRemovalRequiresExplicitSelectionReview()
+	{
+		QualificationWorkspaceState state = new();
+		GpuInventory gpuA = new() { Identifier = "GPU-A", Name = "GPU A" };
+		GpuInventory gpuB = new() { Identifier = "GPU-B", Name = "GPU B" };
+		state.SetAvailableGpus([gpuA, gpuB]);
+		state.SetConfiguration(
+			state.Configuration with
+			{
+				EnableGpuWorkload = true,
+				SelectedGpuIdentifiers = ["GPU-A", "GPU-B"],
+				SelectedGpuIdentifier = null
+			});
+
+		state.SetAvailableGpus([gpuA]);
+
+		Assert.Equal(["GPU-A"], state.Configuration.ResolveSelectedGpuIdentifiers());
+		Assert.Contains("Review and confirm", state.ValidateConfiguration());
+		QualificationWorkspaceSnapshot blocked = state.CreateSnapshot(
+			new QualificationCoordinator(new IdleWorkloadController()),
+			new SystemSnapshot());
+		Assert.False(blocked.CanStartManual);
+		Assert.False(blocked.CanStartAutomated);
+
+		state.SetConfiguration(state.Configuration);
+
+		Assert.Null(state.ValidateConfiguration());
+	}
+
+	[Fact]
 	public void Snapshot_ReportsPartialTelemetryGapWithoutSubstitutingAnotherGpu()
 	{
 		QualificationWorkspaceState state = new();

@@ -121,6 +121,7 @@ public sealed record QualificationWorkspaceSnapshot(
 public sealed class QualificationWorkspaceState
 {
 	private QualificationFeedback? explicitFeedback;
+	private bool gpuSelectionReviewRequired;
 	private IReadOnlyList<QualificationGpuOption> availableGpus =
 		Array.Empty<QualificationGpuOption>();
 
@@ -163,6 +164,7 @@ public sealed class QualificationWorkspaceState
 			selectedIdentifiers.Length != previousIdentifiers.Count;
 		if (selectionLost && Configuration.EnableGpuWorkload)
 		{
+			gpuSelectionReviewRequired = true;
 			explicitFeedback = new QualificationFeedback(
 				QualificationFeedbackLevel.Warning,
 				"One or more previously selected GPUs are no longer available. Review the GPU selection before starting qualification.");
@@ -182,6 +184,7 @@ public sealed class QualificationWorkspaceState
 				? selectedIdentifiers[0]
 				: null
 		};
+		gpuSelectionReviewRequired = false;
 		explicitFeedback = null;
 	}
 
@@ -221,6 +224,9 @@ public sealed class QualificationWorkspaceState
 
 		if (Configuration.EnableGpuWorkload && availableGpus.Count == 0)
 			return "No GPU with a stable device identity is available for qualification.";
+
+		if (Configuration.EnableGpuWorkload && gpuSelectionReviewRequired)
+			return "The GPU selection changed because a previously selected device is no longer available. Review and confirm the remaining GPU selection before starting qualification.";
 
 		IReadOnlyList<string> selectedIdentifiers =
 			Configuration.ResolveSelectedGpuIdentifiers();
@@ -318,6 +324,7 @@ public sealed class QualificationWorkspaceState
 
 		return Configuration.HasSelectedWorkload &&
 			gpuSelectionValid &&
+			!gpuSelectionReviewRequired &&
 			session.State != QualificationSessionState.Running &&
 			progress.State != QualificationRunState.Running &&
 			workload.State is WorkloadState.Stopped or WorkloadState.Failed;
