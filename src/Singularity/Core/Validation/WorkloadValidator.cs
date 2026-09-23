@@ -152,7 +152,7 @@ public sealed class WorkloadValidator
 		QualificationProfile profile,
 		TimeSpan sessionDuration)
 	{
-		string name = selectedGpu?.Name;
+		string name = selectedGpu?.Name ?? string.Empty;
 		if (string.IsNullOrWhiteSpace(name))
 			name = string.IsNullOrWhiteSpace(identifier) ? "GPU" : identifier;
 

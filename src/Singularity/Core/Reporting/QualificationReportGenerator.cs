@@ -70,15 +70,17 @@ public sealed class QualificationReportGenerator
 
 			GpuTelemetryStatistics frozenTelemetry = telemetry ??
 				new GpuTelemetryStatistics { Identifier = identifier };
+			string validationName = result?.Name ?? string.Empty;
+			string evidenceName = !string.IsNullOrWhiteSpace(validationName)
+				? validationName
+				: !string.IsNullOrWhiteSpace(frozenTelemetry.Name)
+					? frozenTelemetry.Name
+					: identifier;
 
 			evidence[index] = new GpuQualificationEvidence
 			{
 				Identifier = identifier,
-				Name = !string.IsNullOrWhiteSpace(result?.Name)
-					? result.Name
-					: !string.IsNullOrWhiteSpace(frozenTelemetry.Name)
-						? frozenTelemetry.Name
-						: identifier,
+				Name = evidenceName,
 				Result = result?.Status ?? ValidationStatus.Unknown,
 				ValidationMessage = result?.Message ?? "Validation unavailable",
 				TelemetryAvailable = result?.TelemetryAvailable ??

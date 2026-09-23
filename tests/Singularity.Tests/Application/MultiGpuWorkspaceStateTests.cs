@@ -53,7 +53,8 @@ public sealed class MultiGpuWorkspaceStateTests
 		state.SetAvailableGpus([gpuA]);
 
 		Assert.Equal(["GPU-A"], state.Configuration.ResolveSelectedGpuIdentifiers());
-		Assert.Contains("Review and confirm", state.ValidateConfiguration());
+		string validationMessage = Assert.IsType<string>(state.ValidateConfiguration());
+		Assert.Contains("Review and confirm", validationMessage);
 		QualificationWorkspaceSnapshot blocked = state.CreateSnapshot(
 			new QualificationCoordinator(new IdleWorkloadController()),
 			new SystemSnapshot());
