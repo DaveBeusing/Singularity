@@ -24,6 +24,42 @@ public sealed class QualificationGpuSelectionTests
 	}
 
 	[Fact]
+	public void CreateOptions_AcceptsVendorNeutralLuidIdentity()
+	{
+		IReadOnlyList<QualificationGpuOption> options =
+			QualificationGpuSelection.CreateOptions(
+			[
+				new GpuInventory
+				{
+					Identifier = "dxgi:luid:0000000000000042",
+					Name = "AMD Radeon",
+					IsNvidia = false,
+					IsDirect3D12Capable = true
+				}
+			]);
+
+		QualificationGpuOption option = Assert.Single(options);
+		Assert.Equal("dxgi:luid:0000000000000042", option.Identifier);
+	}
+
+	[Fact]
+	public void CreateOptions_FiltersAdapterWithoutDirect3D12Support()
+	{
+		IReadOnlyList<QualificationGpuOption> options =
+			QualificationGpuSelection.CreateOptions(
+			[
+				new GpuInventory
+				{
+					Identifier = "dxgi:luid:0000000000000042",
+					Name = "Legacy Adapter",
+					IsDirect3D12Capable = false
+				}
+			]);
+
+		Assert.Empty(options);
+	}
+
+	[Fact]
 	public void ResolveSelection_DefaultsDeterministicallyAndUsesIdentifierAfterReorder()
 	{
 		QualificationGpuOption gpuA = new("GPU-A", "GPU A");

@@ -303,7 +303,8 @@ public sealed class PlatformView : Panel
 
 	private static bool IsUnavailableGpu(GpuInventory gpu)
 	{
-		return string.Equals(gpu.Identifier, "nvml:unavailable", StringComparison.Ordinal);
+		return string.IsNullOrWhiteSpace(gpu.Identifier) ||
+			GpuDeviceIdentity.IsTransientNvmlIdentifier(gpu.Identifier);
 	}
 
 	private static string CategoryTitle(string categoryId)

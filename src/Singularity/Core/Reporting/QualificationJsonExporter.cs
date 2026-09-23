@@ -101,7 +101,7 @@ public sealed class QualificationJsonExporter
 				gpu.Identifier,
 				gpu.Name,
 				gpu.Vram,
-				$"Gen{gpu.PcieGenerationCurrent} x{gpu.PcieWidthCurrent}");
+				CreatePcieLink(gpu));
 		}
 
 		string[] memory = new string[hardware.MemoryModules.Count];
@@ -125,5 +125,20 @@ public sealed class QualificationJsonExporter
 			Array.AsReadOnly(gpus),
 			Array.AsReadOnly(memory),
 			Array.AsReadOnly(storage));
+	}
+
+	private static string CreatePcieLink(GpuInventory gpu)
+	{
+		return IsAvailable(gpu.PcieGenerationCurrent) &&
+			IsAvailable(gpu.PcieWidthCurrent)
+				? $"Gen{gpu.PcieGenerationCurrent} x{gpu.PcieWidthCurrent}"
+				: "Unavailable";
+	}
+
+	private static bool IsAvailable(string? value)
+	{
+		return !string.IsNullOrWhiteSpace(value) &&
+			!string.Equals(value, "Unknown", StringComparison.OrdinalIgnoreCase) &&
+			!string.Equals(value, "Unavailable", StringComparison.OrdinalIgnoreCase);
 	}
 }
