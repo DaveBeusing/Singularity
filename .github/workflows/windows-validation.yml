@@ -1,0 +1,68 @@
+name: Windows validation
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Restore, build, test, publish
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore, build, and test
+        shell: pwsh
+        run: ./scripts/build.ps1 -Configuration Release
+
+      - name: Publish smoke check
+        shell: pwsh
+        run: |
+          $publishDirectory = Join-Path $env:RUNNER_TEMP "singularity-publish"
+
+          if (Test-Path $publishDirectory) {
+            Remove-Item $publishDirectory -Recurse -Force
+          }
+
+          dotnet publish src/Singularity/Singularity.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --output $publishDirectory
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $executablePath = Join-Path $publishDirectory "Singularity.exe"
+
+          if (-not (Test-Path $executablePath -PathType Leaf)) {
+            throw "Publish smoke check failed: Singularity.exe was not produced."
+          }
+
+          $executable = Get-Item $executablePath
+
+          if ($executable.Length -le 0) {
+            throw "Publish smoke check failed: Singularity.exe is empty."
+          }
+
+          Write-Host "Publish smoke check passed: $($executable.FullName) ($($executable.Length) bytes)."
