@@ -23,6 +23,8 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	private int memoryGb;
 	private int gpuLoadPercent;
 	private IReadOnlyList<string> selectedGpuIdentifiers = Array.Empty<string>();
+	private IReadOnlyList<GpuWorkloadDeviceStatus> terminalGpuDeviceStatuses =
+		Array.Empty<GpuWorkloadDeviceStatus>();
 
 	public bool IsRunning
 	{
@@ -121,6 +123,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	private void StartGpuWorkers()
 	{
 		StopGpuWorkers();
+		terminalGpuDeviceStatuses = Array.Empty<GpuWorkloadDeviceStatus>();
 
 		if (selectedGpuIdentifiers.Count == 0)
 		{
@@ -165,6 +168,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		memoryGb = 0;
 		gpuLoadPercent = 0;
 		selectedGpuIdentifiers = Array.Empty<string>();
+		terminalGpuDeviceStatuses = Array.Empty<GpuWorkloadDeviceStatus>();
 	}
 
 	private string BuildRunningMessage()
@@ -204,13 +208,15 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 			if (worker.Failure is not Exception failure)
 				continue;
 
+			string failureMessage = key == DefaultGpuWorkerKey
+				? failure.Message
+				: $"GPU {key} failed: {failure.Message}";
+			terminalGpuDeviceStatuses = CreateTerminalGpuDeviceStatuses(key, failureMessage);
 			cpuStressWorker.Stop();
 			memoryStressWorker.Stop();
 			StopGpuWorkers();
 			state = WorkloadState.Failed;
-			message = key == DefaultGpuWorkerKey
-				? failure.Message
-				: $"GPU {key} failed: {failure.Message}";
+			message = failureMessage;
 			return;
 		}
 
@@ -227,6 +233,8 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	{
 		if (!gpuEnabled || selectedGpuIdentifiers.Count == 0)
 			return Array.Empty<GpuWorkloadDeviceStatus>();
+		if (state == WorkloadState.Failed && terminalGpuDeviceStatuses.Count > 0)
+			return terminalGpuDeviceStatuses;
 
 		GpuWorkloadDeviceStatus[] statuses = new GpuWorkloadDeviceStatus[selectedGpuIdentifiers.Count];
 		for (int index = 0; index < selectedGpuIdentifiers.Count; index++)
@@ -250,6 +258,27 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 				identifier,
 				deviceState,
 				worker.Failure?.Message ?? (worker.IsReady ? "Running" : "Starting"));
+		}
+
+		return Array.AsReadOnly(statuses);
+	}
+
+	private IReadOnlyList<GpuWorkloadDeviceStatus> CreateTerminalGpuDeviceStatuses(
+		string failedKey,
+		string failureMessage)
+	{
+		if (failedKey == DefaultGpuWorkerKey || selectedGpuIdentifiers.Count == 0)
+			return Array.Empty<GpuWorkloadDeviceStatus>();
+
+		GpuWorkloadDeviceStatus[] statuses = new GpuWorkloadDeviceStatus[selectedGpuIdentifiers.Count];
+		for (int index = 0; index < selectedGpuIdentifiers.Count; index++)
+		{
+			string identifier = selectedGpuIdentifiers[index];
+			bool failed = string.Equals(identifier, failedKey, StringComparison.OrdinalIgnoreCase);
+			statuses[index] = new GpuWorkloadDeviceStatus(
+				identifier,
+				failed ? WorkloadState.Failed : WorkloadState.Stopped,
+				failed ? failureMessage : "Stopped after another GPU workload failed");
 		}
 
 		return Array.AsReadOnly(statuses);
