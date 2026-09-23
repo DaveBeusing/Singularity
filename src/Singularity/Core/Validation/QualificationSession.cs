@@ -11,6 +11,7 @@ using Singularity.Monitoring.Models;
 public sealed class QualificationSession
 {
 	private SessionTelemetryCollector telemetryCollector = new();
+	private QualificationTelemetryTimelineCollector timelineCollector = new();
 
 	public QualificationSessionState State { get; private set; } =
 		QualificationSessionState.Idle;
@@ -24,6 +25,9 @@ public sealed class QualificationSession
 
 	public SessionTelemetryStatistics TelemetryStatistics { get; private set; } =
 		SessionTelemetryStatistics.Empty;
+
+	public QualificationTelemetryTimeline TelemetryTimeline { get; private set; } =
+		QualificationTelemetryTimeline.Empty;
 
 	public QualificationProfile Profile { get; private set; } =
 		QualificationProfiles.Standard;
@@ -72,15 +76,38 @@ public sealed class QualificationSession
 		EndTime = null;
 		Result = ValidationStatus.Unknown;
 		telemetryCollector = new SessionTelemetryCollector(SelectedGpuIdentifiers);
+		timelineCollector = new QualificationTelemetryTimelineCollector(
+			profile.RecommendedDuration,
+			SelectedGpuIdentifiers);
+		timelineCollector.AddEvent(TimeSpan.Zero, QualificationTimelineEventKind.Start, "Qualification started");
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
+		TelemetryTimeline = QualificationTelemetryTimeline.Empty;
 		Profile = profile;
 		ExecutionMode = executionMode;
 	}
 
-	public void RecordTelemetry(SystemSnapshot snapshot)
+	public void RecordTelemetry(SystemSnapshot snapshot, TimeSpan? elapsed = null)
 	{
-		if (State == QualificationSessionState.Running)
-			telemetryCollector.Add(snapshot);
+		ArgumentNullException.ThrowIfNull(snapshot);
+		if (State != QualificationSessionState.Running)
+			return;
+
+		telemetryCollector.Add(snapshot);
+		timelineCollector.Add(snapshot, elapsed ?? Duration);
+	}
+
+	internal void RecordTimelineEvent(
+		QualificationTimelineEventKind kind,
+		string label,
+		TimeSpan? elapsed = null)
+	{
+		if (State != QualificationSessionState.Running)
+			return;
+
+		timelineCollector.AddEvent(
+			elapsed ?? Max(Duration, timelineCollector.LastElapsed),
+			kind,
+			label);
 	}
 
 	public void Complete(ValidationStatus result)
@@ -88,10 +115,12 @@ public sealed class QualificationSession
 		if (State != QualificationSessionState.Running)
 			return;
 
+		RecordTimelineEvent(QualificationTimelineEventKind.Completed, "Qualification completed");
 		State = QualificationSessionState.Completed;
 		EndTime = DateTime.Now;
 		Result = result;
 		TelemetryStatistics = telemetryCollector.Snapshot();
+		TelemetryTimeline = timelineCollector.Snapshot();
 	}
 
 	public void Fail()
@@ -99,10 +128,12 @@ public sealed class QualificationSession
 		if (State != QualificationSessionState.Running)
 			return;
 
+		RecordTimelineEvent(QualificationTimelineEventKind.Failed, "Qualification failed");
 		State = QualificationSessionState.Failed;
 		EndTime = DateTime.Now;
 		Result = ValidationStatus.Fail;
 		TelemetryStatistics = telemetryCollector.Snapshot();
+		TelemetryTimeline = timelineCollector.Snapshot();
 	}
 
 	public void Reset()
@@ -113,8 +144,13 @@ public sealed class QualificationSession
 		Result = ValidationStatus.Unknown;
 		SelectedGpuIdentifiers = Array.Empty<string>();
 		telemetryCollector = new SessionTelemetryCollector();
+		timelineCollector = new QualificationTelemetryTimelineCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
+		TelemetryTimeline = QualificationTelemetryTimeline.Empty;
 		Profile = QualificationProfiles.Standard;
 		ExecutionMode = QualificationExecutionMode.Unknown;
 	}
+
+	private static TimeSpan Max(TimeSpan left, TimeSpan right) =>
+		left >= right ? left : right;
 }
