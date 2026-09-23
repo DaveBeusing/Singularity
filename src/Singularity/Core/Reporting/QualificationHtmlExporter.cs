@@ -12,6 +12,15 @@ namespace Singularity.Core.Reporting;
 
 public sealed class QualificationHtmlExporter
 {
+	private static readonly string[] TimelinePalette =
+	[
+		"#f1bf42",
+		"#38c878",
+		"#e45b66",
+		"#8f9cff",
+		"#55c7d9",
+		"#d78ee8"
+	];
 	public string Render(
 		QualificationReport report,
 		HardwareInventory hardware,
@@ -30,6 +39,7 @@ public sealed class QualificationHtmlExporter
 <style>
 :root{color-scheme:dark;--bg:#101217;--panel:#191d25;--line:#2b3240;--text:#f1f4f8;--muted:#929bad;--accent:#f1bf42;--success:#38c878;--danger:#e45b66}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,sans-serif}.page{width:min(1080px,calc(100% - 32px));margin:32px auto 56px}header{border-bottom:2px solid var(--accent);padding:0 0 20px}h1{margin:0;font-size:32px;letter-spacing:.02em}h1 span{color:var(--accent)}.subtitle,.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.card{background:var(--panel);border:1px solid var(--line);padding:20px}.card.wide{grid-column:1/-1}h2{margin:0 0 14px;color:var(--accent);font-size:14px;letter-spacing:.12em}h3{margin:0 0 8px;font-size:16px}dl{display:grid;grid-template-columns:minmax(120px,1fr) 2fr;gap:8px 16px;margin:0}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}.results{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.result{padding:14px;text-align:center;background:#11141a;border-top:3px solid var(--muted)}.result.pass{border-color:var(--success)}.result.warning{border-color:var(--accent)}.result.fail{border-color:var(--danger)}.result strong{display:block;font-size:18px}.gpu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gpu-card{background:#11141a;border:1px solid var(--line);padding:14px}.gpu-card.pass{border-top:3px solid var(--success)}.gpu-card.warning{border-top:3px solid var(--accent)}.gpu-card.fail{border-top:3px solid var(--danger)}.identifier{font:12px/1.4 Consolas,monospace;color:var(--muted);overflow-wrap:anywhere;margin-bottom:10px}table{width:100%;border-collapse:collapse}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:600}.list{margin:0;padding-left:20px}.footer{margin-top:20px;color:var(--muted);font-size:12px}@media(max-width:720px){.grid,.gpu-grid{grid-template-columns:1fr}.results{grid-template-columns:repeat(2,1fr)}dl{grid-template-columns:1fr}.card{padding:16px}}
+.timeline-grid{display:grid;grid-template-columns:1fr;gap:14px}.timeline-chart{background:#11141a;border:1px solid var(--line);padding:12px}.timeline-chart h3{margin-bottom:4px}.timeline-chart svg{display:block;width:100%;height:auto}.timeline-legend{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 2px;color:var(--muted);font-size:12px}.timeline-swatch{display:inline-block;width:16px;height:3px;margin-right:6px;vertical-align:middle}.timeline-axis{stroke:#3b4353;stroke-width:1}.timeline-event{stroke:#667085;stroke-width:1;stroke-dasharray:4 4}.timeline-label{fill:#929bad;font:11px "Segoe UI",sans-serif}
 </style>
 </head>
 <body><main class="page">
@@ -40,6 +50,7 @@ public sealed class QualificationHtmlExporter
 		AppendValidation(html, document.Validation);
 		AppendGpuEvidence(html, document.GpuEvidence);
 		AppendTelemetry(html, document.TelemetryStatistics);
+		AppendTimeline(html, document.TelemetryTimeline);
 		AppendHardware(html, document.Hardware);
 		html.Append("<div class='footer'>Schema ").Append(H(document.SchemaVersion))
 			.Append(" · Generated ").Append(H(document.Timestamp.ToString("O", CultureInfo.InvariantCulture)))
@@ -138,6 +149,182 @@ public sealed class QualificationHtmlExporter
 			.Append("</td><td>").Append(Number(metric.Average, unit)).Append("</td><td>")
 			.Append(Number(metric.Maximum, unit)).Append("</td><td>").Append(metric.SampleCount).Append("</td></tr>");
 	}
+
+	private static void AppendTimeline(
+		StringBuilder html,
+		QualificationTelemetryTimeline timeline)
+	{
+		if (timeline.Points.Count < 2)
+			return;
+
+		html.Append("<section class='card wide' style='margin-top:16px'><h2>TELEMETRY TIMELINE</h2><div class='timeline-grid'>");
+
+		AppendTimelineChart(
+			html,
+			"System utilization",
+			"%",
+			timeline,
+			[
+				new TimelineSeries("CPU load", TimelinePalette[0], point => point.CpuLoadPercent),
+				new TimelineSeries("System memory", TimelinePalette[1], point => point.SystemMemoryUsagePercent)
+			],
+			100);
+
+		string[] gpuIdentifiers = timeline.Points
+			.SelectMany(point => point.Gpus)
+			.Select(gpu => gpu.Identifier)
+			.Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToArray();
+
+		if (gpuIdentifiers.Length > 0)
+		{
+			AppendGpuTimelineChart(html, "GPU load", "%", timeline, gpuIdentifiers, gpu => gpu.LoadPercent, 100);
+			AppendGpuTimelineChart(html, "GPU temperature", "°C", timeline, gpuIdentifiers, gpu => gpu.TemperatureCelsius, null);
+			AppendGpuTimelineChart(html, "GPU power", "W", timeline, gpuIdentifiers, gpu => gpu.PowerWatts, null);
+			AppendGpuTimelineChart(html, "GPU VRAM usage", "%", timeline, gpuIdentifiers, gpu => gpu.VramUsagePercent, 100);
+		}
+
+		html.Append("</div></section>");
+	}
+
+	private static void AppendGpuTimelineChart(
+		StringBuilder html,
+		string title,
+		string unit,
+		QualificationTelemetryTimeline timeline,
+		IReadOnlyList<string> gpuIdentifiers,
+		Func<QualificationTelemetryGpuPoint, double?> selector,
+		double? fixedMaximum)
+	{
+		List<TimelineSeries> series = [];
+		for (int index = 0; index < gpuIdentifiers.Count; index++)
+		{
+			string identifier = gpuIdentifiers[index];
+			string name = timeline.Points
+				.SelectMany(point => point.Gpus)
+				.FirstOrDefault(gpu =>
+					string.Equals(gpu.Identifier, identifier, StringComparison.OrdinalIgnoreCase) &&
+					!string.IsNullOrWhiteSpace(gpu.Name))
+				?.Name ?? identifier;
+			string color = TimelinePalette[index % TimelinePalette.Length];
+
+			series.Add(new TimelineSeries(
+				name,
+				color,
+				point =>
+				{
+					QualificationTelemetryGpuPoint? gpu = point.Gpus.FirstOrDefault(item =>
+						string.Equals(item.Identifier, identifier, StringComparison.OrdinalIgnoreCase));
+					return gpu is null ? null : selector(gpu);
+				}));
+		}
+
+		AppendTimelineChart(html, title, unit, timeline, series, fixedMaximum);
+	}
+
+	private static void AppendTimelineChart(
+		StringBuilder html,
+		string title,
+		string unit,
+		QualificationTelemetryTimeline timeline,
+		IReadOnlyList<TimelineSeries> series,
+		double? fixedMaximum)
+	{
+		double[] values = series
+			.SelectMany(item => timeline.Points.Select(item.Selector))
+			.Where(value => value.HasValue && double.IsFinite(value.Value))
+			.Select(value => value!.Value)
+			.ToArray();
+		if (values.Length == 0)
+			return;
+
+		const double width = 800;
+		const double height = 200;
+		const double left = 48;
+		const double top = 12;
+		const double right = 16;
+		const double bottom = 30;
+		double plotWidth = width - left - right;
+		double plotHeight = height - top - bottom;
+		double xMaximum = Math.Max(1, timeline.Points[^1].Elapsed.TotalSeconds);
+		double yMaximum = fixedMaximum ?? Math.Max(1, Math.Ceiling(values.Max() * 1.1 / 10) * 10);
+
+		html.Append("<article class='timeline-chart'><h3>").Append(H(title)).Append("</h3><div class='timeline-legend'>");
+		foreach (TimelineSeries item in series)
+		{
+			html.Append("<span><i class='timeline-swatch' style='background:")
+				.Append(item.Color)
+				.Append("'></i>")
+				.Append(H(item.Name))
+				.Append("</span>");
+		}
+		html.Append("</div><svg viewBox='0 0 800 200' role='img' aria-label='")
+			.Append(H(title))
+			.Append(" timeline'>");
+		html.Append("<line class='timeline-axis' x1='48' y1='12' x2='48' y2='170'/><line class='timeline-axis' x1='48' y1='170' x2='784' y2='170'/>");
+		html.Append("<text class='timeline-label' x='4' y='20'>")
+			.Append(H($"{yMaximum:0.#} {unit}"))
+			.Append("</text><text class='timeline-label' x='22' y='168'>0</text>");
+		html.Append("<text class='timeline-label' x='48' y='192'>0:00</text><text class='timeline-label' text-anchor='end' x='784' y='192'>")
+			.Append(H(FormatElapsed(timeline.Points[^1].Elapsed)))
+			.Append("</text>");
+
+		foreach (QualificationTimelineEvent marker in timeline.Events)
+		{
+			double x = left + Math.Clamp(marker.Elapsed.TotalSeconds / xMaximum, 0, 1) * plotWidth;
+			html.Append("<line class='timeline-event' x1='").Append(F(x)).Append("' y1='12' x2='")
+				.Append(F(x)).Append("' y2='170'><title>")
+				.Append(H($"{marker.Kind}: {marker.Label}"))
+				.Append("</title></line>");
+		}
+
+		foreach (TimelineSeries item in series)
+		{
+			List<string> segment = [];
+			foreach (QualificationTelemetryPoint point in timeline.Points)
+			{
+				double? value = item.Selector(point);
+				if (value is null || !double.IsFinite(value.Value))
+				{
+					AppendSvgSegment(html, segment, item.Color);
+					segment.Clear();
+					continue;
+				}
+
+				double x = left + Math.Clamp(point.Elapsed.TotalSeconds / xMaximum, 0, 1) * plotWidth;
+				double y = top + (1 - Math.Clamp(value.Value / yMaximum, 0, 1)) * plotHeight;
+				segment.Add($"{F(x)},{F(y)}");
+			}
+			AppendSvgSegment(html, segment, item.Color);
+		}
+
+		html.Append("</svg></article>");
+	}
+
+	private static void AppendSvgSegment(StringBuilder html, IReadOnlyList<string> points, string color)
+	{
+		if (points.Count < 2)
+			return;
+
+		html.Append("<polyline fill='none' stroke='").Append(color)
+			.Append("' stroke-width='2' vector-effect='non-scaling-stroke' points='")
+			.Append(string.Join(' ', points))
+			.Append("'/>");
+	}
+
+	private static string FormatElapsed(TimeSpan elapsed) =>
+		elapsed.TotalHours >= 1
+			? elapsed.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
+			: elapsed.ToString(@"m\:ss", CultureInfo.InvariantCulture);
+
+	private static string F(double value) =>
+		value.ToString("0.##", CultureInfo.InvariantCulture);
+
+	private sealed record TimelineSeries(
+		string Name,
+		string Color,
+		Func<QualificationTelemetryPoint, double?> Selector);
 
 	private static void AppendHardware(StringBuilder html, HardwareSummaryJson hardware)
 	{
