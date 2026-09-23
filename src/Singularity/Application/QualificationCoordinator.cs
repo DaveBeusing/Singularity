@@ -17,6 +17,7 @@ public sealed class QualificationCoordinator
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationReportGenerator reportGenerator = new();
 	private bool automatedRunFinalized;
+	private SystemSnapshot? lastSnapshot;
 
 	public QualificationSession Session { get; } = new();
 	public QualificationHistory History { get; } = new();
@@ -77,9 +78,23 @@ public sealed class QualificationCoordinator
 			return true;
 		}
 
-		WorkloadState workloadState = workloadController.Status.State;
+		WorkloadStatus workloadStatus = workloadController.Status;
+		WorkloadState workloadState = workloadStatus.State;
 		if (!workloadController.IsRunning && workloadState != WorkloadState.Failed)
 			return false;
+
+		if (workloadState == WorkloadState.Failed &&
+			workloadStatus.GpuEnabled &&
+			workloadStatus.GpuDevices.Count > 0)
+		{
+			LastValidationResult = lastSnapshot is null
+				? null
+				: workloadValidator.Validate(
+					workloadStatus,
+					lastSnapshot,
+					Session.Profile,
+					Session.Duration);
+		}
 
 		workloadController.Stop();
 		FinalizeSession(forceFailure: workloadState == WorkloadState.Failed);
@@ -89,6 +104,7 @@ public sealed class QualificationCoordinator
 	public void Update(SystemSnapshot snapshot)
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
+		lastSnapshot = snapshot;
 
 		WorkloadStatus workloadStatus = workloadController.Status;
 		bool hasGpuFailureEvidence =
@@ -131,6 +147,7 @@ public sealed class QualificationCoordinator
 	{
 		LastValidationResult = null;
 		LastReport = null;
+		lastSnapshot = null;
 		workloadValidator.Reset();
 		Session.Start(profile, executionMode, selectedGpuIdentifiers);
 	}
