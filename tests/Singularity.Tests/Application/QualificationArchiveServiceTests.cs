@@ -19,7 +19,7 @@ public sealed class QualificationArchiveServiceTests
 		using TemporaryDirectory temporary = new();
 		using QualificationArchiveService archive = new(temporary.ArchivePath);
 
-		await archive.LoadAsync();
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationArchiveState.Ready, archive.State);
 		Assert.Empty(archive.Records);
@@ -34,15 +34,15 @@ public sealed class QualificationArchiveServiceTests
 
 		using (QualificationArchiveService archive = new(temporary.ArchivePath))
 		{
-			await archive.LoadAsync();
-			await archive.SaveAsync(expected);
+			await archive.LoadAsync(TestContext.Current.CancellationToken);
+			await archive.SaveAsync(expected, TestContext.Current.CancellationToken);
 
 			Assert.Equal(QualificationArchiveState.Ready, archive.State);
 			Assert.True(File.Exists(temporary.ArchivePath));
 		}
 
 		using QualificationArchiveService reloaded = new(temporary.ArchivePath);
-		await reloaded.LoadAsync();
+		await reloaded.LoadAsync(TestContext.Current.CancellationToken);
 
 		QualificationRecord actual = Assert.Single(reloaded.Records);
 		Assert.Equal(expected.StartedAt, actual.StartedAt);
@@ -62,11 +62,11 @@ public sealed class QualificationArchiveServiceTests
 	{
 		using TemporaryDirectory temporary = new();
 		using QualificationArchiveService archive = new(temporary.ArchivePath, retentionLimit: 2);
-		await archive.LoadAsync();
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
 
-		await archive.SaveAsync(CreateRecord(0));
-		await archive.SaveAsync(CreateRecord(2));
-		await archive.SaveAsync(CreateRecord(1));
+		await archive.SaveAsync(CreateRecord(0), TestContext.Current.CancellationToken);
+		await archive.SaveAsync(CreateRecord(2), TestContext.Current.CancellationToken);
+		await archive.SaveAsync(CreateRecord(1), TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, archive.Records.Count);
 		Assert.Equal(CreateTimestamp(2).AddMinutes(1), archive.Records[0].FinishedAt);
@@ -77,10 +77,10 @@ public sealed class QualificationArchiveServiceTests
 	public async Task LoadAsync_WhenArchiveIsCorrupted_FailsWithoutThrowing()
 	{
 		using TemporaryDirectory temporary = new();
-		await File.WriteAllTextAsync(temporary.ArchivePath, "{ this is not valid json");
+		await File.WriteAllTextAsync(temporary.ArchivePath, "{ this is not valid json", TestContext.Current.CancellationToken);
 
 		using QualificationArchiveService archive = new(temporary.ArchivePath);
-		await archive.LoadAsync();
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.Empty(archive.Records);
@@ -93,10 +93,11 @@ public sealed class QualificationArchiveServiceTests
 		using TemporaryDirectory temporary = new();
 		await File.WriteAllTextAsync(
 			temporary.ArchivePath,
-			"{\"schemaVersion\":999,\"records\":[]}");
+			"{\"schemaVersion\":999,\"records\":[]}",
+			TestContext.Current.CancellationToken);
 
 		using QualificationArchiveService archive = new(temporary.ArchivePath);
-		await archive.LoadAsync();
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.Empty(archive.Records);
@@ -112,8 +113,8 @@ public sealed class QualificationArchiveServiceTests
 
 		using (QualificationArchiveService archive = new(temporary.ArchivePath))
 		{
-			await archive.LoadAsync();
-			await archive.SaveAsync(original);
+			await archive.LoadAsync(TestContext.Current.CancellationToken);
+			await archive.SaveAsync(original, TestContext.Current.CancellationToken);
 
 			using (new FileStream(
 				temporary.ArchivePath,
@@ -121,13 +122,13 @@ public sealed class QualificationArchiveServiceTests
 				FileAccess.Read,
 				FileShare.None))
 			{
-				await archive.SaveAsync(replacement);
+				await archive.SaveAsync(replacement, TestContext.Current.CancellationToken);
 				Assert.Equal(QualificationArchiveState.Failed, archive.State);
 			}
 		}
 
 		using QualificationArchiveService reloaded = new(temporary.ArchivePath);
-		await reloaded.LoadAsync();
+		await reloaded.LoadAsync(TestContext.Current.CancellationToken);
 
 		QualificationRecord persisted = Assert.Single(reloaded.Records);
 		Assert.Equal(original.StartedAt, persisted.StartedAt);
@@ -139,11 +140,11 @@ public sealed class QualificationArchiveServiceTests
 	{
 		using TemporaryDirectory temporary = new();
 		string blockedParent = Path.Combine(temporary.Path, "blocked");
-		await File.WriteAllTextAsync(blockedParent, "not a directory");
+		await File.WriteAllTextAsync(blockedParent, "not a directory", TestContext.Current.CancellationToken);
 		string archivePath = Path.Combine(blockedParent, QualificationArchiveService.ArchiveFileName);
 
 		using QualificationArchiveService archive = new(archivePath);
-		await archive.SaveAsync(CreateRecord(0));
+		await archive.SaveAsync(CreateRecord(0), TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationArchiveState.Failed, archive.State);
 		Assert.NotNull(archive.LastError);
@@ -155,10 +156,10 @@ public sealed class QualificationArchiveServiceTests
 	{
 		using TemporaryDirectory temporary = new();
 		using QualificationArchiveService archive = new(temporary.ArchivePath);
-		await archive.LoadAsync();
-		await archive.SaveAsync(CreateRecord(0));
+		await archive.LoadAsync(TestContext.Current.CancellationToken);
+		await archive.SaveAsync(CreateRecord(0), TestContext.Current.CancellationToken);
 
-		await archive.ClearAsync();
+		await archive.ClearAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(QualificationArchiveState.Ready, archive.State);
 		Assert.Empty(archive.Records);
@@ -171,14 +172,14 @@ public sealed class QualificationArchiveServiceTests
 		using TemporaryDirectory temporary = new();
 		using (QualificationArchiveService writer = new(temporary.ArchivePath))
 		{
-			await writer.LoadAsync();
-			await writer.SaveAsync(CreateRecord(0, includeReport: true, gpuCount: 1));
+			await writer.LoadAsync(TestContext.Current.CancellationToken);
+			await writer.SaveAsync(CreateRecord(0, includeReport: true, gpuCount: 1), TestContext.Current.CancellationToken);
 		}
 
 		using QualificationArchiveService reader = new(temporary.ArchivePath);
 		QualificationCoordinator coordinator = new(new IdleWorkloadController(), reader);
 
-		await coordinator.LoadArchiveAsync();
+		await coordinator.LoadArchiveAsync(TestContext.Current.CancellationToken);
 
 		QualificationRecord record = Assert.Single(coordinator.EvidenceRecords);
 		ResultsWorkspaceSnapshot results = ResultsWorkspaceState.Create(coordinator.EvidenceRecords);
