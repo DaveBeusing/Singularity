@@ -80,7 +80,7 @@ public sealed class WorkloadValidatorTests
 					Identifier = "GPU-B",
 					IsAvailable = true,
 					LoadPercent = 100,
-					TemperatureCelsius = profile.GpuMaximumTemperatureCelsius + 10,
+					TemperatureCelsius = Convert.ToInt32(profile.GpuMaximumTemperatureCelsius + 10),
 					Status = "OK"
 				}
 			]
