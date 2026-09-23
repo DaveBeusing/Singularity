@@ -291,6 +291,7 @@ public sealed class QualificationView : Panel
 		profileInput.Dock = DockStyle.Bottom;
 		profileInput.Height = 34;
 		profileInput.DropDownStyle = ComboBoxStyle.DropDownList;
+		profileInput.DisplayMember = nameof(QualificationProfile.Name);
 		profileInput.Font = ThemeFonts.CardText;
 		profileInput.BackColor = Theme.Panel;
 		profileInput.ForeColor = Theme.TextMain;

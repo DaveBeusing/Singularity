@@ -24,6 +24,7 @@ public sealed class MainForm : Form
 	private readonly SystemMonitor systemMonitor;
 	private readonly PlatformInventoryState platformInventoryState;
 	private readonly QualificationWorkspaceState qualificationWorkspaceState;
+	private readonly QualificationProfileCatalog profileCatalog;
 	private readonly ReportsWorkspaceState reportsWorkspaceState = new();
 	private readonly NavigationService navigationService = new(WorkspaceCatalog.CreateDefault());
 	private readonly CommandRouter commandRouter = new();
@@ -53,13 +54,15 @@ public sealed class MainForm : Form
 		ReportExportService reportExportService,
 		SystemMonitor systemMonitor,
 		PlatformInventoryState platformInventoryState,
-		QualificationWorkspaceState qualificationWorkspaceState)
+		QualificationWorkspaceState qualificationWorkspaceState,
+		QualificationProfileCatalog profileCatalog)
 	{
 		this.coordinator = coordinator;
 		this.reportExportService = reportExportService;
 		this.systemMonitor = systemMonitor;
 		this.platformInventoryState = platformInventoryState;
 		this.qualificationWorkspaceState = qualificationWorkspaceState;
+		this.profileCatalog = profileCatalog;
 
 		Text = "//Singularity✦";
 		StartPosition = FormStartPosition.CenterScreen;
@@ -185,10 +188,16 @@ public sealed class MainForm : Form
 			settingsView.ToolPanelVisibilityChanged += shell.SetToolPanelVisible;
 			settingsView.ResetLayoutRequested += shell.ResetLayout;
 			settingsView.ClearQualificationArchiveRequested += ClearQualificationArchive;
+			settingsView.CreateQualificationProfileRequested += CreateQualificationProfile;
+			settingsView.DuplicateQualificationProfileRequested += DuplicateQualificationProfile;
+			settingsView.EditQualificationProfileRequested += EditQualificationProfile;
+			settingsView.DeleteQualificationProfileRequested += DeleteQualificationProfile;
+			settingsView.ResetQualificationProfilesRequested += ResetQualificationProfiles;
 			shell.LayoutStateChanged += settingsView.UpdateState;
 			navigationService.ContextItemChanged += OnContextItemChanged;
 
 			settingsView.UpdateState(shell.LayoutState);
+			RefreshQualificationProfiles();
 			UpdateArchiveStatus();
 			BindCommandButtons();
 			RenderInventoryState();
@@ -219,8 +228,9 @@ public sealed class MainForm : Form
 		try
 		{
 			Task archiveLoad = coordinator.LoadArchiveAsync(shutdownCancellation.Token);
+			Task profileLoad = profileCatalog.LoadAsync(shutdownCancellation.Token);
 			Task inventoryLoad = RefreshPlatformInventoryAsync();
-			await Task.WhenAll(archiveLoad, inventoryLoad);
+			await Task.WhenAll(archiveLoad, profileLoad, inventoryLoad);
 		}
 		catch (OperationCanceledException) when (shutdownCancellation.IsCancellationRequested)
 		{
@@ -230,6 +240,7 @@ public sealed class MainForm : Form
 		{
 			if (!IsDisposed)
 			{
+				RefreshQualificationProfiles();
 				RenderQualificationState();
 				UpdateArchiveStatus();
 			}
@@ -464,6 +475,70 @@ public sealed class MainForm : Form
 		commandRouter.RefreshStates();
 	}
 
+	private void RefreshQualificationProfiles()
+	{
+		if (settingsView is null)
+			return;
+
+		qualificationWorkspaceState.SetAvailableProfiles(profileCatalog.Profiles);
+		qualificationWorkspaceController?.Refresh();
+		settingsView.UpdateProfileState(
+			profileCatalog.Profiles,
+			profileCatalog.State,
+			profileCatalog.LastError,
+			profileCatalog.StoragePath);
+	}
+
+	private async void CreateQualificationProfile()
+	{
+		QualificationProfile template = QualificationProfiles.Standard with
+		{
+			Id = "custom.pending",
+			Origin = QualificationProfileOrigin.Custom,
+			Name = "Custom profile"
+		};
+		using QualificationProfileEditorDialog dialog = new(template, "Create qualification profile");
+		if (dialog.ShowDialog(this) != DialogResult.OK)
+			return;
+		await profileCatalog.CreateAsync(dialog.ResultProfile, shutdownCancellation.Token);
+		RefreshQualificationProfiles();
+	}
+
+	private async void DuplicateQualificationProfile(QualificationProfile profile)
+	{
+		await profileCatalog.DuplicateAsync(profile, shutdownCancellation.Token);
+		RefreshQualificationProfiles();
+	}
+
+	private async void EditQualificationProfile(QualificationProfile profile)
+	{
+		if (profile.IsBuiltIn)
+			return;
+		using QualificationProfileEditorDialog dialog = new(profile, "Edit qualification profile");
+		if (dialog.ShowDialog(this) != DialogResult.OK)
+			return;
+		await profileCatalog.UpdateAsync(dialog.ResultProfile, shutdownCancellation.Token);
+		RefreshQualificationProfiles();
+	}
+
+	private async void DeleteQualificationProfile(QualificationProfile profile)
+	{
+		if (profile.IsBuiltIn)
+			return;
+		if (MessageBox.Show(this, $"Delete custom qualification profile '{profile.Name}'?", "Delete qualification profile", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+			return;
+		await profileCatalog.DeleteAsync(profile.Id, shutdownCancellation.Token);
+		RefreshQualificationProfiles();
+	}
+
+	private async void ResetQualificationProfiles()
+	{
+		if (MessageBox.Show(this, "Delete all custom qualification profiles? Built-in profiles remain unchanged.", "Reset qualification profiles", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+			return;
+		await profileCatalog.ResetCustomAsync(shutdownCancellation.Token);
+		RefreshQualificationProfiles();
+	}
+
 	private async void ClearQualificationArchive()
 	{
 		DialogResult confirmation = MessageBox.Show(
@@ -594,6 +669,11 @@ public sealed class MainForm : Form
 				settingsView.ToolPanelVisibilityChanged -= shell.SetToolPanelVisible;
 				settingsView.ResetLayoutRequested -= shell.ResetLayout;
 				settingsView.ClearQualificationArchiveRequested -= ClearQualificationArchive;
+				settingsView.CreateQualificationProfileRequested -= CreateQualificationProfile;
+				settingsView.DuplicateQualificationProfileRequested -= DuplicateQualificationProfile;
+				settingsView.EditQualificationProfileRequested -= EditQualificationProfile;
+				settingsView.DeleteQualificationProfileRequested -= DeleteQualificationProfile;
+				settingsView.ResetQualificationProfilesRequested -= ResetQualificationProfiles;
 				shell.LayoutStateChanged -= settingsView.UpdateState;
 			}
 

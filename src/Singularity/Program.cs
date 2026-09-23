@@ -20,6 +20,8 @@ internal static class Program
 		using WorkloadManager workloadManager = new();
 		using SystemMonitor systemMonitor = new();
 		using QualificationArchiveService qualificationArchive = new();
+		using QualificationProfileStore profileStore = new();
+		QualificationProfileCatalog profileCatalog = new(profileStore);
 		QualificationCoordinator coordinator = new(workloadManager, qualificationArchive);
 		ReportExportService reportExportService = new();
 		HardwareProvider hardwareProvider = new();
@@ -31,6 +33,7 @@ internal static class Program
 				reportExportService,
 				systemMonitor,
 				platformInventoryState,
-				qualificationWorkspaceState));
+				qualificationWorkspaceState,
+				profileCatalog));
 	}
 }
