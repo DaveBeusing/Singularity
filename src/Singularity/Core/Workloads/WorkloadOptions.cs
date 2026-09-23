@@ -15,4 +15,5 @@ public sealed class WorkloadOptions
 	public int CpuThreads { get; set; }
 	public int MemoryGb { get; set; }
 	public int GpuLoadPercent { get; set; }
+	public string? SelectedGpuIdentifier { get; set; }
 }

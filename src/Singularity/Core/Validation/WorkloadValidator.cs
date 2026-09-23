@@ -52,27 +52,22 @@ public sealed class WorkloadValidator
 		if (workload.MemoryEnabled)
 		{
 			long expectedMb = workload.MemoryGb * 1024;
-
 			long passLimit = (long)(expectedMb * profile.MemoryAllocationTolerancePercent / 100.0);
-
 			long warningLimit = (long)(expectedMb * profile.MemoryWarningTolerancePercent / 100.0);
 
 			if (workload.MemoryAllocatedMb >= passLimit)
 			{
 				memoryStatus = ValidationStatus.Pass;
-
 				memoryMessage = $"{workload.MemoryAllocatedMb} MB allocated";
 			}
 			else if (workload.MemoryAllocatedMb >= warningLimit)
 			{
 				memoryStatus = ValidationStatus.Warning;
-
 				memoryMessage = $"{workload.MemoryAllocatedMb} MB allocated";
 			}
 			else
 			{
 				memoryStatus = ValidationStatus.Fail;
-
 				memoryMessage = $"{workload.MemoryAllocatedMb} MB allocated";
 			}
 		}
@@ -82,6 +77,11 @@ public sealed class WorkloadValidator
 
 		if (workload.GpuEnabled)
 		{
+			GpuTelemetrySnapshot? selectedGpu = telemetry.FindGpuTelemetry(
+				workload.SelectedGpuIdentifier);
+			bool explicitSelection = !string.IsNullOrWhiteSpace(
+				workload.SelectedGpuIdentifier);
+
 			if (workload.State != WorkloadState.Running)
 			{
 				gpuLoadStableSince = null;
@@ -94,37 +94,55 @@ public sealed class WorkloadValidator
 				gpuStatus = ValidationStatus.Warning;
 				gpuMessage = "GPU warming up";
 			}
-			else if (!telemetry.GpuTelemetryAvailable)
+			else if (explicitSelection && selectedGpu is null)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Warning;
+				gpuMessage = "Selected GPU telemetry unavailable";
+			}
+			else if (selectedGpu is not null && !selectedGpu.IsAvailable)
+			{
+				gpuLoadStableSince = null;
+				gpuStatus = ValidationStatus.Warning;
+				gpuMessage = selectedGpu.Status;
+			}
+			else if (!explicitSelection && !telemetry.GpuTelemetryAvailable)
 			{
 				gpuLoadStableSince = null;
 				gpuStatus = ValidationStatus.Warning;
 				gpuMessage = telemetry.GpuTelemetryStatus;
 			}
-			else if (telemetry.GpuTemperatureCelsius > profile.GpuMaximumTemperatureCelsius)
+			else
 			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Fail;
-				gpuMessage = $"GPU temperature {telemetry.GpuTemperatureCelsius} °C";
-			}
-			else if (telemetry.GpuLoadPercent >= profile.GpuMinimumLoadPercent)
-			{
-				gpuLoadStableSince ??= sessionDuration;
-				if (sessionDuration - gpuLoadStableSince.Value >= profile.GpuStabilityDuration)
+				double gpuLoad = selectedGpu?.LoadPercent ?? telemetry.GpuLoadPercent;
+				int gpuTemperature = selectedGpu?.TemperatureCelsius ?? telemetry.GpuTemperatureCelsius;
+
+				if (gpuTemperature > profile.GpuMaximumTemperatureCelsius)
 				{
-					gpuStatus = ValidationStatus.Pass;
-					gpuMessage = $"GPU load {telemetry.GpuLoadPercent:0}%";
+					gpuLoadStableSince = null;
+					gpuStatus = ValidationStatus.Fail;
+					gpuMessage = $"GPU temperature {gpuTemperature} °C";
+				}
+				else if (gpuLoad >= profile.GpuMinimumLoadPercent)
+				{
+					gpuLoadStableSince ??= sessionDuration;
+					if (sessionDuration - gpuLoadStableSince.Value >= profile.GpuStabilityDuration)
+					{
+						gpuStatus = ValidationStatus.Pass;
+						gpuMessage = $"GPU load {gpuLoad:0}%";
+					}
+					else
+					{
+						gpuStatus = ValidationStatus.Warning;
+						gpuMessage = "GPU load stabilizing";
+					}
 				}
 				else
 				{
-					gpuStatus = ValidationStatus.Warning;
-					gpuMessage = "GPU load stabilizing";
+					gpuLoadStableSince = null;
+					gpuStatus = ValidationStatus.Fail;
+					gpuMessage = $"GPU load only {gpuLoad:0}%";
 				}
-			}
-			else
-			{
-				gpuLoadStableSince = null;
-				gpuStatus = ValidationStatus.Fail;
-				gpuMessage = $"GPU load only {telemetry.GpuLoadPercent:0}%";
 			}
 		}
 		else
@@ -143,5 +161,4 @@ public sealed class WorkloadValidator
 			GpuMessage = gpuMessage
 		};
 	}
-
 }

@@ -41,10 +41,10 @@ The user can configure:
 
 - CPU workload enabled state and thread count;
 - memory workload enabled state and allocation in GB;
-- GPU workload enabled state and target load percentage;
+- GPU workload enabled state, stable GPU device selection, and target load percentage;
 - Quick, Standard, or BurnIn qualification profile.
 
-At least one workload must be selected before a qualification can start.
+At least one workload must be selected before a qualification can start. A single GPU with a stable identity is selected automatically. Systems with multiple selectable GPUs expose a device selector. The selected UUID is retained across inventory reordering; if that device disappears after refresh, the selection is cleared and qualification cannot start until an available GPU is selected.
 
 Configuration controls are disabled while a qualification session is active. The selected configuration remains application state when the user navigates to another workspace and is reapplied when Qualification is shown again.
 
@@ -125,7 +125,7 @@ The contextual sidebar contains Profile, Workloads, and Session.
 The Qualification inspector renders details for the active context without changing domain state:
 
 - Profile: active profile duration and validation thresholds;
-- Workloads: selected workloads and configured targets;
+- Workloads: selected workloads, the selected GPU identity, and configured targets;
 - Session: mode, profile, timestamps, progress, and current lifecycle state.
 
 ## Navigation behavior
@@ -160,3 +160,12 @@ There are no hidden automatic retries after workload failure.
 Qualification contains only the current high-value session context.
 
 After completion or failure, the user can navigate to Results for validation evidence and statistics. Report history and export remain in Reports.
+
+
+## GPU selection behavior
+
+Qualification only offers GPUs that expose a stable provider identity. Transient index-based NVML fallback identifiers are not accepted for explicit qualification targeting.
+
+The selected identifier is copied into `WorkloadOptions` and remains part of `WorkloadStatus` while the workload runs. GPU initialization must resolve that exact device to the Windows graphics adapter. Resolution failure is a workload failure and is shown through the normal qualification feedback path.
+
+The selected identifier is also used to resolve live GPU telemetry. Another GPU's telemetry is never substituted when the selected device is missing, unavailable, removed, or reordered.

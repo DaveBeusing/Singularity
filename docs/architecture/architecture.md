@@ -29,7 +29,8 @@ PlatformInventoryState    --> HardwareProvider
 
 QualificationCoordinator --> QualificationRunner + validation + sessions + reporting
 QualificationRunner      --> WorkloadManager
-WorkloadValidator        --> WorkloadStatus + SystemSnapshot
+WorkloadManager          --> selected GPU adapter identity resolution + D3D12 workload
+WorkloadValidator        --> WorkloadStatus + selected GpuTelemetrySnapshot
 ReportGenerator          --> QualificationSession + ValidationResult
 Report exporters         --> QualificationReport + HardwareInventory
 ```
@@ -44,11 +45,11 @@ The canonical top-level workspaces are Overview, Platform, Qualification, Result
 
 `Program` creates one `HardwareProvider` and one application-lifetime `PlatformInventoryState`. After the main window is shown, `MainForm` starts the initial inventory discovery asynchronously. The resulting inventory is cached and shared by Overview, Platform, and report export. Explicit refresh is routed through the same state owner, rejects concurrent refreshes, runs discovery away from the UI thread, and preserves the last valid inventory if a refresh fails. Navigation and repainting never trigger hardware discovery. `SystemMonitor` independently begins background telemetry sampling.
 
-The UI timer reads the latest cached snapshot every 500 milliseconds and passes it to `QualificationCoordinator`. While a workload is active, the coordinator records the snapshot in the current session and asks `WorkloadValidator` for CPU, memory, and GPU results. Manual runs stop on user request. Automated runs delegate step transitions to `QualificationRunner`.
+The UI timer reads the latest cached snapshot every 500 milliseconds and passes it to `QualificationCoordinator`. While a workload is active, the coordinator records the snapshot in the current session and asks `WorkloadValidator` for CPU, memory, and GPU results. GPU qualification carries the selected stable GPU identifier from inventory through `QualificationWorkspaceState`, `WorkloadOptions`, and `WorkloadStatus`; validation resolves telemetry for that identifier instead of assuming the first GPU. Manual runs stop on user request. Automated runs delegate step transitions to `QualificationRunner`.
 
 When a session finishes, the coordinator freezes final status and telemetry statistics. The bounded in-memory history retains the session profile, execution mode, result, frozen statistics, and the generated `QualificationReport` when validation evidence is sufficient to create one. This allows Results to remain useful for failed sessions without inventing validation data, while Reports can select and export earlier report evidence. `ReportExportService` combines the selected report with the current hardware inventory through the existing JSON or HTML exporter.
 
-`MainForm` remains the composition point for application interaction, dialogs, report export, binding qualification state into persistent workspace controls, and marshaling platform-inventory results into the UI. Device selection is mapped into workspace-scoped navigation selection and the Platform inspector. Navigation ownership, contextual sidebar state, workspace activation, optional shell regions, shortcuts, and shell-level command routing are owned by `ApplicationShell`, `NavigationService`, and `CommandRouter`.
+`MainForm` remains the composition point for application interaction, dialogs, report export, binding qualification state into persistent workspace controls, and marshaling platform-inventory results into the UI. Platform inventory refresh also updates the available qualification GPU choices. Existing selections survive device reordering by identifier; a removed device invalidates the selection rather than silently targeting a different GPU. Device selection is mapped into workspace-scoped navigation selection and the Platform inspector. Navigation ownership, contextual sidebar state, workspace activation, optional shell regions, shortcuts, and shell-level command routing are owned by `ApplicationShell`, `NavigationService`, and `CommandRouter`.
 
 Related documents:
 
@@ -59,3 +60,12 @@ Related documents:
 - [Qualification runner](../qualification/qualification-runner.md)
 - [Validation](../qualification/validation.md)
 - [Reporting](../qualification/reporting.md)
+
+
+## GPU device identity and workload adapter selection
+
+NVIDIA inventory and telemetry expose the NVML device UUID as the stable GPU identifier. Qualification configuration stores that identifier and never uses display names or list positions as the selection contract.
+
+When a GPU workload starts with an explicit identifier, Singularity resolves the corresponding NVIDIA driver device once, obtains its Windows adapter LUID, opens the matching DXGI adapter, and creates the Direct3D 12 device from that adapter. Adapter discovery is not repeated inside the workload loop. The compute workload remains Direct3D 12; the NVIDIA driver query is limited to identity translation for the currently supported NVIDIA inventory path.
+
+If the selected identifier cannot be resolved, the workload enters the explicit failure path instead of creating a device on another adapter. A workload started without an explicit identifier retains the previous default-adapter behavior for compatibility with non-qualification callers.

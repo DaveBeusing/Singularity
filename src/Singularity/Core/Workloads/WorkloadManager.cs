@@ -19,6 +19,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	private int cpuThreads;
 	private int memoryGb;
 	private int gpuLoadPercent;
+	private string? selectedGpuIdentifier;
 
 	public bool IsRunning
 	{
@@ -43,6 +44,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 				CpuThreads = cpuThreads,
 				MemoryGb = memoryGb,
 				GpuLoadPercent = gpuLoadPercent,
+				SelectedGpuIdentifier = selectedGpuIdentifier,
 				MemoryAllocatedMb = memoryStressWorker.AllocatedMegabytes,
 				Message = message
 			};
@@ -51,6 +53,8 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 
 	public void Start(WorkloadOptions options)
 	{
+		ArgumentNullException.ThrowIfNull(options);
+
 		if (IsRunning)
 			return;
 		state = WorkloadState.Starting;
@@ -61,20 +65,16 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		cpuThreads = options.CpuThreads;
 		memoryGb = options.MemoryGb;
 		gpuLoadPercent = options.GpuLoadPercent;
+		selectedGpuIdentifier = options.SelectedGpuIdentifier;
 		try
 		{
 			if (cpuEnabled)
-			{
 				cpuStressWorker.Start(cpuThreads);
-			}
 			if (memoryEnabled)
-			{
 				memoryStressWorker.Start(memoryGb);
-			}
 			if (gpuEnabled)
-			{
-				gpuStressWorker.Start(gpuLoadPercent);
-			}
+				gpuStressWorker.Start(gpuLoadPercent, selectedGpuIdentifier);
+
 			state = gpuEnabled ? WorkloadState.Starting : WorkloadState.Running;
 			message = BuildRunningMessage();
 		}
@@ -103,6 +103,7 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 		cpuThreads = 0;
 		memoryGb = 0;
 		gpuLoadPercent = 0;
+		selectedGpuIdentifier = null;
 	}
 
 	public void ResetFailure()
@@ -117,22 +118,12 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 	{
 		List<string> parts = [];
 		if (cpuEnabled)
-		{
 			parts.Add($"CPU {cpuThreads}T");
-		}
 		if (memoryEnabled)
-		{
 			parts.Add($"RAM {memoryGb}GB");
-		}
 		if (gpuEnabled)
-		{
 			parts.Add($"GPU {gpuLoadPercent}%");
-		}
-		if (parts.Count == 0)
-		{
-			return "No workload selected";
-		}
-		return string.Join(" | ", parts);
+		return parts.Count == 0 ? "No workload selected" : string.Join(" | ", parts);
 	}
 
 	public void Dispose()
@@ -164,5 +155,4 @@ public sealed class WorkloadManager : IWorkloadController, IDisposable
 			message = BuildRunningMessage();
 		}
 	}
-
 }

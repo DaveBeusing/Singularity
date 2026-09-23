@@ -20,13 +20,13 @@ System CPU load comes from the Windows `GetSystemTimes` API. Process utilization
 
 `LibreHardwareCpuTelemetryProvider` opens LibreHardwareMonitor with CPU, mainboard, and controller support. It recursively updates the hardware tree and prefers package, maximum-core, or vendor temperature sensors before falling back to any CPU-related temperature sensor. Missing or failed readings are represented as unavailable telemetry.
 
-`NvmlGpuTelemetryProvider` loads NVIDIA Management Library (NVML), enumerates NVIDIA devices, and keeps one snapshot per device. Fast reads obtain utilization and memory; medium reads obtain temperature and optional power. Missing NVML, unsupported entry points, initialization failures, and individual read failures produce unavailable states rather than crashing the application. Non-NVIDIA GPU telemetry is not implemented.
+`NvmlGpuTelemetryProvider` loads NVIDIA Management Library (NVML), enumerates NVIDIA devices, and keeps one snapshot per device. Each snapshot carries the same stable NVML UUID used by platform inventory, allowing qualification to map a selected inventory device to its telemetry independently of enumeration order. Fast reads obtain utilization and memory; medium reads obtain temperature and optional power. Missing NVML, unsupported entry points, initialization failures, and individual read failures produce unavailable states rather than crashing the application. Non-NVIDIA GPU telemetry is not implemented.
 
 ## Cache and consumers
 
 `TelemetryCache` protects the mutable snapshot with a lock. Writers update it inside the lock; readers receive a copy, so UI and validation code cannot mutate cached state.
 
-The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting cached snapshot updates Overview and is passed to `QualificationWorkspaceController`. The Qualification workspace and its Tool Panel render that same snapshot; they do not start additional polling. During an active workload the coordinator also adds it to `QualificationSession` statistics and passes it to `WorkloadValidator`.
+The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting cached snapshot updates Overview and is passed to `QualificationWorkspaceController`. The Qualification workspace and its Tool Panel render that same snapshot; they do not start additional polling. During an active workload the coordinator also adds it to `QualificationSession` statistics and passes it to `WorkloadValidator`. When a GPU has been selected explicitly, validation reads the `GpuTelemetrySnapshot` with the matching identifier; it does not fall back to the first GPU if that selected snapshot disappears or becomes unavailable.
 
 
 

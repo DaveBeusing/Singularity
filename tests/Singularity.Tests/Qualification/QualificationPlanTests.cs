@@ -20,7 +20,8 @@ public sealed class QualificationPlanTests
 			EnableGpuWorkload = true,
 			CpuThreads = 8,
 			MemoryGb = 4,
-			GpuLoadPercent = 90
+			GpuLoadPercent = 90,
+			SelectedGpuIdentifier = "GPU-SELECTED"
 		};
 
 		QualificationPlan plan = QualificationPlan.CreateStandard(options, QualificationProfiles.Quick, stopOnFailure: true);
@@ -31,6 +32,8 @@ public sealed class QualificationPlanTests
 		Assert.True(plan.Steps[^1].Workload.EnableCpuWorkload);
 		Assert.True(plan.Steps[^1].Workload.EnableMemoryWorkload);
 		Assert.True(plan.Steps[^1].Workload.EnableGpuWorkload);
+		Assert.Equal("GPU-SELECTED", plan.Steps.Single(step => step.Name == "GPU").Workload.SelectedGpuIdentifier);
+		Assert.Equal("GPU-SELECTED", plan.Steps[^1].Workload.SelectedGpuIdentifier);
 	}
 
 	[Fact]

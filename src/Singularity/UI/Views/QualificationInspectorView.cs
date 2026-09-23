@@ -75,6 +75,8 @@ public sealed class QualificationInspectorView : Panel
 			$"Memory: {FormatEnabled(configuration.EnableMemoryWorkload)}\r\n" +
 			$"Allocation: {configuration.MemoryGb} GB\r\n\r\n" +
 			$"GPU: {FormatEnabled(configuration.EnableGpuWorkload)}\r\n" +
+			$"Device: {snapshot.SelectedGpu}\r\n" +
+			$"Identifier: {configuration.SelectedGpuIdentifier ?? "Not selected"}\r\n" +
 			$"Target load: {configuration.GpuLoadPercent}%\r\n\r\n" +
 			$"Current workload state: {snapshot.WorkloadState}";
 	}
@@ -86,6 +88,7 @@ public sealed class QualificationInspectorView : Panel
 			$"State: {snapshot.OverallState}\r\n" +
 			$"Mode: {snapshot.Mode}\r\n" +
 			$"Profile: {snapshot.SessionProfile}\r\n" +
+			$"GPU: {snapshot.SelectedGpu}\r\n" +
 			$"Started: {snapshot.StartedAt?.ToString("G") ?? "Not started"}\r\n" +
 			$"Elapsed: {snapshot.Elapsed:hh\\:mm\\:ss}\r\n" +
 			$"Automated state: {snapshot.AutomatedState}\r\n" +

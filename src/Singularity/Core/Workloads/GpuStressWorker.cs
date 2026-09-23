@@ -3,10 +3,13 @@
 // See LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using Vortice;
 using Vortice.Direct3D;
 using Vortice.Direct3D12;
 using Vortice.Dxc;
+using Vortice.DXGI;
 using static Vortice.Direct3D12.D3D12;
+using static Vortice.DXGI.DXGI;
 
 namespace Singularity.Core.Workloads;
 
@@ -21,7 +24,7 @@ public sealed class GpuStressWorker : IDisposable
 	public bool IsReady => ready;
 	public Exception? Failure => failure;
 
-	public void Start(int targetLoadPercent)
+	public void Start(int targetLoadPercent, string? selectedGpuIdentifier = null)
 	{
 		if (IsRunning)
 			return;
@@ -31,14 +34,22 @@ public sealed class GpuStressWorker : IDisposable
 		cancellationTokenSource = new CancellationTokenSource();
 		CancellationToken token = cancellationTokenSource.Token;
 		int targetLoad = Math.Clamp(targetLoadPercent, 1, 100);
-		workerTask = Task.Run(() => RunAsync(targetLoad, token), token);
+		workerTask = Task.Run(
+			() => RunAsync(targetLoad, selectedGpuIdentifier, token),
+			token);
 	}
 
-	private async Task RunAsync(int targetLoadPercent, CancellationToken cancellationToken)
+	private async Task RunAsync(
+		int targetLoadPercent,
+		string? selectedGpuIdentifier,
+		CancellationToken cancellationToken)
 	{
 		try
 		{
-			using GpuComputeContext context = new();
+			long? adapterLuid = string.IsNullOrWhiteSpace(selectedGpuIdentifier)
+				? null
+				: NvidiaGpuAdapterResolver.ResolveAdapterLuid(selectedGpuIdentifier);
+			using GpuComputeContext context = new(adapterLuid);
 			ready = true;
 			await context.RunAsync(targetLoadPercent, cancellationToken).ConfigureAwait(false);
 		}
@@ -113,14 +124,24 @@ public sealed class GpuStressWorker : IDisposable
 		private readonly AutoResetEvent fenceEvent = new(false);
 		private ulong fenceValue;
 
-		public GpuComputeContext()
+		public GpuComputeContext(long? adapterLuid)
 		{
 			try
 			{
-				if (D3D12CreateDevice(null, FeatureLevel.Level_11_0, out ID3D12Device? createdDevice).Failure ||
+				using IDXGIFactory4? factory = adapterLuid.HasValue
+					? CreateDXGIFactory1<IDXGIFactory4>()
+					: null;
+				using IDXGIAdapter1? adapter = adapterLuid.HasValue
+					? factory!.EnumAdapterByLuid<IDXGIAdapter1>(Luid.FromInt64(adapterLuid.Value))
+					: null;
+
+				if (D3D12CreateDevice(adapter, FeatureLevel.Level_11_0, out ID3D12Device? createdDevice).Failure ||
 					createdDevice is null)
 				{
-					throw new InvalidOperationException("Direct3D 12 device initialization failed.");
+					throw new InvalidOperationException(
+						adapterLuid.HasValue
+							? "Direct3D 12 initialization failed for the selected GPU."
+							: "Direct3D 12 device initialization failed.");
 				}
 
 				device = createdDevice;
@@ -129,31 +150,31 @@ public sealed class GpuStressWorker : IDisposable
 
 				RootDescriptor1 outputDescriptor = new(0, 0, RootDescriptorFlags.DataVolatile);
 				RootParameter1 outputParameter = new(
-				RootParameterType.UnorderedAccessView,
-				outputDescriptor,
-				ShaderVisibility.All);
+					RootParameterType.UnorderedAccessView,
+					outputDescriptor,
+					ShaderVisibility.All);
 				rootSignature = device.CreateRootSignature(
-				new RootSignatureDescription1(
-					RootSignatureFlags.None,
-					[outputParameter]));
+					new RootSignatureDescription1(
+						RootSignatureFlags.None,
+						[outputParameter]));
 
 				ReadOnlyMemory<byte> shaderBytecode = CompileShader();
 				pipelineState = device.CreateComputePipelineState<ID3D12PipelineState>(
-				new ComputePipelineStateDescription
-				{
-					RootSignature = rootSignature,
-					ComputeShader = shaderBytecode
-				});
+					new ComputePipelineStateDescription
+					{
+						RootSignature = rootSignature,
+						ComputeShader = shaderBytecode
+					});
 
 				outputBuffer = device.CreateCommittedResource(
-				HeapType.Default,
-				ResourceDescription.Buffer(BufferSize, ResourceFlags.AllowUnorderedAccess),
-				ResourceStates.UnorderedAccess);
+					HeapType.Default,
+					ResourceDescription.Buffer(BufferSize, ResourceFlags.AllowUnorderedAccess),
+					ResourceStates.UnorderedAccess);
 
 				commandList = device.CreateCommandList<ID3D12GraphicsCommandList>(
-				CommandListType.Compute,
-				commandAllocator,
-				pipelineState);
+					CommandListType.Compute,
+					commandAllocator,
+					pipelineState);
 				commandList.SetComputeRootSignature(rootSignature);
 				commandList.SetComputeRootUnorderedAccessView(0, outputBuffer.GPUVirtualAddress);
 				commandList.Dispatch(ThreadGroupCount, 1, 1);

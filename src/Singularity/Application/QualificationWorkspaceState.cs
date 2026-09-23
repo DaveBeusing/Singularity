@@ -5,6 +5,7 @@
 using Singularity.Core.Qualification;
 using Singularity.Core.Validation;
 using Singularity.Core.Workloads;
+using Singularity.Hardware.Models;
 using Singularity.Monitoring.Models;
 
 namespace Singularity.Application;
@@ -36,6 +37,9 @@ public sealed record QualificationConfiguration(
 	int GpuLoadPercent,
 	QualificationProfile Profile)
 {
+	public string? SelectedGpuIdentifier { get; init; }
+	public string? SelectedGpuName { get; init; }
+
 	public static QualificationConfiguration Default { get; } = new(
 		true,
 		Environment.ProcessorCount,
@@ -59,7 +63,8 @@ public sealed record QualificationConfiguration(
 			EnableMemoryWorkload = EnableMemoryWorkload,
 			MemoryGb = MemoryGb,
 			EnableGpuWorkload = EnableGpuWorkload,
-			GpuLoadPercent = GpuLoadPercent
+			GpuLoadPercent = GpuLoadPercent,
+			SelectedGpuIdentifier = SelectedGpuIdentifier
 		};
 	}
 }
@@ -86,17 +91,50 @@ public sealed record QualificationWorkspaceSnapshot(
 	string MemoryTelemetry,
 	string GpuTelemetry,
 	bool RequiredTelemetryUnavailable,
+	IReadOnlyList<QualificationGpuOption> AvailableGpus,
+	string SelectedGpu,
 	QualificationFeedback? Feedback);
 
 public sealed class QualificationWorkspaceState
 {
 	private QualificationFeedback? explicitFeedback;
+	private IReadOnlyList<QualificationGpuOption> availableGpus =
+		Array.Empty<QualificationGpuOption>();
 
 	public QualificationConfiguration Configuration { get; private set; } =
 		QualificationConfiguration.Default;
 
 	public QualificationMode Mode { get; private set; } =
 		QualificationMode.None;
+
+	public IReadOnlyList<QualificationGpuOption> AvailableGpus => availableGpus;
+
+	public void SetAvailableGpus(IReadOnlyList<GpuInventory> gpus)
+	{
+		ArgumentNullException.ThrowIfNull(gpus);
+
+		IReadOnlyList<QualificationGpuOption> options =
+			QualificationGpuSelection.CreateOptions(gpus);
+		string? previousIdentifier = Configuration.SelectedGpuIdentifier;
+		QualificationGpuOption? selection =
+			QualificationGpuSelection.ResolveSelection(options, previousIdentifier);
+
+		availableGpus = options;
+		Configuration = Configuration with
+		{
+			SelectedGpuIdentifier = selection?.Identifier,
+			SelectedGpuName = selection?.DisplayName
+		};
+
+		if (!string.IsNullOrWhiteSpace(previousIdentifier) &&
+			selection is null &&
+			Configuration.EnableGpuWorkload)
+		{
+			explicitFeedback = new QualificationFeedback(
+				QualificationFeedbackLevel.Warning,
+				"The previously selected GPU is no longer available. Select a GPU before starting qualification.");
+		}
+	}
 
 	public void SetConfiguration(QualificationConfiguration configuration)
 	{
@@ -139,6 +177,23 @@ public sealed class QualificationWorkspaceState
 		if (Configuration.EnableGpuWorkload && Configuration.GpuLoadPercent is < 1 or > 100)
 			return "GPU target load must be between 1 and 100 percent.";
 
+		if (Configuration.EnableGpuWorkload && availableGpus.Count == 0)
+			return "No GPU with a stable device identity is available for qualification.";
+
+		if (Configuration.EnableGpuWorkload &&
+			string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier))
+		{
+			return "Select a GPU before starting qualification.";
+		}
+
+		if (Configuration.EnableGpuWorkload &&
+			QualificationGpuSelection.ResolveSelection(
+				availableGpus,
+				Configuration.SelectedGpuIdentifier) is null)
+		{
+			return "The selected GPU is no longer available. Refresh the platform inventory and select an available GPU.";
+		}
+
 		return null;
 	}
 
@@ -152,15 +207,19 @@ public sealed class QualificationWorkspaceState
 		WorkloadStatus workload = coordinator.WorkloadStatus;
 		QualificationProgress progress = coordinator.Progress;
 		QualificationSession session = coordinator.Session;
+		GpuTelemetrySnapshot? selectedGpu = telemetry.FindGpuTelemetry(
+			Configuration.SelectedGpuIdentifier);
 
 		bool requiredTelemetryUnavailable =
 			(Configuration.EnableMemoryWorkload && telemetry.TotalPhysicalMemoryMb <= 0) ||
-			(Configuration.EnableGpuWorkload && !telemetry.GpuTelemetryAvailable);
+			(Configuration.EnableGpuWorkload &&
+				(selectedGpu is null || !selectedGpu.IsAvailable));
 
 		QualificationFeedback? feedback = ResolveFeedback(
 			workload,
 			progress,
 			telemetry,
+			selectedGpu,
 			requiredTelemetryUnavailable);
 
 		return new QualificationWorkspaceSnapshot(
@@ -183,8 +242,10 @@ public sealed class QualificationWorkspaceState
 			CanStop(workload, progress, session),
 			BuildCpuTelemetry(telemetry),
 			BuildMemoryTelemetry(telemetry),
-			BuildGpuTelemetry(telemetry),
+			BuildGpuTelemetry(telemetry, selectedGpu),
 			requiredTelemetryUnavailable,
+			availableGpus,
+			Configuration.SelectedGpuName ?? Configuration.SelectedGpuIdentifier ?? "Not selected",
 			feedback);
 	}
 
@@ -194,6 +255,11 @@ public sealed class QualificationWorkspaceState
 		QualificationSession session)
 	{
 		return Configuration.HasSelectedWorkload &&
+			(!Configuration.EnableGpuWorkload ||
+				(!string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier) &&
+				 QualificationGpuSelection.ResolveSelection(
+					 availableGpus,
+					 Configuration.SelectedGpuIdentifier) is not null)) &&
 			session.State != QualificationSessionState.Running &&
 			progress.State != QualificationRunState.Running &&
 			workload.State is WorkloadState.Stopped or WorkloadState.Failed;
@@ -215,6 +281,7 @@ public sealed class QualificationWorkspaceState
 		WorkloadStatus workload,
 		QualificationProgress progress,
 		SystemSnapshot telemetry,
+		GpuTelemetrySnapshot? selectedGpu,
 		bool requiredTelemetryUnavailable)
 	{
 		if (workload.State == WorkloadState.Failed)
@@ -248,8 +315,11 @@ public sealed class QualificationWorkspaceState
 			List<string> unavailable = [];
 			if (Configuration.EnableMemoryWorkload && telemetry.TotalPhysicalMemoryMb <= 0)
 				unavailable.Add("system memory telemetry");
-			if (Configuration.EnableGpuWorkload && !telemetry.GpuTelemetryAvailable)
-				unavailable.Add("GPU telemetry");
+			if (Configuration.EnableGpuWorkload &&
+				(selectedGpu is null || !selectedGpu.IsAvailable))
+			{
+				unavailable.Add("selected GPU telemetry");
+			}
 
 			return new QualificationFeedback(
 				QualificationFeedbackLevel.Warning,
@@ -300,8 +370,24 @@ public sealed class QualificationWorkspaceState
 		return $"{telemetry.UsedPhysicalMemoryPercent:0.0} % | {telemetry.UsedPhysicalMemoryMb:N0} / {telemetry.TotalPhysicalMemoryMb:N0} MB";
 	}
 
-	private static string BuildGpuTelemetry(SystemSnapshot telemetry)
+	private string BuildGpuTelemetry(
+		SystemSnapshot telemetry,
+		GpuTelemetrySnapshot? selectedGpu)
 	{
+		if (!string.IsNullOrWhiteSpace(Configuration.SelectedGpuIdentifier))
+		{
+			if (selectedGpu is null)
+				return "Selected GPU telemetry unavailable";
+
+			if (!selectedGpu.IsAvailable)
+				return selectedGpu.Status;
+
+			string selectedPower = selectedGpu.PowerAvailable
+				? $" | {selectedGpu.PowerWatts:0} W"
+				: string.Empty;
+			return $"{selectedGpu.LoadPercent:0.0} % | {selectedGpu.TemperatureCelsius} °C{selectedPower}";
+		}
+
 		if (!telemetry.GpuTelemetryAvailable)
 			return telemetry.GpuTelemetryStatus;
 
