@@ -521,8 +521,7 @@ public sealed class QualificationView : Panel
 			for (int index = 0; index < profiles.Count; index++)
 			{
 				if (profileInput.Items[index] is not QualificationProfile existing ||
-					!string.Equals(existing.Id, profiles[index].Id, StringComparison.Ordinal) ||
-					!string.Equals(existing.Name, profiles[index].Name, StringComparison.Ordinal))
+					!Equals(existing, profiles[index]))
 				{
 					sameOptions = false;
 					break;
