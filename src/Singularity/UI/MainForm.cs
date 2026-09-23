@@ -30,6 +30,8 @@ public sealed class MainForm : Form
 	private readonly System.Windows.Forms.Timer timer = new();
 	private readonly CancellationTokenSource shutdownCancellation = new();
 	private Icon? applicationIcon;
+	private bool archiveFlushInProgress;
+	private bool closeAfterArchiveFlush;
 
 	private ApplicationShell shell = null!;
 	private OverviewView overviewView = null!;
@@ -75,6 +77,7 @@ public sealed class MainForm : Form
 		RegisterApplicationCommands();
 		BuildUi();
 		Shown += OnShown;
+		FormClosing += OnFormClosing;
 
 		timer.Interval = 500;
 		timer.Tick += (_, _) => UpdateMonitoring();
@@ -83,7 +86,7 @@ public sealed class MainForm : Form
 
 	private ReportsWorkspaceSnapshot CurrentReportsSnapshot =>
 		reportsWorkspaceState.CreateSnapshot(
-			coordinator.History,
+			coordinator.EvidenceRecords,
 			platformInventoryState.Current is not null);
 
 	private void ConfigureApplicationIcon()
@@ -180,10 +183,12 @@ public sealed class MainForm : Form
 			settingsView.InspectorVisibilityChanged += shell.SetInspectorVisible;
 			settingsView.ToolPanelVisibilityChanged += shell.SetToolPanelVisible;
 			settingsView.ResetLayoutRequested += shell.ResetLayout;
+			settingsView.ClearQualificationArchiveRequested += ClearQualificationArchive;
 			shell.LayoutStateChanged += settingsView.UpdateState;
 			navigationService.ContextItemChanged += OnContextItemChanged;
 
 			settingsView.UpdateState(shell.LayoutState);
+			UpdateArchiveStatus();
 			BindCommandButtons();
 			RenderInventoryState();
 			RenderQualificationState();
@@ -209,7 +214,25 @@ public sealed class MainForm : Form
 	private async void OnShown(object? sender, EventArgs e)
 	{
 		Shown -= OnShown;
-		await RefreshPlatformInventoryAsync();
+
+		try
+		{
+			Task archiveLoad = coordinator.LoadArchiveAsync(shutdownCancellation.Token);
+			Task inventoryLoad = RefreshPlatformInventoryAsync();
+			await Task.WhenAll(archiveLoad, inventoryLoad);
+		}
+		catch (OperationCanceledException) when (shutdownCancellation.IsCancellationRequested)
+		{
+			return;
+		}
+		finally
+		{
+			if (!IsDisposed)
+			{
+				RenderQualificationState();
+				UpdateArchiveStatus();
+			}
+		}
 	}
 
 	private void OpenQualification()
@@ -229,7 +252,7 @@ public sealed class MainForm : Form
 			case WorkspaceId.Results:
 				resultsInspectorView.UpdateState(
 					item?.Id,
-					ResultsWorkspaceState.Create(coordinator.History));
+					ResultsWorkspaceState.Create(coordinator.EvidenceRecords));
 				break;
 
 			case WorkspaceId.Reports:
@@ -256,7 +279,7 @@ public sealed class MainForm : Form
 	{
 		ReportsWorkspaceSnapshot snapshot = reportsWorkspaceState.Select(
 			index,
-			coordinator.History,
+			coordinator.EvidenceRecords,
 			platformInventoryState.Current is not null);
 		RenderReports(snapshot);
 	}
@@ -385,7 +408,7 @@ public sealed class MainForm : Form
 
 	private void RenderQualificationState()
 	{
-		ResultsWorkspaceSnapshot results = ResultsWorkspaceState.Create(coordinator.History);
+		ResultsWorkspaceSnapshot results = ResultsWorkspaceState.Create(coordinator.EvidenceRecords);
 		resultsView.UpdateState(results);
 		resultsInspectorView.UpdateState(
 			navigationService.ActiveWorkspace == WorkspaceId.Results
@@ -395,6 +418,7 @@ public sealed class MainForm : Form
 
 		RenderReports(CurrentReportsSnapshot);
 		overviewView.UpdateQualification(coordinator.WorkloadStatus, coordinator.LastReport);
+		UpdateArchiveStatus();
 		UpdateWorkloadStatus();
 	}
 
@@ -420,9 +444,9 @@ public sealed class MainForm : Form
 		};
 
 		if (snapshot.SessionState is QualificationSessionState.Completed or QualificationSessionState.Failed &&
-			coordinator.History.Records.Count > 0)
+			coordinator.EvidenceRecords.Count > 0)
 		{
-			ValidationStatus result = coordinator.History.Records[0].Result;
+			ValidationStatus result = coordinator.EvidenceRecords[0].Result;
 			statusText = StatusStyle.Format(result);
 			visualState = result switch
 			{
@@ -437,6 +461,101 @@ public sealed class MainForm : Form
 		shell.SetStatusDetails(
 			$"{snapshot.SessionProfile} • CPU {CompactTelemetry(snapshot.CpuTelemetry)} • RAM {CompactTelemetry(snapshot.MemoryTelemetry)} • GPU {CompactTelemetry(snapshot.GpuTelemetry)}");
 		commandRouter.RefreshStates();
+	}
+
+	private async void ClearQualificationArchive()
+	{
+		DialogResult confirmation = MessageBox.Show(
+			this,
+			"Delete all locally stored qualification evidence and clear the current Results/Reports history? This action cannot be undone.",
+			"Clear qualification archive",
+			MessageBoxButtons.YesNo,
+			MessageBoxIcon.Warning,
+			MessageBoxDefaultButton.Button2);
+
+		if (confirmation != DialogResult.Yes)
+			return;
+
+		try
+		{
+			await coordinator.ClearArchiveAsync(shutdownCancellation.Token);
+		}
+		catch (OperationCanceledException) when (shutdownCancellation.IsCancellationRequested)
+		{
+			return;
+		}
+
+		if (IsDisposed)
+			return;
+
+		RenderQualificationState();
+		UpdateArchiveStatus();
+
+		if (coordinator.ArchiveState == Application.Persistence.QualificationArchiveState.Failed)
+		{
+			MessageBox.Show(
+				this,
+				$"The qualification archive could not be cleared.\r\n\r\n{coordinator.ArchiveError}",
+				"Qualification archive",
+				MessageBoxButtons.OK,
+				MessageBoxIcon.Error);
+		}
+	}
+
+	private void UpdateArchiveStatus()
+	{
+		if (settingsView is null)
+			return;
+
+		settingsView.UpdateArchiveState(
+			coordinator.ArchiveState,
+			coordinator.ArchivedRecordCount,
+			coordinator.ArchiveError,
+			coordinator.ArchivePath);
+	}
+
+	private async void OnFormClosing(object? sender, FormClosingEventArgs e)
+	{
+		if (closeAfterArchiveFlush)
+			return;
+
+		if (archiveFlushInProgress)
+		{
+			e.Cancel = true;
+			return;
+		}
+
+		Task flushTask = coordinator.FlushArchiveAsync();
+		if (flushTask.IsCompletedSuccessfully)
+		{
+			closeAfterArchiveFlush = true;
+			return;
+		}
+
+		e.Cancel = true;
+		archiveFlushInProgress = true;
+		timer.Stop();
+
+		try
+		{
+			await flushTask;
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show(
+				this,
+				$"The latest qualification archive write did not complete.\r\n\r\n{ex.Message}",
+				"Qualification archive",
+				MessageBoxButtons.OK,
+				MessageBoxIcon.Warning);
+		}
+		finally
+		{
+			archiveFlushInProgress = false;
+			closeAfterArchiveFlush = true;
+			if (!IsDisposed)
+				BeginInvoke(Close);
+		}
 	}
 
 	private static string CompactTelemetry(string value)
@@ -459,6 +578,7 @@ public sealed class MainForm : Form
 		{
 			shutdownCancellation.Cancel();
 			Shown -= OnShown;
+			FormClosing -= OnFormClosing;
 			navigationService.ContextItemChanged -= OnContextItemChanged;
 			if (overviewView is not null)
 				overviewView.QualificationRequested -= OpenQualification;
@@ -472,6 +592,7 @@ public sealed class MainForm : Form
 				settingsView.InspectorVisibilityChanged -= shell.SetInspectorVisible;
 				settingsView.ToolPanelVisibilityChanged -= shell.SetToolPanelVisible;
 				settingsView.ResetLayoutRequested -= shell.ResetLayout;
+				settingsView.ClearQualificationArchiveRequested -= ClearQualificationArchive;
 				shell.LayoutStateChanged -= settingsView.UpdateState;
 			}
 
