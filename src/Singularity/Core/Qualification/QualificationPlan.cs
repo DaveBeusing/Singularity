@@ -37,14 +37,26 @@ public sealed record QualificationPlan(
 		return new QualificationPlan($"{profile.Name} qualification", Array.AsReadOnly(steps), stopOnFailure);
 	}
 
-	private static WorkloadOptions Copy(WorkloadOptions source, bool cpu = false, bool memory = false, bool gpu = false) => new()
+	private static WorkloadOptions Copy(
+		WorkloadOptions source,
+		bool cpu = false,
+		bool memory = false,
+		bool gpu = false)
 	{
-		EnableCpuWorkload = cpu,
-		EnableMemoryWorkload = memory,
-		EnableGpuWorkload = gpu,
-		CpuThreads = source.CpuThreads,
-		MemoryGb = source.MemoryGb,
-		GpuLoadPercent = source.GpuLoadPercent,
-		SelectedGpuIdentifier = source.SelectedGpuIdentifier
-	};
+		IReadOnlyList<string> selectedGpuIdentifiers = source.ResolveSelectedGpuIdentifiers();
+
+		return new WorkloadOptions
+		{
+			EnableCpuWorkload = cpu,
+			EnableMemoryWorkload = memory,
+			EnableGpuWorkload = gpu,
+			CpuThreads = source.CpuThreads,
+			MemoryGb = source.MemoryGb,
+			GpuLoadPercent = source.GpuLoadPercent,
+			SelectedGpuIdentifier = selectedGpuIdentifiers.Count == 1
+				? selectedGpuIdentifiers[0]
+				: null,
+			SelectedGpuIdentifiers = selectedGpuIdentifiers
+		};
+	}
 }

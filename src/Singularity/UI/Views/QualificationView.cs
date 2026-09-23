@@ -18,7 +18,7 @@ public sealed class QualificationView : Panel
 	private readonly SingularityNumeric cpuThreadsInput = new();
 	private readonly SingularityNumeric memoryGbInput = new();
 	private readonly SingularityNumeric gpuLoadInput = new();
-	private readonly ComboBox gpuDeviceInput = new();
+	private readonly CheckedListBox gpuDeviceInput = new();
 	private readonly Dictionary<string, CommandButton> profileButtons = [];
 	private readonly Label stateValue = CreateValueLabel();
 	private readonly Label profileValue = CreateValueLabel();
@@ -66,7 +66,7 @@ public sealed class QualificationView : Panel
 			cpuThreadsInput.Value = configuration.CpuThreads;
 			memoryGbInput.Value = configuration.MemoryGb;
 			gpuLoadInput.Value = configuration.GpuLoadPercent;
-			SelectGpu(configuration.SelectedGpuIdentifier);
+			SetGpuSelections(configuration.ResolveSelectedGpuIdentifiers());
 			UpdateInputEnabledStates();
 			UpdateProfileButtonStyles();
 		}
@@ -80,7 +80,9 @@ public sealed class QualificationView : Panel
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
 
-		ApplyGpuOptions(snapshot.AvailableGpus, snapshot.Configuration.SelectedGpuIdentifier);
+		ApplyGpuOptions(
+			snapshot.AvailableGpus,
+			snapshot.Configuration.ResolveSelectedGpuIdentifiers());
 		ApplyConfiguration(snapshot.Configuration);
 		SetConfigurationEnabled(
 			snapshot.SessionState != QualificationSessionState.Running &&
@@ -348,31 +350,37 @@ public sealed class QualificationView : Panel
 	{
 		Panel panel = new()
 		{
-			Height = 116,
+			Height = 148,
 			BackColor = Theme.PanelLight,
 			Padding = new Padding(ThemeMetrics.Spacing)
 		};
 
 		TableLayoutPanel layout = CreateWorkloadLayout(2);
 		layout.RowStyles.Clear();
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 66));
+		layout.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
 
 		ConfigureWorkloadCheckBox(gpuCheck);
 		Label nameLabel = CreateWorkloadName("GPU");
 		Label setting = CreateWorkloadSetting("Target load %");
 		ConfigureNumeric(gpuLoadInput, 1, 100);
 
-		gpuDeviceInput.DropDownStyle = ComboBoxStyle.DropDownList;
 		gpuDeviceInput.Dock = DockStyle.Fill;
-		gpuDeviceInput.Margin = new Padding(0, 4, 0, 4);
+		gpuDeviceInput.Margin = new Padding(0, 2, 0, 4);
 		gpuDeviceInput.Font = ThemeFonts.CardText;
 		gpuDeviceInput.BackColor = Theme.Panel;
 		gpuDeviceInput.ForeColor = Theme.TextMain;
+		gpuDeviceInput.BorderStyle = BorderStyle.FixedSingle;
+		gpuDeviceInput.CheckOnClick = true;
+		gpuDeviceInput.IntegralHeight = false;
 		gpuDeviceInput.DisplayMember = nameof(QualificationGpuOption.DisplayName);
 		gpuDeviceInput.ValueMember = nameof(QualificationGpuOption.Identifier);
-		gpuDeviceInput.AccessibleName = "GPU device";
-		gpuDeviceInput.SelectedIndexChanged += (_, _) => OnConfigurationEdited();
+		gpuDeviceInput.AccessibleName = "GPU devices";
+		gpuDeviceInput.ItemCheck += (_, _) =>
+		{
+			if (!applyingConfiguration)
+				BeginInvoke(new Action(OnConfigurationEdited));
+		};
 
 		layout.Controls.Add(gpuCheck, 0, 0);
 		layout.SetRowSpan(gpuCheck, 2);
@@ -509,7 +517,7 @@ public sealed class QualificationView : Panel
 
 	private void ApplyGpuOptions(
 		IReadOnlyList<QualificationGpuOption> options,
-		string? selectedIdentifier)
+		IReadOnlyList<string> selectedIdentifiers)
 	{
 		bool sameOptions = gpuDeviceInput.Items.Count == options.Count;
 		if (sameOptions)
@@ -545,7 +553,7 @@ public sealed class QualificationView : Panel
 				}
 			}
 
-			SelectGpu(selectedIdentifier);
+			SetGpuSelections(selectedIdentifiers);
 		}
 		finally
 		{
@@ -553,27 +561,20 @@ public sealed class QualificationView : Panel
 		}
 	}
 
-	private void SelectGpu(string? selectedIdentifier)
+	private void SetGpuSelections(IReadOnlyList<string> selectedIdentifiers)
 	{
-		int selectedIndex = -1;
-		if (!string.IsNullOrWhiteSpace(selectedIdentifier))
-		{
-			for (int index = 0; index < gpuDeviceInput.Items.Count; index++)
-			{
-				if (gpuDeviceInput.Items[index] is QualificationGpuOption option &&
-					string.Equals(
-						option.Identifier,
-						selectedIdentifier,
-						StringComparison.OrdinalIgnoreCase))
-				{
-					selectedIndex = index;
-					break;
-				}
-			}
-		}
+		HashSet<string> selected = new(
+			selectedIdentifiers,
+			StringComparer.OrdinalIgnoreCase);
 
-		if (gpuDeviceInput.SelectedIndex != selectedIndex)
-			gpuDeviceInput.SelectedIndex = selectedIndex;
+		for (int index = 0; index < gpuDeviceInput.Items.Count; index++)
+		{
+			bool shouldBeChecked =
+				gpuDeviceInput.Items[index] is QualificationGpuOption option &&
+				selected.Contains(option.Identifier);
+			if (gpuDeviceInput.GetItemChecked(index) != shouldBeChecked)
+				gpuDeviceInput.SetItemChecked(index, shouldBeChecked);
+		}
 	}
 
 	private void SelectProfile(QualificationProfile profile)
@@ -594,8 +595,12 @@ public sealed class QualificationView : Panel
 
 	private QualificationConfiguration CreateConfiguration()
 	{
-		QualificationGpuOption? selectedGpu =
-			gpuDeviceInput.SelectedItem as QualificationGpuOption;
+		QualificationGpuOption[] selectedGpus = gpuDeviceInput.CheckedItems
+			.Cast<QualificationGpuOption>()
+			.ToArray();
+		string[] selectedIdentifiers = selectedGpus
+			.Select(option => option.Identifier)
+			.ToArray();
 
 		return new QualificationConfiguration(
 			cpuCheck.Checked,
@@ -606,8 +611,16 @@ public sealed class QualificationView : Panel
 			gpuLoadInput.Value,
 			selectedProfile)
 		{
-			SelectedGpuIdentifier = selectedGpu?.Identifier,
-			SelectedGpuName = selectedGpu?.DisplayName
+			SelectedGpuIdentifiers = Array.AsReadOnly(selectedIdentifiers),
+			SelectedGpuIdentifier = selectedIdentifiers.Length == 1
+				? selectedIdentifiers[0]
+				: null,
+			SelectedGpuName = selectedGpus.Length switch
+			{
+				0 => null,
+				1 => selectedGpus[0].DisplayName,
+				_ => $"{selectedGpus.Length} GPUs selected"
+			}
 		};
 	}
 
@@ -620,7 +633,7 @@ public sealed class QualificationView : Panel
 		gpuDeviceInput.Enabled =
 			editable &&
 			gpuCheck.Checked &&
-			gpuDeviceInput.Items.Count > 1;
+			gpuDeviceInput.Items.Count > 0;
 	}
 
 	private void SetConfigurationEnabled(bool enabled)

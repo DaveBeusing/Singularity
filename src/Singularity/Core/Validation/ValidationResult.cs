@@ -14,9 +14,11 @@ public sealed class ValidationResult
 	public string MemoryMessage { get; init; } = string.Empty;
 	public string GpuMessage { get; init; } = string.Empty;
 
+	public IReadOnlyList<GpuValidationResult> GpuDevices { get; init; } =
+		Array.Empty<GpuValidationResult>();
+
 	public bool IsSuccess =>
 		CpuStatus != ValidationStatus.Fail &&
 		MemoryStatus != ValidationStatus.Fail &&
 		GpuStatus != ValidationStatus.Fail;
-
 }

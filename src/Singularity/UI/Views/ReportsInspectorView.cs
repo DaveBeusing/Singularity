@@ -57,6 +57,7 @@ public sealed class ReportsInspectorView : Panel
 			$"Started\r\n{record.StartedAt:G}\r\n\r\n" +
 			$"Finished\r\n{record.FinishedAt:G}\r\n\r\n" +
 			$"Duration\r\n{record.Duration:hh\\:mm\\:ss}\r\n\r\n" +
+			$"GPU evidence\r\n{record.GpuEvidence.Count} device(s)\r\n\r\n" +
 			$"Export evidence\r\n{(snapshot.SelectedReport is null ? "Unavailable" : "JSON / HTML available")}";
 	}
 }

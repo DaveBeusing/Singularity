@@ -29,6 +29,7 @@ public sealed class ResultsView : Panel
 	private readonly Label temperatureMetricValue = CreateValueLabel();
 	private readonly Label powerMetricValue = CreateValueLabel();
 	private readonly Label vramMetricValue = CreateValueLabel();
+	private readonly FlowLayoutPanel gpuEvidenceList = new();
 
 	public ResultsView()
 	{
@@ -66,6 +67,7 @@ public sealed class ResultsView : Panel
 		temperatureMetricValue.Text = FormatMetric(statistics.GpuTemperatureCelsius, "°C");
 		powerMetricValue.Text = FormatMetric(statistics.GpuPowerWatts, "W");
 		vramMetricValue.Text = FormatMetric(statistics.GpuVramUsagePercent, "%");
+		RenderGpuEvidence(snapshot.GpuEvidence);
 	}
 
 	private void BuildUi()
@@ -127,24 +129,29 @@ public sealed class ResultsView : Panel
 			AutoSize = true,
 			AutoSizeMode = AutoSizeMode.GrowAndShrink,
 			ColumnCount = 2,
-			RowCount = 2,
+			RowCount = 3,
 			BackColor = Theme.Workspace
 		};
 		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52));
 		layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+		layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
 		Control summary = CreateSummaryCard();
 		Control validation = CreateValidationCard();
 		Control statistics = CreateStatisticsCard();
+		Control gpuEvidence = CreateGpuEvidenceCard();
 		summary.Margin = new Padding(0, 0, ThemeMetrics.Spacing, ThemeMetrics.Spacing);
 		validation.Margin = new Padding(0, 0, 0, ThemeMetrics.Spacing);
-		statistics.Margin = new Padding(0);
+		statistics.Margin = new Padding(0, 0, 0, ThemeMetrics.Spacing);
+		gpuEvidence.Margin = new Padding(0);
 		layout.Controls.Add(summary, 0, 0);
 		layout.Controls.Add(validation, 1, 0);
 		layout.Controls.Add(statistics, 0, 1);
 		layout.SetColumnSpan(statistics, 2);
+		layout.Controls.Add(gpuEvidence, 0, 2);
+		layout.SetColumnSpan(gpuEvidence, 2);
 
 		contentPanel.Controls.Add(layout);
 		Controls.Add(emptyPanel);
@@ -184,6 +191,106 @@ public sealed class ResultsView : Panel
 		AddRow(grid, 4, "GPU power", powerMetricValue);
 		AddRow(grid, 5, "VRAM usage", vramMetricValue);
 		return grid;
+	}
+
+	private Control CreateGpuEvidenceCard()
+	{
+		Panel panel = new()
+		{
+			Dock = DockStyle.Top,
+			AutoSize = true,
+			AutoSizeMode = AutoSizeMode.GrowAndShrink,
+			BackColor = Theme.Panel,
+			Padding = new Padding(ThemeMetrics.Spacing)
+		};
+
+		Label title = new()
+		{
+			Dock = DockStyle.Top,
+			Height = 32,
+			Text = "PER-DEVICE GPU EVIDENCE",
+			Font = ThemeFonts.Header,
+			ForeColor = Theme.TextMain,
+			BackColor = Theme.Panel
+		};
+
+		gpuEvidenceList.Dock = DockStyle.Top;
+		gpuEvidenceList.AutoSize = true;
+		gpuEvidenceList.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+		gpuEvidenceList.FlowDirection = FlowDirection.TopDown;
+		gpuEvidenceList.WrapContents = false;
+		gpuEvidenceList.BackColor = Theme.Panel;
+
+		panel.Controls.Add(gpuEvidenceList);
+		panel.Controls.Add(title);
+		return panel;
+	}
+
+	private void RenderGpuEvidence(IReadOnlyList<GpuQualificationEvidence> evidence)
+	{
+		gpuEvidenceList.SuspendLayout();
+		try
+		{
+			gpuEvidenceList.Controls.Clear();
+			if (evidence.Count == 0)
+			{
+				gpuEvidenceList.Controls.Add(new Label
+				{
+					AutoSize = true,
+					Text = "No explicit GPU device evidence was recorded.",
+					Font = ThemeFonts.CardText,
+					ForeColor = Theme.TextMuted,
+					BackColor = Theme.Panel
+				});
+				return;
+			}
+
+			foreach (GpuQualificationEvidence gpu in evidence)
+			{
+				Panel card = new()
+				{
+					Width = Math.Max(360, contentPanel.ClientSize.Width - ThemeMetrics.SpacingLarge * 2),
+					Height = 92,
+					BackColor = Theme.PanelLight,
+					Margin = new Padding(0, 0, 0, ThemeMetrics.SpacingSmall),
+					Padding = new Padding(ThemeMetrics.Spacing)
+				};
+
+				Label heading = new()
+				{
+					Dock = DockStyle.Top,
+					Height = 24,
+					Text = $"{gpu.Name}  •  {StatusStyle.Format(gpu.Result)}",
+					Font = ThemeFonts.CardTitle,
+					ForeColor = StatusStyle.GetColor(gpu.Result),
+					BackColor = Theme.PanelLight,
+					AutoEllipsis = true
+				};
+				Label details = new()
+				{
+					Dock = DockStyle.Fill,
+					Text =
+						$"{gpu.Identifier}\r\n" +
+						$"Load {FormatMetric(gpu.TelemetryStatistics.LoadPercent, "%")}  •  " +
+						$"Temp {FormatMetric(gpu.TelemetryStatistics.TemperatureCelsius, "°C")}  •  " +
+						$"Power {FormatMetric(gpu.TelemetryStatistics.PowerWatts, "W")}  •  " +
+						$"VRAM {FormatMetric(gpu.TelemetryStatistics.VramUsagePercent, "%")}  •  " +
+						$"Unavailable samples {gpu.TelemetryStatistics.UnavailableSampleCount}",
+					Font = ThemeFonts.CardTextSmall,
+					ForeColor = Theme.TextMuted,
+					BackColor = Theme.PanelLight,
+					AutoEllipsis = true
+				};
+
+				card.Controls.Add(details);
+				card.Controls.Add(heading);
+				gpuEvidenceList.Controls.Add(card);
+			}
+		}
+		finally
+		{
+			gpuEvidenceList.ResumeLayout();
+		}
 	}
 
 	private static TableLayoutPanel CreateCard(string title, int valueRows)

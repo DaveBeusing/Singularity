@@ -31,4 +31,7 @@ public sealed class QualificationReport
 
 	public SessionTelemetryStatistics TelemetryStatistics { get; init; } =
 		SessionTelemetryStatistics.Empty;
+
+	public IReadOnlyList<GpuQualificationEvidence> GpuEvidence { get; init; } =
+		Array.Empty<GpuQualificationEvidence>();
 }

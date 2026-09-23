@@ -31,6 +31,9 @@ public sealed class QualificationSession
 	public QualificationExecutionMode ExecutionMode { get; private set; } =
 		QualificationExecutionMode.Unknown;
 
+	public IReadOnlyList<string> SelectedGpuIdentifiers { get; private set; } =
+		Array.Empty<string>();
+
 	public TimeSpan Duration
 	{
 		get
@@ -55,13 +58,20 @@ public sealed class QualificationSession
 
 	public void Start(
 		QualificationProfile profile,
-		QualificationExecutionMode executionMode = QualificationExecutionMode.Manual)
+		QualificationExecutionMode executionMode = QualificationExecutionMode.Manual,
+		IReadOnlyList<string>? selectedGpuIdentifiers = null)
 	{
+		SelectedGpuIdentifiers = Array.AsReadOnly(
+			(selectedGpuIdentifiers ?? Array.Empty<string>())
+				.Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToArray());
+
 		State = QualificationSessionState.Running;
 		StartTime = DateTime.Now;
 		EndTime = null;
 		Result = ValidationStatus.Unknown;
-		telemetryCollector = new SessionTelemetryCollector();
+		telemetryCollector = new SessionTelemetryCollector(SelectedGpuIdentifiers);
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 		Profile = profile;
 		ExecutionMode = executionMode;
@@ -101,6 +111,7 @@ public sealed class QualificationSession
 		StartTime = null;
 		EndTime = null;
 		Result = ValidationStatus.Unknown;
+		SelectedGpuIdentifiers = Array.Empty<string>();
 		telemetryCollector = new SessionTelemetryCollector();
 		TelemetryStatistics = SessionTelemetryStatistics.Empty;
 		Profile = QualificationProfiles.Standard;

@@ -59,7 +59,8 @@ public sealed class ResultsInspectorView : Panel
 				$"Overall  {StatusStyle.Format(snapshot.OverallStatus)}\r\n\r\n" +
 				$"CPU      {StatusStyle.Format(snapshot.CpuStatus)}\r\n" +
 				$"Memory   {StatusStyle.Format(snapshot.MemoryStatus)}\r\n" +
-				$"GPU      {StatusStyle.Format(snapshot.GpuStatus)}",
+				$"GPU      {StatusStyle.Format(snapshot.GpuStatus)}" +
+				BuildGpuValidation(snapshot.GpuEvidence),
 			"statistics" => BuildStatistics(snapshot.TelemetryStatistics),
 			_ =>
 				$"Profile\r\n{snapshot.ProfileName}\r\n\r\n" +
@@ -71,16 +72,51 @@ public sealed class ResultsInspectorView : Panel
 
 	private static string BuildStatistics(SessionTelemetryStatistics statistics)
 	{
-		return string.Join(
-			"\r\n\r\n",
-			[
-				FormatMetric("CPU load", statistics.CpuLoadPercent, "%"),
-				FormatMetric("Memory", statistics.SystemMemoryUsagePercent, "%"),
-				FormatMetric("GPU load", statistics.GpuLoadPercent, "%"),
-				FormatMetric("GPU temperature", statistics.GpuTemperatureCelsius, "°C"),
-				FormatMetric("GPU power", statistics.GpuPowerWatts, "W"),
-				FormatMetric("VRAM", statistics.GpuVramUsagePercent, "%")
-			]);
+		List<string> values =
+		[
+			FormatMetric("CPU load", statistics.CpuLoadPercent, "%"),
+			FormatMetric("Memory", statistics.SystemMemoryUsagePercent, "%")
+		];
+
+		if (statistics.Gpus.Count == 0)
+		{
+			values.Add(FormatMetric("GPU load", statistics.GpuLoadPercent, "%"));
+			values.Add(FormatMetric("GPU temperature", statistics.GpuTemperatureCelsius, "°C"));
+			values.Add(FormatMetric("GPU power", statistics.GpuPowerWatts, "W"));
+			values.Add(FormatMetric("VRAM", statistics.GpuVramUsagePercent, "%"));
+		}
+		else
+		{
+			foreach (GpuTelemetryStatistics gpu in statistics.Gpus)
+			{
+				string name = string.IsNullOrWhiteSpace(gpu.Name) ? gpu.Identifier : gpu.Name;
+				values.Add(
+					$"{name}\r\n" +
+					$"Load {FormatMetricValue(gpu.LoadPercent, "%")} • " +
+					$"Temp {FormatMetricValue(gpu.TemperatureCelsius, "°C")} • " +
+					$"Unavailable {gpu.UnavailableSampleCount}");
+			}
+		}
+
+		return string.Join("\r\n\r\n", values);
+	}
+
+	private static string BuildGpuValidation(IReadOnlyList<GpuQualificationEvidence> evidence)
+	{
+		if (evidence.Count == 0)
+			return string.Empty;
+
+		return "\r\n\r\n" + string.Join(
+			"\r\n",
+			evidence.Select(gpu =>
+				$"{gpu.Name}  {StatusStyle.Format(gpu.Result)}  {gpu.ValidationMessage}"));
+	}
+
+	private static string FormatMetricValue(MetricStatistics? statistics, string unit)
+	{
+		return statistics is null
+			? "Unavailable"
+			: $"{statistics.Average:0.0} {unit} avg";
 	}
 
 	private static string FormatMetric(string name, MetricStatistics? statistics, string unit)

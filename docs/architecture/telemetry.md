@@ -26,7 +26,9 @@ System CPU load comes from the Windows `GetSystemTimes` API. Process utilization
 
 `TelemetryCache` protects the mutable snapshot with a lock. Writers update it inside the lock; readers receive a copy, so UI and validation code cannot mutate cached state.
 
-The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting cached snapshot updates Overview and is passed to `QualificationWorkspaceController`. The Qualification workspace and its Tool Panel render that same snapshot; they do not start additional polling. During an active workload the coordinator also adds it to `QualificationSession` statistics and passes it to `WorkloadValidator`. When a GPU has been selected explicitly, validation reads the `GpuTelemetrySnapshot` with the matching identifier; it does not fall back to the first GPU if that selected snapshot disappears or becomes unavailable.
+The WinForms timer calls `SystemMonitor.GetSnapshot()` every 500 ms. The resulting cached snapshot updates Overview and is passed to `QualificationWorkspaceController`. The Qualification workspace and its Tool Panel render that same snapshot; they do not start additional polling. During an active workload the coordinator also adds it to `QualificationSession` statistics and passes it to `WorkloadValidator`. When GPUs have been selected explicitly, validation and session statistics resolve a `GpuTelemetrySnapshot` independently for every stable identifier. Missing telemetry for one selected device remains unavailable for that device and telemetry from another GPU is never substituted.
+
+Session statistics use bounded streaming accumulators. Each selected GPU independently records available and unavailable sample counts plus load, temperature, power, and VRAM minimum/average/maximum statistics without retaining an unbounded raw telemetry list. Single-GPU sessions continue to populate the legacy aggregate GPU statistics for compatibility; multi-GPU sessions use the per-device collection as the unambiguous evidence source.
 
 
 

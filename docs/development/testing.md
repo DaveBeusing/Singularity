@@ -26,8 +26,10 @@ The current unit suite exercises deterministic behavior in:
 - manual and automated application-coordinator workflows;
 - qualification-session lifecycle and telemetry statistics;
 - bounded, newest-first qualification history;
-- CPU, memory, and GPU validation thresholds and GPU warm-up behavior;
-- report generation and invalid-session rejection;
+- CPU, memory, and per-device GPU validation thresholds, independent GPU warm-up/stability behavior, mixed outcomes, and telemetry gaps;
+- multi-GPU selection preservation across inventory reordering and stale-device handling;
+- per-device streaming telemetry aggregation and frozen qualification evidence;
+- report generation, schema-2.0 JSON evidence, standalone HTML evidence, single-GPU compatibility, and invalid-session rejection;
 - streaming minimum, average, maximum, sample count, and non-finite filtering;
 - workload status states;
 - qualification workspace command availability, progress, session, navigation, telemetry-unavailable, and failure-state mapping;
@@ -46,7 +48,7 @@ CI intentionally does not validate hardware-dependent qualification, administrat
 
 ## Manual Windows validation
 
-Hardware integrations require manual validation on representative Windows hardware. Useful checks include inventory accuracy, missing-sensor behavior, NVIDIA GPU enumeration, workload start/stop behavior, UAC launch, and both report export dialogs.
+Hardware integrations require manual validation on representative Windows hardware. For multi-GPU qualification, use a system with at least two supported NVIDIA adapters and verify that each selected stable identity maps to the intended Windows adapter, both selected adapters receive Direct3D 12 workload concurrently, deselected adapters are not exercised, cancellation stops every worker cleanly, one-device failure is surfaced as an overall failure, telemetry gaps remain attached to the correct identity, and exported JSON/HTML evidence matches the devices actually exercised. Also verify inventory accuracy, missing-sensor behavior, workload start/stop behavior, UAC launch, and both report export dialogs.
 
 ### UI shell validation
 

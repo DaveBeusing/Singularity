@@ -1,6 +1,6 @@
 # Validation
 
-`WorkloadValidator` compares the active `WorkloadStatus` and latest `SystemSnapshot` against a `QualificationProfile`. It returns independent CPU, memory, and GPU statuses plus a human-readable message for each.
+`WorkloadValidator` compares the active `WorkloadStatus` and latest `SystemSnapshot` against a `QualificationProfile`. It returns independent CPU and memory results plus one `GpuValidationResult` for every explicitly selected GPU. The scalar GPU result is derived deterministically from those per-device results.
 
 ## Profiles
 
@@ -19,11 +19,11 @@ Memory percentages describe the required fraction of the requested allocation. F
 - `Fail` means CPU or memory is below its warning threshold, GPU temperature exceeds the profile maximum, or post-warm-up GPU load is below its minimum.
 - `Unknown` means that workload component is disabled.
 
-When a GPU workload has an explicit device identifier, `WorkloadValidator` first resolves the matching `GpuTelemetrySnapshot`. Missing or unavailable telemetry for that selected device is a warning; telemetry from another enumerated GPU is not substituted. Legacy callers without an explicit identifier retain the compatibility behavior based on the first GPU fields in `SystemSnapshot`.
+For every explicitly selected GPU, `WorkloadValidator` resolves the matching `GpuTelemetrySnapshot`. Missing or unavailable telemetry remains `UNKNOWN` for that device; telemetry from another enumerated GPU is never substituted. Because an enabled GPU workload cannot be qualified as passing without evidence, the derived aggregate GPU status becomes `WARNING` whenever any selected device is `UNKNOWN` and no device has failed. Each GPU owns an independent warm-up and stable-load timer so a slow or interrupted device cannot inherit another adapter's stability state. Legacy callers without explicit identifiers retain the compatibility behavior based on the first GPU fields in `SystemSnapshot`.
 
-GPU load must remain at or above the minimum for the profile's stability duration before passing. Dropping below the minimum resets that stability window. Validator state is reset when a new session begins.
+GPU load must remain at or above the minimum for the profile's stability duration before that device passes. Dropping below the minimum resets only that device's stability window. Validator state is reset when a new session begins.
 
-`ValidationSummary` determines the overall result by precedence: any failure wins, otherwise any warning, otherwise any pass, otherwise unknown. `ValidationResult.IsSuccess` treats warnings and unknown components as non-failures; this is the value used by automated stop-on-failure behavior.
+Per-device GPU status is aggregated with the same deterministic precedence used elsewhere: any failure wins, otherwise any warning, otherwise any pass, otherwise unknown. `ValidationSummary` then derives the overall qualification result from CPU, memory, and the derived GPU result with that precedence. `ValidationResult.IsSuccess` treats warnings and unknown components as non-failures; this remains the value used by automated stop-on-failure behavior.
 
-`QualificationSession` records the chosen profile, timestamps, final overall result, and telemetry samples. Completed sessions are added newest-first to an in-memory history limited to ten records; history is not persisted between application runs.
+`QualificationSession` records the chosen profile, timestamps, final overall result, selected stable GPU identities, and bounded streaming telemetry statistics. Completed sessions freeze per-GPU evidence into the newest-first in-memory history limited to ten records; history is not persisted between application runs.
 

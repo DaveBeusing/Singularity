@@ -40,4 +40,31 @@ public sealed class QualificationGpuSelectionTests
 
 		Assert.Null(QualificationGpuSelection.ResolveSelection([gpuA], "GPU-REMOVED"));
 	}
+
+	[Fact]
+	public void ResolveSelections_PreservesRequestedDeviceIdentities()
+	{
+		QualificationGpuOption gpuA = new("GPU-A", "GPU A");
+		QualificationGpuOption gpuB = new("GPU-B", "GPU B");
+
+		IReadOnlyList<QualificationGpuOption> selected =
+			QualificationGpuSelection.ResolveSelections(
+				[gpuB, gpuA],
+				["GPU-A", "GPU-B"]);
+
+		Assert.Equal(["GPU-A", "GPU-B"], selected.Select(item => item.Identifier));
+	}
+
+	[Fact]
+	public void ResolveSelections_DropsOnlyStaleDevices()
+	{
+		QualificationGpuOption gpuA = new("GPU-A", "GPU A");
+
+		IReadOnlyList<QualificationGpuOption> selected =
+			QualificationGpuSelection.ResolveSelections(
+				[gpuA],
+				["GPU-A", "GPU-REMOVED"]);
+
+		Assert.Equal(["GPU-A"], selected.Select(item => item.Identifier));
+	}
 }

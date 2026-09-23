@@ -41,10 +41,10 @@ The user can configure:
 
 - CPU workload enabled state and thread count;
 - memory workload enabled state and allocation in GB;
-- GPU workload enabled state, stable GPU device selection, and target load percentage;
+- GPU workload enabled state, one-or-more stable GPU device selections, and target load percentage;
 - Quick, Standard, or BurnIn qualification profile.
 
-At least one workload must be selected before a qualification can start. A single GPU with a stable identity is selected automatically. Systems with multiple selectable GPUs expose a device selector. The selected UUID is retained across inventory reordering; if that device disappears after refresh, the selection is cleared and qualification cannot start until an available GPU is selected.
+At least one workload must be selected before a qualification can start. A single GPU with a stable identity is selected automatically. Systems with multiple selectable GPUs expose a checked multi-selection list. Stable identifiers, not list positions, define the selection. Selections survive inventory reordering. If one or more selected devices disappear after refresh, the remaining valid identities are preserved, an explicit warning is shown, and the selection must be reviewed before qualification can start.
 
 Configuration controls are disabled while a qualification session is active. The selected configuration remains application state when the user navigates to another workspace and is reapplied when Qualification is shown again.
 
@@ -111,7 +111,7 @@ It shows:
 
 - CPU load and CPU temperature or explicit temperature-unavailable status;
 - system-memory utilization;
-- GPU load, temperature, optional power, or explicit GPU-telemetry-unavailable status;
+- selected-GPU load/temperature summary, availability count, optional power for a single selected GPU, or explicit per-selection telemetry-unavailable status;
 - automated qualification progress or current qualification state.
 
 The Qualification workspace does not create timers, hardware enumeration, or additional sensor polling.
@@ -125,7 +125,7 @@ The contextual sidebar contains Profile, Workloads, and Session.
 The Qualification inspector renders details for the active context without changing domain state:
 
 - Profile: active profile duration and validation thresholds;
-- Workloads: selected workloads, the selected GPU identity, and configured targets;
+- Workloads: selected workloads, all selected stable GPU identities, and configured targets;
 - Session: mode, profile, timestamps, progress, and current lifecycle state.
 
 ## Navigation behavior
@@ -166,6 +166,6 @@ After completion or failure, the user can navigate to Results for validation evi
 
 Qualification only offers GPUs that expose a stable provider identity. Transient index-based NVML fallback identifiers are not accepted for explicit qualification targeting.
 
-The selected identifier is copied into `WorkloadOptions` and remains part of `WorkloadStatus` while the workload runs. GPU initialization must resolve that exact device to the Windows graphics adapter. Resolution failure is a workload failure and is shown through the normal qualification feedback path.
+All selected identifiers are copied into `WorkloadOptions` and remain part of `WorkloadStatus` while the workload runs. GPU initialization must resolve every exact identity to its Windows graphics adapter. The selected adapters execute concurrently with independent worker/resource ownership. Resolution or execution failure is a workload failure and is shown through the normal qualification feedback path.
 
-The selected identifier is also used to resolve live GPU telemetry. Another GPU's telemetry is never substituted when the selected device is missing, unavailable, removed, or reordered.
+The same identifiers resolve live telemetry, validation, frozen session statistics, Results evidence, and report evidence. Another GPU's telemetry is never substituted when a selected device is missing, unavailable, removed, or reordered.

@@ -17,6 +17,7 @@ public sealed class QualificationCoordinator
 	private readonly WorkloadValidator workloadValidator = new();
 	private readonly QualificationReportGenerator reportGenerator = new();
 	private bool automatedRunFinalized;
+	private SystemSnapshot? lastSnapshot;
 
 	public QualificationSession Session { get; } = new();
 	public QualificationHistory History { get; } = new();
@@ -41,7 +42,10 @@ public sealed class QualificationCoordinator
 
 		workloadController.ResetFailure();
 		qualificationRunner.Reset();
-		PrepareSession(profile, QualificationExecutionMode.Manual);
+		PrepareSession(
+			profile,
+			QualificationExecutionMode.Manual,
+			options.ResolveSelectedGpuIdentifiers());
 		workloadController.Start(options);
 		return true;
 	}
@@ -56,7 +60,10 @@ public sealed class QualificationCoordinator
 
 		qualificationRunner.Reset();
 		QualificationPlan plan = QualificationPlan.CreateStandard(options, profile);
-		PrepareSession(profile, QualificationExecutionMode.Automated);
+		PrepareSession(
+			profile,
+			QualificationExecutionMode.Automated,
+			options.ResolveSelectedGpuIdentifiers());
 		automatedRunFinalized = false;
 		qualificationRunner.Start(plan);
 		return true;
@@ -71,9 +78,23 @@ public sealed class QualificationCoordinator
 			return true;
 		}
 
-		WorkloadState workloadState = workloadController.Status.State;
+		WorkloadStatus workloadStatus = workloadController.Status;
+		WorkloadState workloadState = workloadStatus.State;
 		if (!workloadController.IsRunning && workloadState != WorkloadState.Failed)
 			return false;
+
+		if (workloadState == WorkloadState.Failed &&
+			workloadStatus.GpuEnabled &&
+			workloadStatus.GpuDevices.Count > 0)
+		{
+			LastValidationResult = lastSnapshot is null
+				? null
+				: workloadValidator.Validate(
+					workloadStatus,
+					lastSnapshot,
+					Session.Profile,
+					Session.Duration);
+		}
 
 		workloadController.Stop();
 		FinalizeSession(forceFailure: workloadState == WorkloadState.Failed);
@@ -83,12 +104,19 @@ public sealed class QualificationCoordinator
 	public void Update(SystemSnapshot snapshot)
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
+		lastSnapshot = snapshot;
 
-		if (workloadController.IsRunning)
+		WorkloadStatus workloadStatus = workloadController.Status;
+		bool hasGpuFailureEvidence =
+			workloadStatus.State == WorkloadState.Failed &&
+			workloadStatus.GpuEnabled &&
+			workloadStatus.GpuDevices.Count > 0;
+
+		if (workloadStatus.IsRunning || hasGpuFailureEvidence)
 		{
 			Session.RecordTelemetry(snapshot);
 			LastValidationResult = workloadValidator.Validate(
-				workloadController.Status,
+				workloadStatus,
 				snapshot,
 				Session.Profile,
 				Session.Duration);
@@ -99,7 +127,7 @@ public sealed class QualificationCoordinator
 
 		if (Session.State == QualificationSessionState.Running &&
 			qualificationRunner.State == QualificationRunState.Idle &&
-			workloadController.Status.State == WorkloadState.Failed)
+			workloadStatus.State == WorkloadState.Failed)
 		{
 			FinalizeSession(forceFailure: true);
 		}
@@ -114,12 +142,14 @@ public sealed class QualificationCoordinator
 
 	private void PrepareSession(
 		QualificationProfile profile,
-		QualificationExecutionMode executionMode)
+		QualificationExecutionMode executionMode,
+		IReadOnlyList<string> selectedGpuIdentifiers)
 	{
 		LastValidationResult = null;
 		LastReport = null;
+		lastSnapshot = null;
 		workloadValidator.Reset();
-		Session.Start(profile, executionMode);
+		Session.Start(profile, executionMode, selectedGpuIdentifiers);
 	}
 
 	private void FinalizeSession(bool forceFailure = false)
