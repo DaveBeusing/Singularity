@@ -30,5 +30,6 @@
 		<PackageReference Include="System.Management" />
 		<PackageReference Include="Vortice.Direct3D12" />
 		<PackageReference Include="Vortice.Dxc" />
+		<PackageReference Include="Vortice.DXGI" />
 	</ItemGroup>
 </Project>
