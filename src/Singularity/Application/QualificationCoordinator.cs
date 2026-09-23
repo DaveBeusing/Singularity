@@ -90,11 +90,17 @@ public sealed class QualificationCoordinator
 	{
 		ArgumentNullException.ThrowIfNull(snapshot);
 
-		if (workloadController.IsRunning)
+		WorkloadStatus workloadStatus = workloadController.Status;
+		bool hasGpuFailureEvidence =
+			workloadStatus.State == WorkloadState.Failed &&
+			workloadStatus.GpuEnabled &&
+			workloadStatus.GpuDevices.Count > 0;
+
+		if (workloadStatus.IsRunning || hasGpuFailureEvidence)
 		{
 			Session.RecordTelemetry(snapshot);
 			LastValidationResult = workloadValidator.Validate(
-				workloadController.Status,
+				workloadStatus,
 				snapshot,
 				Session.Profile,
 				Session.Duration);
@@ -105,7 +111,7 @@ public sealed class QualificationCoordinator
 
 		if (Session.State == QualificationSessionState.Running &&
 			qualificationRunner.State == QualificationRunState.Idle &&
-			workloadController.Status.State == WorkloadState.Failed)
+			workloadStatus.State == WorkloadState.Failed)
 		{
 			FinalizeSession(forceFailure: true);
 		}
